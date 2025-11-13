@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# $1 is the path to the commit message file
+COMMIT_MSG_FILE="$1"
+
+# Check for Co-authored-by trailers
+if grep -iE "Co-authored-by:" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
+    echo "❌ BLOCKED: Co-authored-by trailers not allowed"
+    echo "Remove Co-authored-by lines from commit message"
+    exit 1
+fi
+
+exit 0
