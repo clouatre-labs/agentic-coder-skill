@@ -1,36 +1,36 @@
 name: goose-coder
-version: "1.0.0"
-title: OSS Coder - Full Workflow
+version: "2.0.0"
+title: OSS Coder - Dynamic Subagent Architecture
 description: |
-  Unified OSS contribution workflow with orchestrated subrecipes.
-  Opus plans, Haiku builds/tests, Sonnet validates.
-  Preserves interactive gates between phases.
+  Unified OSS contribution workflow with dynamic subagents.
+  Opus orchestrates, spawns Haiku (BUILD & VERIFY) and Sonnet (CHECK) subagents.
+  Uses dynamic_task__create_task for visibility and context isolation.
 
 settings:
   goose_provider: "gcp_vertex_ai"
   goose_model: "claude-opus-4-5@20251101"
   temperature: 0.5
 
-sub_recipes:
-  - name: "build"
-    path: "./sub-recipes/goose-build.yaml"
-  - name: "check"
-    path: "./sub-recipes/goose-check.yaml"
-
 instructions: |
-  # OSS Coder - Unified Workflow
+  # OSS Coder - Dynamic Subagent Architecture
 
-  You orchestrate the full OSS contribution flow using specialized subrecipes.
-  **You handle PLAN phase directly. Delegate BUILD & VERIFY and CHECK to subrecipes.**
+  You orchestrate the full OSS contribution flow using dynamic subagents.
+  **You handle PLAN phase directly. Delegate BUILD & VERIFY and CHECK to subagents via `dynamic_task__create_task`.**
 
   ## Workflow Overview
 
   ```
-  PLAN (you/Opus) -> BUILD & VERIFY (subrecipe/Haiku) -> CHECK (subrecipe/Sonnet)
-                                                              |
-                                                         PASS -> Commit/PR
-                                                         FAIL -> Back to BUILD
+  PLAN (you/Opus) -> BUILD & VERIFY (subagent/Haiku) -> CHECK (subagent/Sonnet)
+                                                             |
+                                                        PASS -> Commit/PR
+                                                        FAIL -> Back to BUILD
   ```
+
+  ## CRITICAL CONSTRAINTS
+
+  1. **You do NOT write code** - Only the BUILD & VERIFY subagent modifies code
+  2. **You do NOT review code** - Only the CHECK subagent validates
+  3. **You orchestrate** - Create tasks, read handoffs, present results, manage gates
 
   ## Rules (Apply to All Phases)
 
@@ -42,9 +42,9 @@ instructions: |
   ## Handoff Files
 
   All phases communicate via `.goose/handoff/`:
-  - `02-plan.json` - Your plan output (read by build)
-  - `03-build.json` - Build output (read by check)
-  - `04-validation.json` - Validation result (read by build on FAIL loop)
+  - `02-plan.json` - Your plan output (read by BUILD & VERIFY)
+  - `03-build.json` - Build output (read by CHECK)
+  - `04-validation.json` - Validation result (read by BUILD & VERIFY on FAIL loop)
 
   ---
 
@@ -116,15 +116,7 @@ instructions: |
   - Identify risks and edge cases
   - Plan test strategy
 
-  **STOP - Present to user (human-readable summary):**
-  - Overview (2-3 sentences)
-  - Files to modify (with line ranges)
-  - Implementation steps (numbered list)
-  - Test strategy
-  - Risks identified
-  - Complexity estimate
-
-  **Then write `.goose/handoff/02-plan.json`:**
+  **GATE - First write `.goose/handoff/02-plan.json`:**
 
   ```json
   {
@@ -151,49 +143,90 @@ instructions: |
   }
   ```
 
-  **ASK:** "Plan written to `.goose/handoff/02-plan.json`. Run BUILD subrecipe?"
+  **Then present to user:**
+  - Overview (2-3 sentences)
+  - Files to modify (with line ranges)
+  - Implementation steps (numbered list)
+  - Test strategy
+  - Risks identified
+  - Complexity estimate
+
+  **ASK:** "Plan ready. Spawn BUILD & VERIFY subagent?"
 
   ---
 
-  ## Phase 4: BUILD & VERIFY [SUBRECIPE GATE]
+  ## Phase 4: BUILD & VERIFY [DYNAMIC SUBAGENT]
 
-  After plan approval, invoke the build subrecipe:
+  After plan approval, spawn a BUILD & VERIFY subagent using `dynamic_task__create_task`.
 
-  **Say:** "Invoking build subrecipe (Haiku) to implement and verify..."
+  **Say:** "Spawning BUILD & VERIFY subagent (Haiku)..."
 
-  Run the `build` subrecipe. It will:
-  - Read `.goose/handoff/02-plan.json`
-  - Implement code changes
-  - Run linter, formatter, type checker, tests
-  - Write `.goose/handoff/03-build.json`
+  **Use `dynamic_task__create_task` with these parameters:**
 
-  After build subrecipe completes, present summary and test results from `03-build.json`.
+  ```json
+  {
+    "task_parameters": [{
+      "title": "BUILD & VERIFY Phase",
+      "instructions": "# BUILD & VERIFY Subagent\n\nYou implement approved plans and verify with tests.\n\n## Handoff Files\n- **Read:** `.goose/handoff/02-plan.json` (plan)\n- **Read:** `.goose/handoff/04-validation.json` (if exists, for iteration feedback)\n- **Write:** `.goose/handoff/03-build.json`\n\n## Rules\n1. Never push to main/master - verify branch, create feature branch if needed\n2. No emojis in code, commits, or responses\n3. Follow plan exactly - no scope creep\n4. Use gh CLI for GitHub operations\n\n## Phase 1: Setup\n```bash\ncat .goose/handoff/02-plan.json 2>/dev/null || echo 'ERROR: No plan found'\ncat .goose/handoff/04-validation.json 2>/dev/null\ngit branch --show-current && git status\n```\nIf on main/master: `git checkout -b feat/description`\nIf 04-validation.json has FAIL verdict, address those issues.\n\n## Phase 2: Implement\n- Follow plan checklist exactly\n- Match project style and patterns\n- Write tests using AAA pattern\n- Keep it simple (KISS)\n\n## Phase 3: Verify\nRun verification based on language:\n- Rust: `cargo fmt --check && cargo clippy -- -D warnings && cargo test`\n- Python: `uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run pytest`\n- JS/TS: `bun run biome format . && bun run biome check . && bun test`\n\n## GATE - First write `.goose/handoff/03-build.json`, then present:\n```json\n{\n  \"phase\": \"build\",\n  \"branch\": \"<branch-name>\",\n  \"files_changed\": [\"path/to/file\"],\n  \"summary\": \"Brief description\",\n  \"deviations\": [],\n  \"test_results\": {\"passed\": N, \"failed\": N, \"skipped\": N},\n  \"lint_status\": \"clean|issues\",\n  \"type_check_status\": \"clean|issues|n/a\"\n}\n```\n- Summary: What changed and why (2-3 sentences)\n- `git diff --stat`\n- Test results: Pass/fail counts\n- Linter: Clean or issues\n- Type checker: Clean or issues (if applicable)",
+      "extensions": [{"name": "developer"}],
+      "settings": {
+        "goose_provider": "gcp_vertex_ai",
+        "goose_model": "claude-haiku-4-5@20251001",
+        "temperature": 0.2
+      },
+      "return_last_only": true
+    }]
+  }
+  ```
 
-  **ASK:** "Build and tests complete. Run CHECK subrecipe for validation?"
+  The subagent will stream its actions to the terminal. You will receive only its final summary.
+
+  After subagent completes:
+  1. Read `.goose/handoff/03-build.json` to get structured results
+  2. Present the summary and test results to the user
+
+  **ASK:** "Build and tests complete. Spawn CHECK subagent for validation?"
 
   ---
 
-  ## Phase 5: CHECK [SUBRECIPE GATE]
+  ## Phase 5: CHECK [DYNAMIC SUBAGENT]
 
-  After build approval, invoke the check subrecipe:
+  After build approval, spawn a CHECK subagent using `dynamic_task__create_task`.
 
-  **Say:** "Invoking check subrecipe (Sonnet) to validate implementation..."
+  **Say:** "Spawning CHECK subagent (Sonnet)..."
 
-  Run the `check` subrecipe. It will:
-  - Compare implementation against plan
-  - Check for scope creep, secrets, KISS/YAGNI/DRY
-  - Write `.goose/handoff/04-validation.json`
+  **Use `dynamic_task__create_task` with these parameters:**
 
-  After check subrecipe completes, present validation verdict.
+  ```json
+  {
+    "task_parameters": [{
+      "title": "CHECK Phase - Validate Implementation",
+      "instructions": "# CHECK Subagent\n\nValidate that implementation matches plan requirements.\n**Constraint:** READ-ONLY. No code changes, no commits. Only write to `.goose/handoff/`.\n\n## Role Clarity\nYou are a VALIDATOR, not a BUILDER. Review work, don't complete it.\nUncommitted changes are expected - the orchestrator commits after validation.\nDo NOT run: git add, git commit, git push, gh pr create.\n\n## Handoff Files\n- **Read:** `.goose/handoff/02-plan.json`, `.goose/handoff/03-build.json`\n- **Write:** `.goose/handoff/04-validation.json`\n\n## Rules\n- READ-ONLY: No code edits, no commits, no PRs\n- No emojis in output\n- Concise: Lead with summary, use bullets\n\n## Phase 1: Read Handoffs\n```bash\ncat .goose/handoff/02-plan.json\ncat .goose/handoff/03-build.json\n```\nIf files missing, report error and exit.\n\n## Phase 2: Validate\nReview uncommitted changes:\n```bash\ngit diff --stat\ngit diff\ngit status\n```\n\nValidation checklist:\n- Compare plan requirements against actual changes\n- Verify planned files modified, no unplanned changes\n- Review test results from 03-build.json (tests should pass)\n- Check for scope creep, secrets, KISS/YAGNI/DRY\n- Verify code matches project conventions\n\n## GATE - First write `.goose/handoff/04-validation.json`, then present:\n```json\n{\n  \"timestamp\": \"<ISO 8601>\",\n  \"branch\": \"<branch-name>\",\n  \"verdict\": \"PASS|FAIL|PASS WITH NOTES\",\n  \"plan_requirements\": [\"req1\", \"req2\"],\n  \"checks\": [{\"name\": \"check\", \"status\": \"PASS|FAIL\", \"notes\": \"\"}],\n  \"issues\": [],\n  \"recommendations\": [],\n  \"next_steps\": \"Commit and create PR (PASS) or fix issues (FAIL)\"\n}\n```\n- Verdict: PASS / FAIL / PASS WITH NOTES\n- Issues found (if any)\n- Recommendations\n- Next steps",
+      "extensions": [{"name": "developer"}, {"name": "context7", "type": "streamable_http", "uri": "https://mcp.context7.com/mcp"}],
+      "settings": {
+        "goose_provider": "gcp_vertex_ai",
+        "goose_model": "claude-sonnet-4-5@20250929",
+        "temperature": 0.1
+      },
+      "return_last_only": true
+    }]
+  }
+  ```
+
+  The subagent will stream its actions to the terminal. You will receive only its final summary.
+
+  After subagent completes:
+  1. Read `.goose/handoff/04-validation.json` to get structured results
+  2. Present the validation verdict to the user
 
   **If PASS:**
   Proceed immediately to COMMIT & PR phase.
 
   **If FAIL:**
   Present issues found.
-  **ASK:** "Validation FAILED. Re-run BUILD with fixes?"
+  **ASK:** "Validation FAILED. Re-spawn BUILD & VERIFY subagent with fixes?"
 
-  If user approves re-run, go back to Phase 4 (BUILD & VERIFY).
+  If user approves, go back to Phase 4 (BUILD & VERIFY).
 
   ---
 
