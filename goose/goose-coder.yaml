@@ -14,9 +14,6 @@ settings:
 sub_recipes:
   - name: "build"
     path: "./sub-recipes/goose-build.yaml"
-  - name: "test"
-    path: "./sub-recipes/goose-test.yaml"
-    sequential_when_repeated: true
   - name: "check"
     path: "./sub-recipes/goose-check.yaml"
 
@@ -24,15 +21,15 @@ instructions: |
   # OSS Coder - Unified Workflow
 
   You orchestrate the full OSS contribution flow using specialized subrecipes.
-  **You handle PLAN phase directly. Delegate BUILD, TEST, and CHECK to subrecipes.**
+  **You handle PLAN phase directly. Delegate BUILD & VERIFY and CHECK to subrecipes.**
 
   ## Workflow Overview
 
   ```
-  PLAN (you/Opus) -> BUILD (subrecipe/Haiku) -> TEST (subrecipe/Haiku) -> CHECK (subrecipe/Sonnet)
-                                                                              |
-                                                                         PASS -> Commit/PR
-                                                                         FAIL -> Back to BUILD
+  PLAN (you/Opus) -> BUILD & VERIFY (subrecipe/Haiku) -> CHECK (subrecipe/Sonnet)
+                                                              |
+                                                         PASS -> Commit/PR
+                                                         FAIL -> Back to BUILD
   ```
 
   ## Rules (Apply to All Phases)
@@ -46,7 +43,7 @@ instructions: |
 
   All phases communicate via `.goose/handoff/`:
   - `02-plan.json` - Your plan output (read by build)
-  - `03-build.json` - Build output (read by test/check)
+  - `03-build.json` - Build output (read by check)
   - `04-validation.json` - Validation result (read by build on FAIL loop)
 
   ---
@@ -158,43 +155,27 @@ instructions: |
 
   ---
 
-  ## Phase 4: BUILD [SUBRECIPE GATE]
+  ## Phase 4: BUILD & VERIFY [SUBRECIPE GATE]
 
   After plan approval, invoke the build subrecipe:
 
-  **Say:** "Invoking build subrecipe (Haiku) to implement the plan..."
+  **Say:** "Invoking build subrecipe (Haiku) to implement and verify..."
 
   Run the `build` subrecipe. It will:
   - Read `.goose/handoff/02-plan.json`
   - Implement code changes
+  - Run linter, formatter, type checker, tests
   - Write `.goose/handoff/03-build.json`
 
-  After build subrecipe completes, present the summary from `03-build.json`.
+  After build subrecipe completes, present summary and test results from `03-build.json`.
 
-  **ASK:** "Build complete. Run TEST subrecipe?"
-
-  ---
-
-  ## Phase 5: TEST [SUBRECIPE GATE]
-
-  After build approval, invoke the test subrecipe:
-
-  **Say:** "Invoking test subrecipe (Haiku) to verify implementation..."
-
-  Run the `test` subrecipe. It will:
-  - Run linter, formatter, type checker
-  - Run test suite
-  - Update `.goose/handoff/03-build.json` with results
-
-  After test subrecipe completes, present test results.
-
-  **ASK:** "Tests passed. Run CHECK subrecipe for validation?"
+  **ASK:** "Build and tests complete. Run CHECK subrecipe for validation?"
 
   ---
 
-  ## Phase 6: CHECK [SUBRECIPE GATE]
+  ## Phase 5: CHECK [SUBRECIPE GATE]
 
-  After test approval, invoke the check subrecipe:
+  After build approval, invoke the check subrecipe:
 
   **Say:** "Invoking check subrecipe (Sonnet) to validate implementation..."
 
@@ -206,19 +187,19 @@ instructions: |
   After check subrecipe completes, present validation verdict.
 
   **If PASS:**
-  **ASK:** "Validation PASSED. Ready to commit and create PR?"
+  Proceed immediately to COMMIT & PR phase.
 
   **If FAIL:**
   Present issues found.
   **ASK:** "Validation FAILED. Re-run BUILD with fixes?"
 
-  If user approves re-run, go back to Phase 4 (BUILD).
+  If user approves re-run, go back to Phase 4 (BUILD & VERIFY).
 
   ---
 
-  ## Phase 7: COMMIT & PR
+  ## Phase 6: COMMIT & PR
 
-  After validation PASS and user approval:
+  After validation PASS, commit and create PR:
 
   ```bash
   git branch --show-current  # Verify feature branch
@@ -227,21 +208,13 @@ instructions: |
   git log --show-signature -1  # Verify GPG + DCO
   ```
 
-  **GATE - Present:**
-  - Branch: `git branch --show-current`
-  - Commit: `git show --stat HEAD`
-  - Proposed PR title and description
-
-  **ASK:** "Ready to push and create PR?"
-
-  After approval:
   ```bash
   gh repo view --json permissions -q '.permissions.push' || gh repo fork --remote
   git push origin <branch>
   gh pr create --title "type: description" --label "<type>" --body "Summary and testing notes"
   ```
 
-  **Final - Present:**
+  **GATE - Present:**
   - PR number and URL
   - Files changed count
   - Lines added/removed
