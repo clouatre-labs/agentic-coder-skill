@@ -85,7 +85,7 @@ instructions: |
   ## Phase 2: RESEARCH [GATE]
 
   **Actions:**
-  - Use Context7 for unfamiliar libraries
+  - Prefer Context7 for library docs and language best practices (e.g., Rust 2024 idioms)
   - Review similar code patterns in project
   - Identify 2-3 solution approaches
 
