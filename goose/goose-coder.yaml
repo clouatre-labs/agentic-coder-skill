@@ -67,7 +67,7 @@ instructions: |
   ## Phase 1: ANALYZE [GATE]
 
   **Actions:**
-  - Read repo structure, README, CONTRIBUTING.md, package files
+  - Read repo structure, README, CONTRIBUTING.md, .github/ISSUE_TEMPLATE/, package files
   - Search related issues/PRs: `gh issue list --search`, `gh pr list --search`
   - Identify relevant files with `rg`
   - Understand conventions (linting, testing, commit style)
