@@ -5,8 +5,15 @@ COMMIT_MSG_FILE="$1"
 
 # Check for Co-authored-by trailers
 if grep -iE "Co-authored-by:" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
-    echo "❌ BLOCKED: Co-authored-by trailers not allowed"
+    echo "BLOCKED: Co-authored-by trailers not allowed"
     echo "Remove Co-authored-by lines from commit message"
+    exit 1
+fi
+
+# Check for DCO (Signed-off-by)
+if ! grep -q "^Signed-off-by:" "$COMMIT_MSG_FILE"; then
+    echo "BLOCKED: Missing DCO (Signed-off-by)"
+    echo "Use: git commit --signoff"
     exit 1
 fi
 
