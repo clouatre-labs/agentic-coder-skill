@@ -51,12 +51,8 @@ instructions: |
 
   ```bash
   rm -rf .goose/handoff && mkdir -p .goose/handoff
-  git fetch origin && git checkout main && git reset --hard origin/main
-  ```
-
-  If on a feature branch, check if merged before deleting:
-  ```bash
-  git branch --merged origin/main | grep <branch> && git branch -d <branch>
+  git fetch -p && git checkout main && git reset --hard origin/main
+  git branch --merged origin/main | grep -v main | xargs -r git branch -d 2>/dev/null
   ```
 
   Proceed immediately to ANALYZE after cleanup.
