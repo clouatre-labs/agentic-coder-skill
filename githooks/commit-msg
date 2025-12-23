@@ -1,12 +1,22 @@
 #!/bin/bash
 
-# $1 is the path to the commit message file
 COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# Conventional commit format: type(scope)?: description
+CONVENTIONAL_REGEX='^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([a-z0-9_-]+\))?(!)?: .{1,72}$'
+
+if ! echo "$COMMIT_MSG" | grep -qE "$CONVENTIONAL_REGEX"; then
+    echo "BLOCKED: Commit message must follow conventional format"
+    echo "  Format: type(scope): description"
+    echo "  Types: feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert"
+    echo "  Example: fix(auth): handle token expiry"
+    exit 1
+fi
 
 # Check for Co-authored-by trailers
 if grep -iE "Co-authored-by:" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
     echo "BLOCKED: Co-authored-by trailers not allowed"
-    echo "Remove Co-authored-by lines from commit message"
     exit 1
 fi
 
