@@ -52,7 +52,7 @@ instructions: |
   ```bash
   rm -rf .goose/handoff && mkdir -p .goose/handoff
   git fetch -p && git checkout main && git reset --hard origin/main
-  git branch --merged origin/main | grep -v main | xargs -r git branch -d 2>/dev/null
+  git branch | grep -v '^\*\?\s*main$' | xargs git branch -D 2>/dev/null || true
   ```
 
   Proceed immediately to ANALYZE after cleanup.
