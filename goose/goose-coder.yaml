@@ -1,6 +1,8 @@
 name: goose-coder
 version: "2.3.0"
 title: OSS Coder - Subagent Architecture
+author:
+  name: "Hugues Clouatre"
 description: |
   Unified OSS contribution workflow with subagents.
   Opus orchestrates, spawns Haiku (BUILD & VERIFY) and Sonnet (CHECK) subagents.
