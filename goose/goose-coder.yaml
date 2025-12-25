@@ -1,5 +1,5 @@
 name: goose-coder
-version: "2.3.0"
+version: "2.4.0"
 title: OSS Coder - Subagent Architecture
 author:
   name: "Hugues Clouatre"
@@ -83,6 +83,7 @@ instructions: |
 
   **Actions:**
   - Prefer Context7 for library docs and language best practices (e.g., Rust 2024 idioms)
+  - Use Tavily for web search (tavily-search) and content extraction (tavily-extract) when needed
   - Review similar code patterns in project
   - Identify 2-3 solution approaches
 
@@ -257,3 +258,12 @@ extensions:
     uri: https://mcp.context7.com/mcp
     env_keys:
       - CONTEXT7_API_KEY
+  - type: stdio
+    name: tavily
+    cmd: npx
+    args:
+      - "-y"
+      - "tavily-mcp@latest"
+    env_keys:
+      - TAVILY_API_KEY
+    description: "Web search and content extraction for ANALYZE/RESEARCH phases"
