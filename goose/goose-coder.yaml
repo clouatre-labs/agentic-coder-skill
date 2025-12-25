@@ -265,4 +265,4 @@ extensions:
       - "tavily-mcp@latest"
     env_keys:
       - TAVILY_API_KEY
-    description: "Web search and content extraction for ANALYZE/RESEARCH phases"
+    description: "Last resort for web browsing. Prefer Context7 for docs/code."
