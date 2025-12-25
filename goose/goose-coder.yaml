@@ -257,12 +257,3 @@ extensions:
     uri: https://mcp.context7.com/mcp
     env_keys:
       - CONTEXT7_API_KEY
-  - type: stdio
-    name: tavily
-    cmd: npx
-    args:
-      - "-y"
-      - "tavily-mcp@latest"
-    env_keys:
-      - TAVILY_API_KEY
-    description: "Last resort for web browsing. Prefer Context7 for docs/code."
