@@ -3,8 +3,8 @@
 COMMIT_MSG_FILE="$1"
 COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
 
-# Conventional commit format: type(scope)?: description
-CONVENTIONAL_REGEX='^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([a-z0-9_-]+\))?(!)?: .{1,72}$'
+# Conventional commit format: type(scope)?: description (max 100 chars)
+CONVENTIONAL_REGEX='^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([a-z0-9_-]+\))?(!)?: .{1,100}$'
 
 if ! echo "$COMMIT_MSG" | grep -qE "$CONVENTIONAL_REGEX"; then
     echo "BLOCKED: Commit message must follow conventional format"
@@ -24,6 +24,12 @@ fi
 if ! grep -q "^Signed-off-by:" "$COMMIT_MSG_FILE"; then
     echo "BLOCKED: Missing DCO (Signed-off-by)"
     echo "Use: git commit --signoff"
+    exit 1
+fi
+
+# Check body line length (max 100 chars, excluding Signed-off-by and comments)
+if tail -n +2 "$COMMIT_MSG_FILE" | grep -v "^Signed-off-by:" | grep -v "^#" | grep -E "^.{101,}"; then
+    echo "BLOCKED: Commit body lines must be <= 100 characters"
     exit 1
 fi
 
