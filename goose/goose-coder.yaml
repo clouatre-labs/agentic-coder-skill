@@ -5,12 +5,12 @@ author:
   name: "Hugues Clouatre"
 description: |
   Unified OSS contribution workflow with subagents.
-  Sonnet orchestrates, spawns Haiku subagents for BUILD & VERIFY and CHECK.
+  Opus orchestrates, spawns Haiku subagents for BUILD & VERIFY and CHECK.
   Uses the subagent tool for visibility and context isolation.
 
 settings:
   goose_provider: "gcp_vertex_ai"
-  goose_model: "claude-sonnet-4-5@20250929"
+  goose_model: "claude-opus-4-5@20251101"
   temperature: 0.5
 
 instructions: |
