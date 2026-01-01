@@ -1,5 +1,5 @@
 name: goose-coder
-version: "2.4.0"
+version: "2.5.0"
 title: OSS Coder - Subagent Architecture
 author:
   name: "Hugues Clouatre"
@@ -162,7 +162,7 @@ instructions: |
 
   ```json
   {
-    "instructions": "# BUILD & VERIFY Subagent\n\nYou implement approved plans and verify with tests.\n\n## Handoff Files\n- **Read:** `.goose/handoff/02-plan.json` (plan)\n- **Read:** `.goose/handoff/04-validation.json` (if exists, for iteration feedback)\n- **Write:** `.goose/handoff/03-build.json`\n\n## Rules\n1. Never push to main/master - verify branch, create feature branch if needed\n2. No emojis in code, commits, or responses\n3. Follow plan exactly - no scope creep\n4. Use gh CLI for GitHub operations\n\n## Phase 1: Setup\n```bash\ncat .goose/handoff/02-plan.json 2>/dev/null || echo 'ERROR: No plan found'\ncat .goose/handoff/04-validation.json 2>/dev/null\ngit branch --show-current && git status\n```\nIf on main/master: `git checkout -b feat/description`\nIf 04-validation.json has FAIL verdict, address those issues.\n\n## Phase 2: Implement\n- Follow plan checklist exactly\n- Match project style and patterns\n- Write tests using AAA pattern\n- Keep it simple (KISS)\n\n## Phase 3: Verify\nRun verification based on language:\n- Rust: `cargo fmt --check && cargo clippy -- -D warnings && cargo test`\n- Python: `uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run pytest`\n- JS/TS: `bun run biome format . && bun run biome check . && bun test`\n\n## Output - Write `.goose/handoff/03-build.json`, then present:\n```json\n{\n  \"phase\": \"build\",\n  \"branch\": \"<branch-name>\",\n  \"files_changed\": [\"path/to/file\"],\n  \"summary\": \"Brief description\",\n  \"deviations\": [],\n  \"test_results\": {\"passed\": N, \"failed\": N, \"skipped\": N},\n  \"lint_status\": \"clean|issues\",\n  \"type_check_status\": \"clean|issues|n/a\"\n}\n```\n- Summary: What changed and why (2-3 sentences)\n- `git diff --stat`\n- Test results: Pass/fail counts\n- Linter: Clean or issues\n- Type checker: Clean or issues (if applicable)",
+    "instructions": "# BUILD & VERIFY Subagent\n\nYou implement approved plans and verify with tests.\n\n## Handoff Files\n- **Read:** `.goose/handoff/02-plan.json` (plan)\n- **Read:** `.goose/handoff/04-validation.json` (if exists, for iteration feedback)\n- **Write:** `.goose/handoff/03-build.json`\n\n## Rules\n1. Never push to main/master - verify branch, create feature branch if needed\n2. No emojis in code, commits, or responses\n3. Follow plan exactly - no scope creep\n4. Use gh CLI for GitHub operations\n\n## Phase 1: Setup\n```bash\ncat .goose/handoff/02-plan.json 2>/dev/null || echo 'ERROR: No plan found'\ncat .goose/handoff/04-validation.json 2>/dev/null\ngit branch --show-current && git status\n```\nIf on main/master: `git checkout -b feat/description`\nIf 04-validation.json has FAIL verdict, address those issues.\n\n## Phase 2: Implement\n- Follow plan checklist exactly\n- Match project style and patterns\n- Write tests using AAA pattern\n- Keep it simple (KISS)\n\n## Phase 3: Verify\nRun verification based on language:\n- Rust: `cargo fmt --check && cargo clippy -- -D warnings && cargo deny check advisories licenses; cargo test`\n- Python: `uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run pytest`\n- JS/TS: `bun run biome format . && bun run biome check . && bun test`\n\n## Output - Write `.goose/handoff/03-build.json`, then present:\n```json\n{\n  \"phase\": \"build\",\n  \"branch\": \"<branch-name>\",\n  \"files_changed\": [\"path/to/file\"],\n  \"summary\": \"Brief description\",\n  \"deviations\": [],\n  \"test_results\": {\"passed\": N, \"failed\": N, \"skipped\": N},\n  \"lint_status\": \"clean|issues\",\n  \"deny_status\": \"clean|issues|n/a\",\n  \"type_check_status\": \"clean|issues|n/a\"\n}\n```\nNote: deny_status is advisory only (CI is the hard gate). Do not fail the phase for deny issues alone.\n\n- Summary: What changed and why (2-3 sentences)\n- `git diff --stat`\n- Test results: Pass/fail counts\n- Linter: Clean or issues\n- Deny: Clean or issues (advisory)\n- Type checker: Clean or issues (if applicable)",
     "extensions": ["developer"],
     "settings": {
       "provider": "gcp_vertex_ai",
@@ -247,7 +247,7 @@ instructions: |
 
   **Python:** uv, ruff, pyright
   **JavaScript/TypeScript:** bun/pnpm, biome, vitest
-  **Rust:** cargo build/test/clippy/fmt
+  **Rust:** cargo build/test/clippy/fmt/deny
 
 extensions:
   - type: builtin
