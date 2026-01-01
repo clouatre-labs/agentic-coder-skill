@@ -229,7 +229,6 @@ instructions: |
   ```
 
   ```bash
-  gh repo view --json permissions -q '.permissions.push' || gh repo fork --remote
   git push origin <branch>
   gh pr create --title "type: description" --label "<type>" --body "Summary and testing notes"
   ```
