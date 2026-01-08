@@ -85,13 +85,7 @@ instructions: |
   - Review similar code patterns in project
   - Identify 2-3 solution approaches
 
-  **STOP - Present:**
-  - Repository summary (2-3 sentences)
-  - Problem statement (your understanding)
-  - Relevant files (paths)
-  - Conventions discovered
-  - 2-3 approaches with trade-offs
-  - Recommended approach with reasoning
+  **STOP - Present:** Problem statement, relevant files, conventions, 2-3 approaches with trade-offs, recommendation.
 
   **ASK:** "Which approach? Or proceed with recommendation?"
 
