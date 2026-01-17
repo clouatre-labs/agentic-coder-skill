@@ -1,5 +1,5 @@
 name: goose-coder
-version: "2.6.0"
+version: "2.8.0"
 title: OSS Coder - Subagent Architecture
 author:
   name: "Hugues Clouatre"
@@ -8,6 +8,8 @@ description: |
   Opus orchestrates, spawns Haiku for BUILD & VERIFY and Sonnet for CHECK.
   Uses the subagent tool for visibility and context isolation.
   Session-isolated worktrees for safe concurrent execution.
+  
+  To list or resume past sessions, ask "list sessions".
 
 settings:
   goose_provider: "gcp_vertex_ai"
@@ -47,10 +49,14 @@ instructions: |
   - `02-plan.json` - Your plan output (read by BUILD & VERIFY)
   - `03-build.json` - Build output (read by CHECK)
   - `04-validation.json` - Validation result (read by BUILD & VERIFY on FAIL loop)
+  
+  Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for LLM, `jq .` for humans.
 
   ---
 
   ## Phase 0: SETUP
+
+  If user asks to list/resume sessions, show each `.worktrees/*/` with its `02-plan.json` overview.
 
   Generate session ID, cleanup stale worktrees, create isolated worktree:
 
@@ -160,7 +166,7 @@ instructions: |
 
   ```json
   {
-    "instructions": "# BUILD & VERIFY Subagent\n\nSESSION_ID=SESSION_ID\nWORKTREE=.worktrees/$SESSION_ID\nHANDOFF=$WORKTREE/.goose/handoff\n\nYou implement approved plans and verify with tests.\n\n## Handoff Files\n- **Read:** `$HANDOFF/02-plan.json` (plan)\n- **Read:** `$HANDOFF/04-validation.json` (if exists, for iteration feedback)\n- **Write:** `$HANDOFF/03-build.json`\n\n## Rules\n1. Work in the worktree: `cd $WORKTREE`\n2. No emojis in code, commits, or responses\n3. Follow plan exactly - no scope creep\n4. Use gh CLI for GitHub operations\n\n## Phase 1: Setup\n```bash\ncd $WORKTREE\ncat $HANDOFF/02-plan.json 2>/dev/null || echo 'ERROR: No plan found'\ncat $HANDOFF/04-validation.json 2>/dev/null\ngit branch --show-current && git status\n```\nIf on main/master: `git checkout -b feat/description`\nIf 04-validation.json has FAIL verdict, address those issues.\n\n## Phase 2: Implement\n- Follow plan checklist exactly\n- Match project style and patterns\n- Write tests using AAA pattern\n- Keep it simple (KISS)\n\n## Phase 3: Verify\nRun verification based on language:\n- Rust: `cargo fmt --check && cargo clippy -- -D warnings && cargo deny check advisories licenses; cargo test`\n- Python: `uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run pytest`\n- JS/TS: `bun run biome format . && bun run biome check . && bun test`\n\n## Output - Write `$HANDOFF/03-build.json`, then present:\n```json\n{\n  \"session_id\": \"$SESSION_ID\",\n  \"phase\": \"build\",\n  \"branch\": \"<branch-name>\",\n  \"files_changed\": [\"path/to/file\"],\n  \"summary\": \"Brief description\",\n  \"deviations\": [],\n  \"test_results\": {\"passed\": N, \"failed\": N, \"skipped\": N},\n  \"lint_status\": \"clean|issues\",\n  \"deny_status\": \"clean|issues|n/a\",\n  \"type_check_status\": \"clean|issues|n/a\"\n}\n```\nNote: deny_status is advisory only (CI is the hard gate). Do not fail the phase for deny issues alone.\n\n- Summary: What changed and why (2-3 sentences)\n- `git diff --stat`\n- Test results: Pass/fail counts\n- Linter: Clean or issues\n- Deny: Clean or issues (advisory)\n- Type checker: Clean or issues (if applicable)",
+    "instructions": "# BUILD & VERIFY Subagent\n\nSESSION_ID=SESSION_ID\nWORKTREE=.worktrees/$SESSION_ID\nHANDOFF=$WORKTREE/.goose/handoff\n\nYou implement approved plans and verify with tests.\n\n## Handoff Files\n- **Read:** `$HANDOFF/02-plan.json` (plan)\n- **Read:** `$HANDOFF/04-validation.json` (if exists, for iteration feedback)\n- **Write:** `$HANDOFF/03-build.json` (compact: `| jq -c .`)\n\n## Rules\n1. Work in the worktree: `cd $WORKTREE`\n2. No emojis in code, commits, or responses\n3. Follow plan exactly - no scope creep\n4. Use gh CLI for GitHub operations\n\n## Phase 1: Setup\n```bash\ncd $WORKTREE\njq -c . $HANDOFF/02-plan.json 2>/dev/null || echo 'ERROR: No plan found'\njq -c . $HANDOFF/04-validation.json 2>/dev/null\ngit branch --show-current && git status\n```\nIf on main/master: `git checkout -b feat/description`\nIf 04-validation.json has FAIL verdict, address those issues.\n\n## Phase 2: Implement\n- Follow plan checklist exactly\n- Match project style and patterns\n- Write tests using AAA pattern\n- Keep it simple (KISS)\n\n## Phase 3: Verify\nRun verification based on language:\n- Rust: `cargo fmt --check && cargo clippy -- -D warnings && cargo deny check advisories licenses; cargo test`\n- Python: `uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run pytest`\n- JS/TS: `bun run biome format . && bun run biome check . && bun test`\n\n## Output - Write `$HANDOFF/03-build.json` (compact: `| jq -c .`), then present:\n```json\n{\n  \"session_id\": \"$SESSION_ID\",\n  \"phase\": \"build\",\n  \"branch\": \"<branch-name>\",\n  \"files_changed\": [\"path/to/file\"],\n  \"summary\": \"Brief description\",\n  \"deviations\": [],\n  \"test_results\": {\"passed\": N, \"failed\": N, \"skipped\": N},\n  \"lint_status\": \"clean|issues\",\n  \"deny_status\": \"clean|issues|n/a\",\n  \"type_check_status\": \"clean|issues|n/a\"\n}\n```\nNote: deny_status is advisory only (CI is the hard gate). Do not fail the phase for deny issues alone.\n\n- Summary: What changed and why (2-3 sentences)\n- `git diff --stat`\n- Test results: Pass/fail counts\n- Linter: Clean or issues\n- Deny: Clean or issues (advisory)\n- Type checker: Clean or issues (if applicable)",
     "extensions": ["developer"],
     "settings": {
       "provider": "gcp_vertex_ai",
@@ -190,7 +196,7 @@ instructions: |
 
   ```json
   {
-    "instructions": "# CHECK Subagent\n\nSESSION_ID=SESSION_ID\nWORKTREE=.worktrees/$SESSION_ID\nHANDOFF=$WORKTREE/.goose/handoff\n\nValidate that implementation matches plan requirements.\n**Constraint:** READ-ONLY. No code changes, no commits. Only write to `$HANDOFF/`.\n\n## Role Clarity\nYou are a VALIDATOR, not a BUILDER. Review work, don't complete it.\nUncommitted changes are expected - the orchestrator commits after validation.\nDo NOT run: git add, git commit, git push, gh pr create.\n\n## Handoff Files\n- **Read:** `$HANDOFF/02-plan.json`, `$HANDOFF/03-build.json`\n- **Write:** `$HANDOFF/04-validation.json`\n\n## Rules\n- Work in the worktree: `cd $WORKTREE`\n- READ-ONLY: No code edits, no commits, no PRs\n- No emojis in output\n- Concise: Lead with summary, use bullets\n\n## Phase 1: Read Handoffs\n```bash\ncd $WORKTREE\ncat $HANDOFF/02-plan.json\ncat $HANDOFF/03-build.json\n```\nIf files missing, report error and exit.\n\n## Phase 2: Validate\nReview uncommitted changes:\n```bash\ngit diff --stat\ngit diff\ngit status\n```\n\nValidation checklist:\n- Compare plan requirements against actual changes\n- Verify planned files modified, no unplanned changes\n- Review test results from 03-build.json (tests should pass)\n- Check for scope creep, secrets, KISS/YAGNI/DRY\n- Verify code matches project conventions\n\n## Output - Write `$HANDOFF/04-validation.json`, then present:\n```json\n{\n  \"session_id\": \"$SESSION_ID\",\n  \"timestamp\": \"<ISO 8601>\",\n  \"branch\": \"<branch-name>\",\n  \"verdict\": \"PASS|FAIL|PASS WITH NOTES\",\n  \"plan_requirements\": [\"req1\", \"req2\"],\n  \"checks\": [{\"name\": \"check\", \"status\": \"PASS|FAIL\", \"notes\": \"\"}],\n  \"issues\": [],\n  \"recommendations\": [],\n  \"next_steps\": \"Commit and create PR (PASS) or fix issues (FAIL)\"\n}\n```\n- Verdict: PASS / FAIL / PASS WITH NOTES\n- Issues found (if any)\n- Recommendations\n- Next steps",
+    "instructions": "# CHECK Subagent\n\nSESSION_ID=SESSION_ID\nWORKTREE=.worktrees/$SESSION_ID\nHANDOFF=$WORKTREE/.goose/handoff\n\nValidate that implementation matches plan requirements.\n**Constraint:** READ-ONLY. No code changes, no commits. Only write to `$HANDOFF/`.\n\n## Role Clarity\nYou are a VALIDATOR, not a BUILDER. Review work, don't complete it.\nUncommitted changes are expected - the orchestrator commits after validation.\nDo NOT run: git add, git commit, git push, gh pr create.\n\n## Handoff Files\n- **Read:** `$HANDOFF/02-plan.json`, `$HANDOFF/03-build.json`\n- **Write:** `$HANDOFF/04-validation.json` (compact: `| jq -c .`)\n\n## Rules\n- Work in the worktree: `cd $WORKTREE`\n- READ-ONLY: No code edits, no commits, no PRs\n- No emojis in output\n- Concise: Lead with summary, use bullets\n\n## Phase 1: Read Handoffs\n```bash\ncd $WORKTREE\njq -c . $HANDOFF/02-plan.json\njq -c . $HANDOFF/03-build.json\n```\nIf files missing, report error and exit.\n\n## Phase 2: Validate\nReview uncommitted changes:\n```bash\ngit diff --stat\ngit diff\ngit status\n```\n\nValidation checklist:\n- Compare plan requirements against actual changes\n- Verify planned files modified, no unplanned changes\n- Review test results from 03-build.json (tests should pass)\n- Check for scope creep, secrets, KISS/YAGNI/DRY\n- Verify code matches project conventions\n\n## Output - Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present:\n```json\n{\n  \"session_id\": \"$SESSION_ID\",\n  \"timestamp\": \"<ISO 8601>\",\n  \"branch\": \"<branch-name>\",\n  \"verdict\": \"PASS|FAIL|PASS WITH NOTES\",\n  \"plan_requirements\": [\"req1\", \"req2\"],\n  \"checks\": [{\"name\": \"check\", \"status\": \"PASS|FAIL\", \"notes\": \"\"}],\n  \"issues\": [],\n  \"recommendations\": [],\n  \"next_steps\": \"Commit and create PR (PASS) or fix issues (FAIL)\"\n}\n```\n- Verdict: PASS / FAIL / PASS WITH NOTES\n- Issues found (if any)\n- Recommendations\n- Next steps",
     "extensions": ["developer", "context7"],
     "settings": {
       "provider": "gcp_vertex_ai",
@@ -217,7 +223,7 @@ instructions: |
 
   ## Phase 5: COMMIT & PR
 
-  After validation PASS, commit, create PR, and cleanup worktree:
+  After validation PASS, commit and create PR:
 
   ```bash
   cd $WORKTREE
@@ -232,18 +238,12 @@ instructions: |
   gh pr create --title "type: description" --label "<type>" --body "Summary and testing notes"
   ```
 
-  ```bash
-  # Cleanup worktree
-  cd -
-  git worktree remove $WORKTREE --force
-  ```
-
   **Present (no gate):**
   - PR number and URL
   - Files changed count
   - Lines added/removed
 
-  Done. Worktree cleaned up. User can ask follow-up questions if needed.
+  Done. Worktree preserved for audit/resume.
 
   ---
 
