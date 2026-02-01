@@ -25,14 +25,4 @@ if [[ ! " ${ALLOWED_EMAILS[@]} " =~ " ${AUTHOR_EMAIL} " ]]; then
     exit 1
 fi
 
-# Check for Co-authored-by trailers
-COMMIT_MSG_FILE=".git/COMMIT_EDITMSG"
-if [[ -f "$COMMIT_MSG_FILE" ]]; then
-    if grep -qiE "Co-authored-by:" "$COMMIT_MSG_FILE"; then
-        echo "BLOCKED: Co-authored-by trailers not allowed"
-        echo "Remove Co-authored-by lines from commit message"
-        exit 1
-    fi
-fi
-
 exit 0

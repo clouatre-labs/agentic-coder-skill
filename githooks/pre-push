@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+
+# Protected branches pattern
+PROTECTED_BRANCHES="^(main|master|release/.*)$"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    remote_branch="${remote_ref#refs/heads/}"
+    
+    if [[ "$remote_branch" =~ $PROTECTED_BRANCHES ]]; then
+        echo "BLOCKED: Direct push to protected branch '$remote_branch'"
+        echo "  Use a feature branch and create a PR instead."
+        exit 1
+    fi
+done
+
+exit 0
