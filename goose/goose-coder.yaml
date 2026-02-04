@@ -88,6 +88,7 @@ instructions: |
   - Identify relevant files with `rg`
   - Understand conventions (linting, testing, commit style)
   - Prefer Context7 for library docs and language best practices (e.g., Rust 2024 idioms)
+  - Research order: codebase, gh, Context7, brave_search (last resort)
   - Review similar code patterns in project
   - Identify 2-3 solution approaches
 
@@ -261,3 +262,14 @@ extensions:
     uri: https://mcp.context7.com/mcp
     env_keys:
       - CONTEXT7_API_KEY
+
+  - type: stdio
+    name: brave_search
+    cmd: npx
+    args:
+      - "-y"
+      - "@brave/brave-search-mcp-server"
+      - "--transport"
+      - "stdio"
+    env_keys:
+      - BRAVE_API_KEY
