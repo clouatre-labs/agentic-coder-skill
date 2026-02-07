@@ -1,5 +1,5 @@
 name: goose-coder
-version: "2.9.0"
+version: "2.9.1"
 title: OSS Coder - Subagent Architecture
 author:
   name: "Hugues Clouatre"
@@ -9,6 +9,7 @@ description: |
   Session-isolated worktrees for concurrent execution.
   Handoff files (JSON) for inter-phase communication.
 
+  v2.9.1: Fix RESEARCH subagent max_turns (20 -> 40), clarify parallel spawn, add handoff verification.
   v2.9.0: Parallel RESEARCH subagents, max_turns on all subagents, Sonnet orchestrator.
 
   To list or resume past sessions, ask "list sessions".
@@ -89,7 +90,7 @@ instructions: |
 
   **Say:** "Spawning CODEBASE and ECOSYSTEM research agents in parallel (session: SESSION_ID)..."
 
-  **Call BOTH `subagent` tools in the same message:**
+  **Spawn both subagents in parallel by making two `subagent` tool calls:**
 
   ### CODEBASE Research Agent
 
@@ -101,7 +102,7 @@ instructions: |
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
       "temperature": 0.2,
-      "max_turns": 20
+      "max_turns": 40
     },
     "summary": true
   }
@@ -117,16 +118,17 @@ instructions: |
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
       "temperature": 0.4,
-      "max_turns": 20
+      "max_turns": 40
     },
     "summary": true
   }
   ```
 
   After BOTH subagents complete:
-  1. Read `$HANDOFF/01a-research-codebase.json` and `$HANDOFF/01b-research-ecosystem.json`
-  2. Synthesize both perspectives into a unified analysis
-  3. Present: Problem statement, relevant files, conventions, 2-3 approaches with trade-offs, recommendation
+  1. Verify handoff files exist: `ls $HANDOFF/01*.json` (if missing, STOP and report failure)
+  2. Read `$HANDOFF/01a-research-codebase.json` and `$HANDOFF/01b-research-ecosystem.json`
+  3. Synthesize both perspectives into a unified analysis
+  4. Present: Problem statement, relevant files, conventions, 2-3 approaches with trade-offs, recommendation
 
   **STOP - ASK:** "Which approach? Or proceed with recommendation?"
 
