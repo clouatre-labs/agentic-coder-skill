@@ -323,6 +323,10 @@ extensions:
       - "/Users/hugues.clouatre/git/clouatre-labs/aptu/Cargo.toml"
       - "--bin"
       - "aptu-mcp"
+      - "--"
+      - "--transport"
+      - "stdio"
+      - "run"
     env_keys:
       - GITHUB_TOKEN
       - AI_API_KEY
