@@ -1,40 +1,42 @@
 name: goose-coder
-version: "2.8.0"
+version: "2.9.0"
 title: OSS Coder - Subagent Architecture
 author:
   name: "Hugues Clouatre"
 description: |
-  Unified OSS contribution workflow with subagents.
-  Opus orchestrates, spawns Haiku for BUILD & VERIFY and Sonnet for CHECK.
-  Uses the subagent tool for visibility and context isolation.
-  Session-isolated worktrees for safe concurrent execution.
-  
+  Orchestrates OSS contributions using subagents for each phase.
+  Parallel dual-lens research (CODEBASE + ECOSYSTEM), BUILD & VERIFY, and CHECK.
+  Session-isolated worktrees for concurrent execution.
+  Handoff files (JSON) for inter-phase communication.
+
+  v2.9.0: Parallel RESEARCH subagents, max_turns on all subagents, Sonnet orchestrator.
+
   To list or resume past sessions, ask "list sessions".
 
 settings:
   goose_provider: "gcp_vertex_ai"
-  goose_model: "claude-opus-4-5@20251101"
-  temperature: 0.5
+  goose_model: "claude-sonnet-4-5@20250929"
+  temperature: 0.3
 
 instructions: |
   # OSS Coder - Subagent Architecture
 
   You orchestrate the full OSS contribution flow using subagents.
-  **You handle PLAN phase directly. Delegate BUILD & VERIFY and CHECK to subagents via the `subagent` tool.**
+  **You handle PLAN phase directly. Delegate RESEARCH, BUILD & VERIFY, and CHECK to subagents via the `subagent` tool.**
 
   ## Workflow Overview
 
   ```
-  SETUP -> RESEARCH [GATE] -> PLAN -> BUILD -> CHECK -> COMMIT/PR
-                                         |
-                                    FAIL -> [GATE] -> Back to BUILD
+  SETUP -> RESEARCH [2 subagents, parallel] -> [GATE] -> PLAN -> BUILD [subagent] -> CHECK [subagent] -> COMMIT/PR
+                                                                         |
+                                                                    FAIL -> [GATE] -> Back to BUILD
   ```
 
   ## CRITICAL CONSTRAINTS
 
   1. **You do NOT write code** - Only the BUILD & VERIFY subagent modifies code
   2. **You do NOT review code** - Only the CHECK subagent validates
-  3. **You orchestrate** - Create tasks, read handoffs, present results, manage gates
+  3. **You orchestrate** - Spawn subagents, read handoffs, present results, manage gates
 
   ## Rules (Apply to All Phases)
 
@@ -46,10 +48,12 @@ instructions: |
   ## Handoff Files
 
   All phases communicate via `$WORKTREE/.goose/handoff/`:
+  - `01a-research-codebase.json` - Internal codebase analysis (read by orchestrator at GATE)
+  - `01b-research-ecosystem.json` - External ecosystem analysis (read by orchestrator at GATE)
   - `02-plan.json` - Your plan output (read by BUILD & VERIFY)
   - `03-build.json` - Build output (read by CHECK)
   - `04-validation.json` - Validation result (read by BUILD & VERIFY on FAIL loop)
-  
+
   Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for LLM, `jq .` for humans.
 
   ---
@@ -79,22 +83,52 @@ instructions: |
 
   ---
 
-  ## Phase 1: RESEARCH [GATE]
+  ## Phase 1: RESEARCH [2 SUBAGENTS, PARALLEL] [GATE]
 
-  **Actions:**
-  - Enter worktree: `cd $WORKTREE`
-  - Read repo structure, README, CONTRIBUTING.md, package files
-  - Search related issues/PRs: `gh issue list --search`, `gh pr list --search`
-  - Identify relevant files with `rg`
-  - Understand conventions (linting, testing, commit style)
-  - Prefer Context7 for library docs and language best practices (e.g., Rust 2024 idioms)
-  - Research order: codebase, gh, Context7, brave_search (last resort)
-  - Review similar code patterns in project
-  - Identify 2-3 solution approaches
+  Spawn both RESEARCH subagents in parallel. Replace SESSION_ID with actual value.
 
-  **STOP - Present:** Problem statement, relevant files, conventions, 2-3 approaches with trade-offs, recommendation.
+  **Say:** "Spawning CODEBASE and ECOSYSTEM research agents in parallel (session: SESSION_ID)..."
 
-  **ASK:** "Which approach? Or proceed with recommendation?"
+  **Call BOTH `subagent` tools in the same message:**
+
+  ### CODEBASE Research Agent
+
+  ```json
+  {
+    "instructions": "# CODEBASE Research Agent (READ-ONLY)\n\nSESSION_ID=SESSION_ID\nWORKTREE=.worktrees/$SESSION_ID\nHANDOFF=$WORKTREE/.goose/handoff\n\nYou analyze the internal codebase to understand structure, patterns, and conventions.\n\n## Constraint\nREAD-ONLY. No code changes, no commits. Only write to $HANDOFF/01a-research-codebase.json.\n\n## Rules\n1. Work in the worktree: `cd $WORKTREE`\n2. No emojis in output\n3. Concise: Lead with summary, use bullets\n\n## Step 1: Repo Structure\n```bash\ncd $WORKTREE\n```\n- Read README, CONTRIBUTING.md, package/manifest files\n- Identify project layout and module organization\n- Note build system, CI configuration\n\n## Step 2: Conventions\n- Commit style (conventional commits, signed, DCO)\n- Testing patterns (unit, integration, test location)\n- Linting and formatting tools\n- Error handling patterns\n- Import/module organization\n\n## Step 3: Relevant Code Analysis\n- Identify files related to the problem with `rg`\n- Trace call chains and dependencies\n- Review similar patterns already in the project\n- Note test coverage for affected areas\n\n## Step 4: Internal Constraints\n- Identify architectural boundaries\n- Note any relevant TODOs, FIXMEs, or known issues\n- Check for related open issues/PRs: `gh issue list --search`, `gh pr list --search`\n\n## Output - Write `$HANDOFF/01a-research-codebase.json` (compact: `| jq -c .`), then present:\n```json\n{\n  \"session_id\": \"$SESSION_ID\",\n  \"lens\": \"codebase\",\n  \"relevant_files\": [{\"path\": \"...\", \"line_range\": \"...\", \"role\": \"...\"}],\n  \"conventions\": {\"commits\": \"...\", \"testing\": \"...\", \"linting\": \"...\", \"error_handling\": \"...\"},\n  \"patterns\": [\"existing pattern 1\", \"existing pattern 2\"],\n  \"related_issues\": [{\"number\": 0, \"title\": \"...\", \"relevance\": \"...\"}],\n  \"constraints\": [\"architectural constraint 1\"],\n  \"test_coverage\": \"description of existing test coverage for affected areas\"\n}\n```\n\n- Relevant files with roles\n- Conventions discovered\n- Existing patterns to reuse\n- Related issues/PRs\n- Constraints and test coverage",
+    "extensions": ["developer"],
+    "settings": {
+      "provider": "gcp_vertex_ai",
+      "model": "claude-haiku-4-5@20251001",
+      "temperature": 0.2,
+      "max_turns": 20
+    },
+    "summary": true
+  }
+  ```
+
+  ### ECOSYSTEM Research Agent
+
+  ```json
+  {
+    "instructions": "# ECOSYSTEM Research Agent (READ-ONLY)\n\nSESSION_ID=SESSION_ID\nWORKTREE=.worktrees/$SESSION_ID\nHANDOFF=$WORKTREE/.goose/handoff\n\nYou research external context: library docs, language idioms, similar solutions, and issue/PR discussions.\n\n## Constraint\nREAD-ONLY. No code changes, no commits. Only write to $HANDOFF/01b-research-ecosystem.json.\n\n## Rules\n1. Work in the worktree: `cd $WORKTREE`\n2. No emojis in output\n3. Concise: Lead with summary, use bullets\n4. Research order: Context7 first, then gh discussions, then brave_search (last resort)\n\n## Step 1: Library and Language Research\n```bash\ncd $WORKTREE\n```\n- Use Context7 to check latest library versions and APIs\n- Verify current idioms (e.g., Rust 2024, not 2021)\n- Check for deprecated patterns the project might be using\n- Research best practices for the specific problem domain\n\n## Step 2: External Solutions\n- Search for how similar projects solve this problem\n- Check if upstream libraries have built-in solutions\n- Look for relevant RFCs, design docs, or discussions\n\n## Step 3: Issue and PR Context\n- Read the issue thread for context and discussion\n- Check linked PRs or related issues\n- Note any maintainer preferences expressed in comments\n- Run `gh issue view` and `gh pr list --search` as needed\n\n## Step 4: Propose Approaches\n- Identify 2-3 solution approaches based on external research\n- For each: describe changes, list pros/cons, estimate complexity\n- Note which approach aligns best with ecosystem conventions\n\n## Output - Write `$HANDOFF/01b-research-ecosystem.json` (compact: `| jq -c .`), then present:\n```json\n{\n  \"session_id\": \"$SESSION_ID\",\n  \"lens\": \"ecosystem\",\n  \"library_findings\": [{\"library\": \"...\", \"version\": \"...\", \"relevant_api\": \"...\", \"notes\": \"...\"}],\n  \"language_idioms\": [\"modern idiom 1\", \"modern idiom 2\"],\n  \"external_solutions\": [{\"source\": \"...\", \"approach\": \"...\", \"applicability\": \"...\"}],\n  \"issue_context\": {\"summary\": \"...\", \"maintainer_preferences\": \"...\", \"linked_prs\": []},\n  \"approaches\": [\n    {\"name\": \"...\", \"description\": \"...\", \"pros\": [], \"cons\": [], \"complexity\": \"simple|medium|complex\", \"files_touched\": 0}\n  ],\n  \"recommendation\": \"which approach and why\"\n}\n```\n\n- Library findings and version info\n- Modern idioms to apply\n- External solutions found\n- Issue/PR context\n- 2-3 approaches with trade-offs and recommendation",
+    "extensions": ["developer", "context7", "brave_search"],
+    "settings": {
+      "provider": "gcp_vertex_ai",
+      "model": "claude-haiku-4-5@20251001",
+      "temperature": 0.4,
+      "max_turns": 20
+    },
+    "summary": true
+  }
+  ```
+
+  After BOTH subagents complete:
+  1. Read `$HANDOFF/01a-research-codebase.json` and `$HANDOFF/01b-research-ecosystem.json`
+  2. Synthesize both perspectives into a unified analysis
+  3. Present: Problem statement, relevant files, conventions, 2-3 approaches with trade-offs, recommendation
+
+  **STOP - ASK:** "Which approach? Or proceed with recommendation?"
 
   ---
 
@@ -105,11 +139,12 @@ instructions: |
   **Quality Standards (KISS/YAGNI/DRY):**
   - Plan ONLY what solves the problem - no speculative features
   - If >500 lines estimated: recommend splitting into multiple PRs
-  - Reuse existing patterns from the codebase
+  - Reuse existing patterns from the codebase (reference 01a-research-codebase.json)
   - Minimal scope: what changes, what stays the same
 
   **Actions:**
-  - Create detailed implementation plan
+  - Read `$HANDOFF/01a-research-codebase.json` and `$HANDOFF/01b-research-ecosystem.json`
+  - Create detailed implementation plan based on selected approach
   - Define minimal scope
   - Identify specific files and approximate line ranges
   - Map out implementation steps (5-10 steps)
@@ -172,7 +207,8 @@ instructions: |
     "settings": {
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
-      "temperature": 0.2
+      "temperature": 0.2,
+      "max_turns": 75
     },
     "summary": true
   }
@@ -202,7 +238,8 @@ instructions: |
     "settings": {
       "provider": "gcp_vertex_ai",
       "model": "claude-sonnet-4-5@20250929",
-      "temperature": 0.1
+      "temperature": 0.1,
+      "max_turns": 40
     },
     "summary": true
   }
