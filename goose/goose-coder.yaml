@@ -317,10 +317,12 @@ extensions:
     name: aptu
     cmd: cargo
     args:
+      - "+1.92.0"
       - "run"
+      - "--manifest-path"
+      - "/Users/hugues.clouatre/git/clouatre-labs/aptu/Cargo.toml"
       - "--bin"
       - "aptu-mcp"
-    cwd: ~/git/clouatre-labs/aptu
     env_keys:
       - GITHUB_TOKEN
       - AI_API_KEY
