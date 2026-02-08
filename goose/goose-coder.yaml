@@ -101,7 +101,7 @@ instructions: |
     "extensions": ["developer", "context7", "brave_search"],
     "settings": {
       "provider": "gcp_vertex_ai",
-      "model": "claude-haiku-4-5@20251001",
+      "model": "google/gemini-3-flash-preview",
       "temperature": 0.5,
       "max_turns": 55
     },
