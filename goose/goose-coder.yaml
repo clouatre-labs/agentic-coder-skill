@@ -18,7 +18,8 @@ description: |
     - v2.9.0: Added aptu security scanning to CHECK phase.
 
 settings:
-  goose_model: gcp_vertex_ai/claude-opus-4-6@default
+  provider: gcp_vertex_ai
+  model: claude-opus-4-6@default
   temperature: 0.3
 
 instructions: |
