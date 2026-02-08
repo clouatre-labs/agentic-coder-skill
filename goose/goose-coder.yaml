@@ -17,7 +17,7 @@ description: |
 
 settings:
   goose_provider: "gcp_vertex_ai"
-  goose_model: "claude-sonnet-4-5@20250929"
+  goose_model: "claude-opus-4-6@default"
   temperature: 0.3
 
 instructions: |
