@@ -19,7 +19,7 @@ description: |
 
 settings:
   provider: gcp_vertex_ai
-  model: claude-opus-4-6@default
+  model: claude-sonnet-4-5@20250929
   temperature: 0.3
 
 instructions: |
@@ -223,7 +223,7 @@ instructions: |
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
       "temperature": 0.2,
-      "max_turns": 75
+      "max_turns": 95
     },
     "summary": true
   }
