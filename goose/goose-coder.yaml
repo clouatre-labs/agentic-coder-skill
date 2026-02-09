@@ -1,5 +1,5 @@
 name: goose-coder
-version: "3.1.0"
+version: "3.2.0"
 title: OSS Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
@@ -10,6 +10,8 @@ description: |
   Guard reads Scout output for adversarial review -- sequential execution is a feature, not a limitation.
 
   Changelog:
+    - v3.2.0: Add --read-only flag to aptu MCP extension (clouatre-labs/aptu#775).
+      Server-side enforcement replaces prompt-only rule from v3.1.0.
     - v3.1.0: Add aptu read-only rule (defense in depth for clouatre-labs/aptu#774).
     - v3.0.0: Scout/Guard architecture replacing Codebase/Ecosystem split.
       Scout (creative, Haiku) + Guard (adversarial, Sonnet) sequential research.
@@ -49,7 +51,7 @@ instructions: |
   2. **Concise** - Lead with summary, use bullets, facts only
   3. **Use gh CLI** - Prefer `gh` over `git` for GitHub operations
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
-  5. **Aptu is read-only** - Never call `post_review` or `post_triage` (see clouatre-labs/aptu#774)
+  5. **Aptu is read-only** - Server enforced via --read-only flag (clouatre-labs/aptu#775)
 
   ## Handoff Files
 
@@ -346,6 +348,7 @@ extensions:
       - "--"
       - "--transport"
       - "stdio"
+      - "--read-only"
       - "run"
     env_keys:
       - GITHUB_TOKEN
