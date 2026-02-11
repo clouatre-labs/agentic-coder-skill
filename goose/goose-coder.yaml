@@ -337,19 +337,9 @@ extensions:
 
   - type: stdio
     name: aptu
-    cmd: cargo
+    cmd: aptu-mcp
     args:
-      - "+1.92.0"
-      - "run"
-      - "--manifest-path"
-      - "/Users/hugues.clouatre/git/clouatre-labs/aptu/Cargo.toml"
-      - "--bin"
-      - "aptu-mcp"
-      - "--"
-      - "--transport"
-      - "stdio"
       - "--read-only"
-      - "run"
     env_keys:
       - GITHUB_TOKEN
-      - AI_API_KEY
+      - GROQ_API_KEY
