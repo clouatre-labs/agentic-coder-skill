@@ -306,6 +306,9 @@ instructions: |
   - Lines added/removed
   - AI review summary
 
+  **Merge (only on explicit user request):** `gh pr merge <PR_NUMBER> --squash` then `git push origin --delete <branch>`.
+  Avoid `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
+
   Done. Worktree preserved for audit/resume.
 
   ---
