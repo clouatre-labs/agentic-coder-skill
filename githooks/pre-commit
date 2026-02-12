@@ -25,4 +25,13 @@ if [[ ! " ${ALLOWED_EMAILS[@]} " =~ " ${AUTHOR_EMAIL} " ]]; then
     exit 1
 fi
 
+# Scan staged changes for secrets
+if command -v gitleaks &>/dev/null; then
+    if ! gitleaks git --staged --verbose; then
+        echo "BLOCKED: gitleaks detected secrets in staged changes"
+        echo "Bypass with caution: git commit --no-verify"
+        exit 1
+    fi
+fi
+
 exit 0
