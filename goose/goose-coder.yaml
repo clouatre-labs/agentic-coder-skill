@@ -1,32 +1,16 @@
 name: goose-coder
-version: "3.5.0"
-title: OSS Coder - Scout/Guard Architecture
+version: "3.5.1"
+title: Goose Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
 description: |
-  Orchestrates OSS contributions using subagents with sequential dual-lens research.
-  Scout (Haiku, temp 0.5) explores creatively, Guard (Haiku, temp 0.1) stress-tests for risks.
-  BUILD & VERIFY and CHECK phases use Haiku for cost efficiency.
-  Guard reads Scout output for adversarial review -- sequential execution is a feature, not a limitation.
+  Orchestrates coding tasks using subagents in a Scout/Guard research architecture.
+  Scout (creative, Haiku) explores the codebase and proposes approaches.
+  Guard (adversarial, Haiku) stress-tests those proposals for risk.
 
-  Changelog:
-    - v3.5.0: PLAN phase >500 line check upgraded from advisory to hard gate (STOP and ASK).
-      Orchestrator must present new/modified/moved breakdown before proceeding to BUILD.
-    - v3.4.0: GUARD model Sonnet -> Haiku (turn budget fix). All research/check max_turns 55 -> 75.
-      BUILD max_turns 95 -> 175. Add subagent failure fallbacks for GUARD (proceed scout-only)
-      and BUILD (retry once, then STOP).
-    - v3.3.0: Add tool priority hierarchy to SCOUT and GUARD research agents.
-      gh CLI > Context7 > brave_search (last resort). Guard bumped to max 2 queries.
-      SCOUT Step 4 now explicitly prefers gh search over brave_search.
-    - v3.2.0: Add --read-only flag to aptu MCP extension (clouatre-labs/aptu#775).
-      Server-side enforcement replaces prompt-only rule from v3.1.0.
-    - v3.1.0: Add aptu read-only rule (defense in depth for clouatre-labs/aptu#774).
-    - v3.0.0: Scout/Guard architecture replacing Codebase/Ecosystem split.
-      Scout (creative, Haiku) + Guard (adversarial, Sonnet) sequential research.
-      CHECK downgraded to Haiku (guard shifts risk analysis left).
-      Implementation constraints flow from guard through plan to build to check.
-    - v2.10.0: Codebase/Ecosystem parallel research (actually sequential).
-    - v2.9.0: Added aptu security scanning to CHECK phase.
+  Usage: Provide a GitHub issue reference (e.g., owner/repo#123) to start.
+
+  Recent changes: v3.5.1 revert GUARD fallback, v3.5.0 >500 line hard gate, v3.4.0 Haiku + turn budgets.
 
 settings:
   provider: gcp_vertex_ai
@@ -143,9 +127,7 @@ instructions: |
   ```
 
   After BOTH agents complete:
-  1. Verify handoff files exist: `ls $HANDOFF/01*.json`
-     - Scout missing: STOP (cannot proceed)
-     - Guard missing: proceed with scout-only data, note reduced confidence at GATE
+  1. Verify handoff files exist: `ls $HANDOFF/01*.json` (if missing, STOP and report failure)
   2. Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
   3. Synthesize both perspectives:
      - **Agreements** (high confidence): Where scout and guard align
