@@ -1,5 +1,5 @@
 name: goose-coder
-version: "3.4.0"
+version: "3.5.0"
 title: OSS Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
@@ -10,6 +10,8 @@ description: |
   Guard reads Scout output for adversarial review -- sequential execution is a feature, not a limitation.
 
   Changelog:
+    - v3.5.0: PLAN phase >500 line check upgraded from advisory to hard gate (STOP and ASK).
+      Orchestrator must present new/modified/moved breakdown before proceeding to BUILD.
     - v3.4.0: GUARD model Sonnet -> Haiku (turn budget fix). All research/check max_turns 55 -> 75.
       BUILD max_turns 95 -> 175. Add subagent failure fallbacks for GUARD (proceed scout-only)
       and BUILD (retry once, then STOP).
@@ -161,7 +163,9 @@ instructions: |
 
   **Quality Standards (KISS/YAGNI/DRY):**
   - Plan ONLY what solves the problem - no speculative features
-  - If >500 lines estimated: recommend splitting into multiple PRs
+  - Sum estimated lines changed across all files (new + modified + moved)
+  - If >500 lines: STOP and ASK before proceeding to BUILD.
+    Include breakdown of new, modified, and moved lines in the estimate.
   - Reuse existing patterns from the codebase (reference 01a-research-scout.json)
   - Incorporate guard's implementation_constraints and warnings
   - Minimal scope: what changes, what stays the same
