@@ -1,15 +1,18 @@
 name: goose-coder
-version: "3.3.0"
+version: "3.4.0"
 title: OSS Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
 description: |
   Orchestrates OSS contributions using subagents with sequential dual-lens research.
-  Scout (Haiku, temp 0.5) explores creatively, Guard (Sonnet, temp 0.1) stress-tests for risks.
+  Scout (Haiku, temp 0.5) explores creatively, Guard (Haiku, temp 0.1) stress-tests for risks.
   BUILD & VERIFY and CHECK phases use Haiku for cost efficiency.
   Guard reads Scout output for adversarial review -- sequential execution is a feature, not a limitation.
 
   Changelog:
+    - v3.4.0: GUARD model Sonnet -> Haiku (turn budget fix). All research/check max_turns 55 -> 75.
+      BUILD max_turns 95 -> 175. Add subagent failure fallbacks for GUARD (proceed scout-only)
+      and BUILD (retry once, then STOP).
     - v3.3.0: Add tool priority hierarchy to SCOUT and GUARD research agents.
       gh CLI > Context7 > brave_search (last resort). Guard bumped to max 2 queries.
       SCOUT Step 4 now explicitly prefers gh search over brave_search.
@@ -111,7 +114,7 @@ instructions: |
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
       "temperature": 0.5,
-      "max_turns": 55
+      "max_turns": 75
     },
     "summary": true
   }
@@ -129,16 +132,18 @@ instructions: |
     "extensions": ["developer", "context7", "brave_search"],
     "settings": {
       "provider": "gcp_vertex_ai",
-      "model": "claude-sonnet-4-5@20250929",
+      "model": "claude-haiku-4-5@20251001",
       "temperature": 0.1,
-      "max_turns": 55
+      "max_turns": 75
     },
     "summary": true
   }
   ```
 
   After BOTH agents complete:
-  1. Verify handoff files exist: `ls $HANDOFF/01*.json` (if missing, STOP and report failure)
+  1. Verify handoff files exist: `ls $HANDOFF/01*.json`
+     - Scout missing: STOP (cannot proceed)
+     - Guard missing: proceed with scout-only data, note reduced confidence at GATE
   2. Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
   3. Synthesize both perspectives:
      - **Agreements** (high confidence): Where scout and guard align
@@ -231,7 +236,7 @@ instructions: |
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
       "temperature": 0.2,
-      "max_turns": 95
+      "max_turns": 175
     },
     "summary": true
   }
@@ -240,9 +245,11 @@ instructions: |
   The subagent will stream its actions to the terminal. You will receive only its final summary.
 
   After subagent completes:
-  1. Read `$HANDOFF/03-build.json` to get structured results
-  2. Present the summary and test results to the user
-  3. **Proceed immediately to CHECK** (no gate)
+  1. If `$HANDOFF/03-build.json` missing: write FAIL to `04-validation.json`, re-spawn BUILD once.
+     If second BUILD also fails: STOP and ASK (do not complete inline).
+  2. Read `$HANDOFF/03-build.json` to get structured results
+  3. Present the summary and test results to the user
+  4. **Proceed immediately to CHECK** (no gate)
 
   ---
 
@@ -262,7 +269,7 @@ instructions: |
       "provider": "gcp_vertex_ai",
       "model": "claude-haiku-4-5@20251001",
       "temperature": 0.1,
-      "max_turns": 55
+      "max_turns": 75
     },
     "summary": true
   }
