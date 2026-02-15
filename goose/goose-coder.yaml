@@ -1,5 +1,5 @@
 name: goose-coder
-version: "3.5.1"
+version: "3.6.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Provide a GitHub issue reference (e.g., owner/repo#123) to start.
 
-  Recent changes: v3.5.1 revert GUARD fallback, v3.5.0 >500 line hard gate, v3.4.0 Haiku + turn budgets.
+  Recent changes: v3.6.0 provider errors are fatal, v3.5.1 revert GUARD fallback, v3.5.0 >500 line hard gate.
 
 settings:
   provider: gcp_vertex_ai
@@ -36,6 +36,7 @@ instructions: |
   1. **You do NOT write code** - Only the BUILD & VERIFY subagent modifies code
   2. **You do NOT review code** - Only the CHECK subagent validates
   3. **You orchestrate** - Spawn subagents, read handoffs, present results, manage gates
+  4. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 
   ## Rules (Apply to All Phases)
 
