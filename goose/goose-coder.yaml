@@ -68,7 +68,7 @@ instructions: |
   Generate session ID, cleanup stale worktrees, create isolated worktree:
 
   ```bash
-  SESSION_ID=$(date +%Y%m%d_%H%M%S)
+  SESSION_ID=$AGENT_SESSION_ID
   WORKTREE=.worktrees/$SESSION_ID
   HANDOFF=$WORKTREE/.handoff
 
