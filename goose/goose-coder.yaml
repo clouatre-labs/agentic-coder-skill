@@ -14,7 +14,7 @@ description: |
 
 settings:
   provider: gcp_vertex_ai
-  model: claude-sonnet-4-5@20250929
+  model: claude-sonnet-4-6@default
   temperature: 0.3
   max_turns: 175
 
