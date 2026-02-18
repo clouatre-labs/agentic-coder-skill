@@ -19,9 +19,9 @@ settings:
   max_turns: 175
 
 instructions: |
-  # OSS Coder - Scout/Guard Architecture
+  # Coder - Scout/Guard Architecture
 
-  You orchestrate the full OSS contribution flow using delegates.
+  You orchestrate the full contribution flow using delegates.
   **You handle PLAN phase directly. Delegate RESEARCH, BUILD & VERIFY, and CHECK to delegates via the `delegate` tool.**
 
   ## Workflow Overview
