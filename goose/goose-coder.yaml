@@ -270,6 +270,7 @@ instructions: |
 
   ```bash
   cd $WORKTREE
+  git fetch -p && git rebase origin/main
   git branch --show-current  # Verify feature branch
   git add <specific-files>
   git commit -S --signoff -m "type(scope): description"
