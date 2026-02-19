@@ -19,6 +19,8 @@ settings:
   max_turns: 175
 
 instructions: |
+  IMPORTANT: Follow these instructions exactly. Validate your next action against the workflow before each response. Do not deviate.
+
   # Coder - Scout/Guard Architecture
 
   You orchestrate the full contribution flow using delegates.
@@ -313,7 +315,7 @@ extensions:
     env_keys:
       - CONTEXT7_API_KEY
     headers:
-      CONTEXT7_API_KEY: $CONTEXT7_API_KEY
+      Authorization: Bearer $CONTEXT7_API_KEY
 
   - type: stdio
     name: brave_search
