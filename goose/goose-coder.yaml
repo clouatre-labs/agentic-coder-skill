@@ -303,6 +303,8 @@ instructions: |
   **Rust:** cargo build/test/clippy/fmt/deny
 
 extensions:
+  - type: platform
+    name: summon
   - type: builtin
     name: developer
   - type: streamable_http
