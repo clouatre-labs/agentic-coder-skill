@@ -221,7 +221,7 @@ instructions: |
   }
   ```
 
-  The delegate will stream its actions to the terminal. You will receive only its final summary.
+  The delegate runs silently. You will receive its final output as a tool result once it completes.
 
   After delegate completes:
   1. If `$HANDOFF/03-build.json` missing: write FAIL to `04-validation.json`, re-spawn BUILD once.
@@ -250,7 +250,7 @@ instructions: |
   }
   ```
 
-  The delegate will stream its actions to the terminal. You will receive only its final summary.
+  The delegate runs silently. You will receive its final output as a tool result once it completes.
 
   After delegate completes:
   1. Read `$HANDOFF/04-validation.json` to get structured results
