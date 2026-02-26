@@ -322,6 +322,11 @@ extensions:
     headers:
       Authorization: Bearer $CONTEXT7_API_KEY
 
+  - type: streamable_http
+    name: aws_knowledge
+    uri: https://knowledge-mcp.global.api.aws
+    description: "AWS documentation, code samples, and architectural guidance"
+
   - type: stdio
     name: brave_search
     cmd: npx
