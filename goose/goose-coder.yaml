@@ -1,5 +1,5 @@
 name: goose-coder
-version: "4.2.1"
+version: "4.2.2"
 title: Goose Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
@@ -8,9 +8,9 @@ description: |
   Scout (creative, Haiku) explores the codebase and proposes approaches.
   Guard (adversarial, Haiku) stress-tests those proposals for risk.
 
-  Usage: Provide a GitHub issue reference (e.g., owner/repo#123) to start.
+  Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK, v4.1.0 targeted ecosystem research in SCOUT, v4.0.0 delegate API migration.
+  Recent changes: v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK, v4.1.0 targeted ecosystem research in SCOUT.
 
 settings:
   provider: gcp_vertex_ai
@@ -321,11 +321,6 @@ extensions:
       - CONTEXT7_API_KEY
     headers:
       Authorization: Bearer $CONTEXT7_API_KEY
-
-  - type: streamable_http
-    name: aws_knowledge
-    uri: https://knowledge-mcp.global.api.aws
-    description: "AWS documentation, code samples, and architectural guidance"
 
   - type: stdio
     name: brave_search
