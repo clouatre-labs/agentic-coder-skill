@@ -33,6 +33,13 @@ if ! grep -q "^Signed-off-by:" "$COMMIT_MSG_FILE"; then
     exit 1
 fi
 
+# Verify Signed-off-by email matches git user.email
+EXPECTED_EMAIL=$(git config user.email)
+if ! grep -q "^Signed-off-by:.*<${EXPECTED_EMAIL}>$" "$COMMIT_MSG_FILE"; then
+    echo "BLOCKED: Signed-off-by email must match git user.email ($EXPECTED_EMAIL)"
+    exit 1
+fi
+
 # Check body line length (max 100 chars, excluding Signed-off-by and comments)
 if tail -n +2 "$COMMIT_MSG_FILE" | grep -v "^Signed-off-by:" | grep -v "^#" | grep -E "^.{101,}"; then
     echo "BLOCKED: Commit body lines must be <= 100 characters"
