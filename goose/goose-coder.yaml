@@ -1,5 +1,5 @@
 name: goose-coder
-version: "4.2.2"
+version: "4.3.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   name: "Hugues Clouatre"
@@ -10,7 +10,17 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK, v4.1.0 targeted ecosystem research in SCOUT.
+  Recent changes: v4.3.0 headless mode via prompt/parameters for goose run, v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK.
+
+parameters:
+  - key: issue_ref
+    input_type: string
+    requirement: optional
+    description: "GitHub issue reference (e.g., owner/repo#123) or task description"
+    default: ""
+
+prompt: |
+  {% if issue_ref %}Work on {{ issue_ref }}. Accept the recommendation after RESEARCH and proceed through all phases. Create the PR but do not merge.{% endif %}
 
 settings:
   provider: gcp_vertex_ai
