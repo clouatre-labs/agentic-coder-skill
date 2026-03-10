@@ -59,6 +59,7 @@ instructions: |
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Aptu is read-only** - Server enforced via --read-only flag (clouatre-labs/aptu#775)
   6. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
+  7. **Code analysis tool** - Use `code-analyze__analyze` exclusively; never the native `analyze` tool.
 
   ## Handoff Files
 
