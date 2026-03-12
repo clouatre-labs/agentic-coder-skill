@@ -1,8 +1,7 @@
-name: goose-coder
 version: "4.4.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
-  name: "Hugues Clouatre"
+  contact: "Hugues Clouatre"
 description: |
   Orchestrates coding tasks using delegates in a Scout/Guard research architecture.
   Scout (creative, Haiku) explores the codebase and proposes approaches.
@@ -23,8 +22,8 @@ prompt: |
   {% if issue_ref %}Work on {{ issue_ref }}. Accept the recommendation after RESEARCH and proceed through all phases. Create the PR but do not merge.{% endif %}
 
 settings:
-  provider: aws_bedrock
-  model: global.anthropic.claude-sonnet-4-6
+  goose_provider: aws_bedrock
+  goose_model: global.anthropic.claude-sonnet-4-6
   temperature: 0.3
   max_turns: 175
 
