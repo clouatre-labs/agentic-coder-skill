@@ -109,7 +109,7 @@ instructions: |
 
   ```json
   {
-    "source": "goose-coder-scout",
+    "source": "coder-scout",
     "extensions": ["developer", "context7", "brave_search", "code-analyze"],
     "provider": "aws_bedrock",
     "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -125,7 +125,7 @@ instructions: |
 
   ```json
   {
-    "source": "goose-coder-guard",
+    "source": "coder-guard",
     "extensions": ["developer", "context7", "brave_search", "code-analyze"],
     "provider": "aws_bedrock",
     "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -228,7 +228,7 @@ instructions: |
 
   ```json
   {
-    "source": "goose-coder-build",
+    "source": "coder-build",
     "extensions": ["developer"],
     "provider": "aws_bedrock",
     "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -257,7 +257,7 @@ instructions: |
 
   ```json
   {
-    "source": "goose-coder-check",
+    "source": "coder-check",
     "extensions": ["developer", "aptu"],
     "provider": "aws_bedrock",
     "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
