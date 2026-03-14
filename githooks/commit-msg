@@ -33,10 +33,12 @@ if ! grep -q "^Signed-off-by:" "$COMMIT_MSG_FILE"; then
     exit 1
 fi
 
-# Verify Signed-off-by email matches git user.email
+# Verify Signed-off-by name and email match git user.name and user.email
+EXPECTED_NAME=$(git config user.name)
 EXPECTED_EMAIL=$(git config user.email)
-if ! grep -q "^Signed-off-by:.*<${EXPECTED_EMAIL}>$" "$COMMIT_MSG_FILE"; then
-    echo "BLOCKED: Signed-off-by email must match git user.email ($EXPECTED_EMAIL)"
+if ! grep -q "^Signed-off-by: ${EXPECTED_NAME} <${EXPECTED_EMAIL}>$" "$COMMIT_MSG_FILE"; then
+    echo "BLOCKED: Signed-off-by must match git identity: ${EXPECTED_NAME} <${EXPECTED_EMAIL}>"
+    echo "Use: git commit --signoff (do not hardcode the trailer)"
     exit 1
 fi
 
