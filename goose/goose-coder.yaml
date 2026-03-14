@@ -142,7 +142,7 @@ instructions: |
      - Scout's recommendation vs. Guard's recommendation
   4. Present: Problem statement, relevant files, conventions, approaches with risk annotations
 
-  **STOP - ASK:** "Scout recommends [X]. Guard recommends [Y]. Which approach? Or proceed with [recommendation]?"
+  **Say:** "Proceeding with: [chosen approach and 1-line rationale]." Then proceed to PLAN.
 
   ---
 
