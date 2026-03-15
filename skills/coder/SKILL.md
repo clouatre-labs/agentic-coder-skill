@@ -44,8 +44,10 @@ All phases communicate via `$WORKTREE/.handoff/`:
 |------|-----------|---------|
 | `01a-research-scout.json` | SCOUT agent | GUARD agent, orchestrator |
 | `01b-research-guard.json` | GUARD agent | orchestrator (PLAN phase) |
-| `02-plan.json` | orchestrator | BUILD agent |
-| `03-build.json` | BUILD agent | CHECK agent, orchestrator |
+| `02-plan.json` | orchestrator | BUILD agent (single) or orchestrator (parallel) |
+| `02-plan-A.json`, `02-plan-B.json`, etc. | orchestrator (optional) | BUILD agents (parallel shards) |
+| `03-build.json` | BUILD agent (single) or orchestrator (merged) | CHECK agent, orchestrator |
+| `03-build-A.json`, `03-build-B.json`, etc. | BUILD agents (parallel shards) | orchestrator (merge) |
 | `04-validation.json` | CHECK agent | BUILD agent (on retry), orchestrator |
 | `05-review-findings.json` | REVIEW agent | orchestrator |
 | `05-qa-findings.json` | QA agent | orchestrator |
@@ -214,15 +216,34 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 - Risks identified
 - Complexity estimate
 
-Proceed immediately to BUILD.
+### Partition for Parallel BUILD
+
+After writing `$HANDOFF/02-plan.json`, attempt to partition the files array into 2+ groups with strictly non-overlapping file sets (no file appears in two groups):
+
+1. Examine each file in `02-plan.json` files array
+2. Check for cross-file dependencies (e.g., "Update file A and B together because X")
+3. If a valid partition exists (2+ disjoint groups): write `02-plan-A.json`, `02-plan-B.json` (etc.), each containing:
+   - A subset of files (no overlap between groups)
+   - Steps scoped only to those files
+   - Copy all top-level fields from `02-plan.json` (overview, session_id, worktree, tooling, implementation_constraints, risks, test_strategy, complexity, line_budget, recommended_approach); then scope `files` and `steps` to only this shard's subset
+4. If no valid partition (files share dependencies or insufficient files): log "parallel BUILD not applicable: [reason]" and proceed with single BUILD (single `02-plan.json` only)
+5. Present the partition decision to the user before proceeding to BUILD
+
+**Example:** If plan touches 5 independent agent configs and 2 independent spec files, create:
+- `02-plan-A.json` with agent config changes
+- `02-plan-B.json` with spec changes
 
 ---
 
 ## Phase 3: BUILD [AGENT]
 
-**Say:** "Spawning BUILD agent (session: $SESSION_ID)..."
+Phase 3-early: parallel BUILD active (no SQLite prereq required).
 
-Invoke the `coder-build` agent via Task tool. Pass in the task prompt:
+### Single BUILD (if no sub-plans)
+
+If no `02-plan-A.json` etc. exist, invoke single BUILD:
+
+**Say:** "Spawning BUILD agent (session: $SESSION_ID)..."
 
 ```
 SESSION_ID=<actual-value>
@@ -242,6 +263,68 @@ After BUILD completes:
 2. Read `$HANDOFF/03-build.json` and present summary and test results.
 
 3. Proceed immediately to CHECK (no gate).
+
+### Parallel BUILD (if sub-plans exist)
+
+If `02-plan-A.json`, `02-plan-B.json`, etc. exist:
+
+1. **Say:** "Spawning BUILD agents in parallel (session: $SESSION_ID, N shards)..."
+
+2. Create a sparse-checkout worktree for each shard:
+   ```bash
+   git config extensions.worktreeConfig true
+   for shard in A B ...; do
+     git worktree add $WORKTREE-$shard <branch>
+     cd $WORKTREE-$shard
+     git sparse-checkout init --no-cone
+     # Write the files for this shard (one path per line)
+     jq -r '.files[].path' $HANDOFF/02-plan-$shard.json > .git/info/sparse-checkout
+     git sparse-checkout reapply
+     cd -
+   done
+   ```
+
+3. Spawn N coder-build agents in parallel via Task tool (one per shard). Each agent receives:
+   ```
+   SESSION_ID=<actual-value>
+   WORKTREE=<actual-path-for-this-shard>
+
+   Read 02-plan-X.json instead of 02-plan.json (located in the main HANDOFF dir: <main-worktree>/.handoff/).
+   Write 03-build-X.json to the same HANDOFF dir.
+   Implement your shard of the plan. Follow your agent instructions exactly.
+   ```
+
+4. Wait for all N agents to complete. Verify all handoffs exist:
+   ```bash
+   for shard in A B ...; do
+     jq -c . $HANDOFF/03-build-$shard.json || echo "ERROR: build-$shard handoff missing"
+   done
+   ```
+   If any missing: retry that shard's agent once. If still missing: STOP and ASK.
+
+5. **Merge changes** from each shard worktree into the main worktree:
+   ```bash
+   for shard in A B ...; do
+     # Tracked modifications
+     git -C $WORKTREE-$shard diff > /tmp/shard-$shard.patch
+     git -C $WORKTREE apply /tmp/shard-$shard.patch
+     # Untracked new files (BUILD may create new test files etc.)
+     git -C $WORKTREE-$shard ls-files --others --exclude-standard | while read f; do
+       mkdir -p $WORKTREE/$(dirname $f)
+       cp $WORKTREE-$shard/$f $WORKTREE/$f
+     done
+   done
+   ```
+
+6. **Merge** `03-build-*.json` into unified `$HANDOFF/03-build.json`:
+   - Combine `files_changed` arrays (union of all shards)
+   - Pick worst lint/test/deny/type_check status (FAIL > issues > clean)
+   - Collect all deviations and constraints_honored into single arrays
+   - Sum test_results counts
+
+7. Read merged `$HANDOFF/03-build.json` and present summary and test results.
+
+8. Proceed immediately to CHECK (no gate).
 
 ---
 
