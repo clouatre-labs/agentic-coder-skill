@@ -14,7 +14,7 @@ compatibility:
 Orchestrates the full contribution flow using sub-agents.
 
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD -> CHECK -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
+SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
                                                                               |                    |
                                                                          FAIL -> Back to BUILD (1x) FAIL (after FIXER) -> Stop & Ask
 ```
@@ -83,7 +83,7 @@ Store SESSION_ID and WORKTREE for all subsequent phases. Proceed immediately to 
 
 ---
 
-## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL] [GATE]
+## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL]
 
 Spawn SCOUT first, then GUARD (which reads scout's output).
 
@@ -146,9 +146,7 @@ Present to user:
 - Agreements (where scout and guard align - high confidence)
 - Tensions (where they disagree - present both sides)
 
-**STOP - ASK:** "Scout recommends [X]. Guard recommends [Y]. Which approach? Or proceed with [recommendation]?"
-
-Wait for explicit user selection before proceeding.
+**Say:** "Proceeding with: [chosen approach and 1-line rationale]." Then proceed to PLAN.
 
 ---
 
