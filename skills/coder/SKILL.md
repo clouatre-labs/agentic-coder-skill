@@ -184,10 +184,11 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
   "steps": ["Step 1", "Step 2"],
   "implementation_constraints": ["from guard - must do X", "from guard - must not do Y"],
   "test_strategy": {
-    "response": "How to test API responses",
-    "state_changes": "How to test DB/file changes",
-    "external_calls": "How to test third-party APIs",
-    "observability": "How to test logging/metrics",
+    "distinct_behaviors": ["behavior 1", "behavior 2"],
+    "planned_tests": [
+      {"name": "test_name", "behavior": "which behavior", "type": "happy_path|edge_case"}
+    ],
+    "variant_strategy": "If N variants share a code path, test 1 representative + 1 edge case, not all N",
     "guard_test_gaps": ["specific tests guard identified as missing"]
   },
   "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
