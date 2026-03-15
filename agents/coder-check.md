@@ -48,7 +48,9 @@ If files missing, report error and exit.
 Run security scan on uncommitted changes:
 
 ```bash
+# Include both staged and unstaged tracked changes
 git diff > /tmp/check-diff.patch
+git diff --cached >> /tmp/check-diff.patch
 cat /tmp/check-diff.patch
 ```
 
@@ -59,12 +61,13 @@ Use aptu `scan_security` on the diff. Tool failure = FAIL (gate cannot be bypass
 Review uncommitted changes:
 
 ```bash
+git status --porcelain
 git diff --stat
 git diff
-git status
+git diff --cached
 ```
 
-If no diff but origin/main..HEAD has commits, BUILD committed early; validate origin/main..HEAD instead.
+If `git status --porcelain` is empty but `origin/main..HEAD` has commits, BUILD committed early; validate `git diff origin/main..HEAD` instead. If both are empty, FAIL with "no changes found".
 
 Validation checklist (plan compliance only):
 - Planned files modified, no unplanned changes
