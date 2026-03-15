@@ -1,4 +1,4 @@
-version: "4.5.0"
+version: "4.6.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -9,7 +9,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check, v4.4.0 add code-analyze-mcp to SCOUT/GUARD delegates for semantic codebase analysis, v4.3.0 headless mode via prompt/parameters for goose run, v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK.
+  Recent changes: v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check, v4.4.0 add code-analyze-mcp to SCOUT/GUARD delegates for semantic codebase analysis, v4.3.0 headless mode via prompt/parameters for goose run, v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK.
 
 parameters:
   - key: issue_ref
@@ -38,9 +38,9 @@ instructions: |
   ## Workflow Overview
 
   ```
-  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> COMMIT/PR
-                                                                              |
-                                                                         FAIL -> [GATE] -> Back to BUILD
+  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
+                                                                              |                                    |
+                                                                         FAIL -> [GATE] -> Back to BUILD     FAIL (after FIXER) -> Stop & Ask
   ```
 
   ## CRITICAL CONSTRAINTS
@@ -62,14 +62,21 @@ instructions: |
 
   ## Handoff Files
 
-  All phases communicate via `$WORKTREE/.handoff/`:
-  - `01a-research-scout.json` - Creative exploration and approach proposals (read by guard)
-  - `01b-research-guard.json` - Adversarial risk analysis of scout's proposals (read by orchestrator at GATE)
-  - `02-plan.json` - Your plan output (read by BUILD & VERIFY)
-  - `03-build.json` - Build output (read by CHECK)
-  - `04-validation.json` - Validation result (read by BUILD & VERIFY on FAIL loop)
+  All phases communicate via `$WORKTREE/.handoff/`. Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for LLM, `jq .` for humans.
 
-  Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for LLM, `jq .` for humans.
+  | File | Written By | Read By |
+  |------|-----------|---------|
+  | `01a-research-scout.json` | SCOUT agent | GUARD agent, orchestrator |
+  | `01b-research-guard.json` | GUARD agent | orchestrator (PLAN phase) |
+  | `02-plan.json` | orchestrator | BUILD agent (single) or orchestrator (parallel) |
+  | `02-plan-A.json`, `02-plan-B.json`, etc. | orchestrator (optional) | BUILD agents (parallel shards) |
+  | `03-build.json` | BUILD agent (single) or orchestrator (merged) | CHECK agent, orchestrator |
+  | `03-build-A.json`, `03-build-B.json`, etc. | BUILD agents (parallel shards) | orchestrator (merge) |
+  | `04-validation.json` | CHECK agent | BUILD agent (on retry), orchestrator |
+  | `05-review-findings.json` | REVIEW agent | orchestrator |
+  | `05-qa-findings.json` | QA agent | orchestrator |
+  | `05-acceptance.json` | orchestrator (merged) | FIXER agent, orchestrator |
+  | `06-fixer.json` | FIXER agent | orchestrator |
 
   ---
 
@@ -214,6 +221,23 @@ instructions: |
   - Risks identified
   - Complexity estimate
 
+  ### Partition for Parallel BUILD
+
+  After writing `$HANDOFF/02-plan.json`, attempt to partition the files array into 2+ groups with strictly non-overlapping file sets (no file appears in two groups):
+
+  1. Examine each file in `02-plan.json` files array
+  2. Check for cross-file dependencies (e.g., "Update file A and B together because X")
+  3. If a valid partition exists (2+ disjoint groups): write `02-plan-A.json`, `02-plan-B.json` (etc.), each containing:
+     - A subset of files (no overlap between groups)
+     - Steps scoped only to those files
+     - Copy all top-level fields from `02-plan.json` (overview, session_id, worktree, tooling, implementation_constraints, risks, test_strategy, complexity, line_budget, recommended_approach); then scope `files` and `steps` to only this shard's subset
+  4. If no valid partition (files share dependencies or insufficient files): log "parallel BUILD not applicable: [reason]" and proceed with single BUILD (single `02-plan.json` only)
+  5. Present the partition decision to the user before proceeding to BUILD
+
+  **Example:** If plan touches 5 independent agent configs and 2 independent spec files, create:
+  - `02-plan-A.json` with agent config changes
+  - `02-plan-B.json` with spec changes
+
   Proceed immediately to BUILD & VERIFY.
 
   ---
@@ -240,10 +264,27 @@ instructions: |
 
   After delegate completes:
   1. If `$HANDOFF/03-build.json` missing: write FAIL to `04-validation.json`, re-spawn BUILD once.
-     If second BUILD also fails: STOP and ASK (do not complete inline).
+     If second BUILD also fails: STOP and report failure. Do not implement inline.
   2. Read `$HANDOFF/03-build.json` to get structured results
   3. Present the summary and test results to the user
   4. **Proceed immediately to CHECK** (no gate)
+
+  ### Parallel BUILD (if sub-plans exist)
+
+  If `02-plan-A.json`, `02-plan-B.json`, etc. exist, spawn BUILD agents in parallel:
+
+  1. Create a sparse-checkout worktree for each shard to isolate file sets
+  2. Spawn one BUILD delegate per shard; each processes its respective plan file (`02-plan-A.json`, etc.) and writes its results (`03-build-A.json`, etc.)
+  3. Wait for all BUILD agents to complete
+  4. Merge changes from shard worktrees into main worktree
+  5. Merge `03-build-*.json` into unified `$HANDOFF/03-build.json`:
+     - Combine `files_changed` arrays (union of all shards)
+     - Pick worst lint/test/deny/type_check status (FAIL > issues > clean)
+     - Collect all deviations and constraints_honored into single arrays
+     - Sum test_results counts
+  6. Read merged `$HANDOFF/03-build.json` and present summary and test results
+
+  Proceed immediately to CHECK (no gate).
 
   ---
 
@@ -275,7 +316,77 @@ instructions: |
 
   **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
 
-  **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD & VERIFY delegate with fixes?"
+  **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP. Do not fix inline.
+
+  ---
+
+  ## Phase 4.5: ACCEPTANCE GATE [PARALLEL AGENTS]
+
+  **Say:** "Spawning ACCEPTANCE GATE (REVIEW agent + QA agent in parallel, session: SESSION_ID)..."
+
+  Spawn REVIEW agent and QA agent simultaneously via two delegate tool calls:
+
+  **REVIEW delegate:**
+
+  ```json
+  {
+    "source": "coder-review",
+    "extensions": ["developer", "aptu"],
+    "provider": "aws_bedrock",
+    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "temperature": 0.1
+  }
+  ```
+
+  **QA delegate:**
+
+  ```json
+  {
+    "source": "coder-qa",
+    "extensions": ["developer"],
+    "provider": "aws_bedrock",
+    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "temperature": 0.1
+  }
+  ```
+
+  Both delegates run in parallel. You will receive their outputs once they complete.
+
+  After both complete, verify handoffs exist:
+
+  ```bash
+  jq -c . $HANDOFF/05-review-findings.json || echo "ERROR: review handoff missing"
+  jq -c . $HANDOFF/05-qa-findings.json || echo "ERROR: qa handoff missing"
+  ```
+
+  If any missing: retry both agents once. If still missing: STOP and report failure.
+
+  Then merge findings into `$HANDOFF/05-acceptance.json`:
+  - Combined findings from both agents
+  - Overall verdict: FAIL if either agent verdict is FAIL, PASS WITH NOTES if any PASS WITH NOTES, else PASS
+  - Zero critical findings required to proceed
+
+  **If any critical or major findings exist:**
+
+  Spawn FIXER delegate:
+
+  ```json
+  {
+    "source": "coder-fixer",
+    "extensions": ["developer"],
+    "provider": "aws_bedrock",
+    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "temperature": 0.2
+  }
+  ```
+
+  After FIXER completes, re-run REVIEW delegate on critical findings only.
+
+  Update `05-acceptance.json` with re-review results.
+
+  **Gate:** Zero critical findings required before proceeding to COMMIT. If critical findings remain after one fixer iteration: STOP and ASK user.
+
+  If PASS or PASS WITH NOTES (minor only): Proceed to COMMIT.
 
   ---
 
@@ -294,20 +405,32 @@ instructions: |
 
   ```bash
   git push origin <branch>
-  gh pr create --title "type: description" --label "<type>" --body "Summary and testing notes"
+  gh pr create --title "type: description" --body "$(cat <<'EOF'
+  ## Summary
+  <bullets from 02-plan.json overview>
+
+  ## Changes
+  <files from 03-build.json files_changed>
+
+  ## Test plan
+  - [ ] Tests pass (see 03-build.json test_results)
+  - [ ] Linter clean
+  - [ ] Security scan clean (see 04-validation.json security_summary)
+  EOF
+  )"
   ```
 
   After PR is created, run AI-powered review:
   - Use aptu `review_pr` on the new PR to get AI analysis
-  - If review flags issues, **ASK:** "AI review flagged issues. Re-spawn BUILD to fix, or merge as-is?"
+  - If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
 
   **Present (no gate):**
+  - Branch name
   - PR number and URL
-  - Files changed count
-  - Lines added/removed
-  - AI review summary
+  - Files changed count and lines added/removed
+  - aptu review summary
 
-  **Merge (only on explicit user request):** `gh pr merge <PR_NUMBER> --squash` then `git push origin --delete <branch>`.
+  **Merge (only on explicit user request):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
   Avoid `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
 
   Done. Worktree preserved for audit/resume.

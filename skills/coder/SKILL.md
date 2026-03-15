@@ -34,7 +34,8 @@ SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [A
 2. Concise - lead with summary, use bullets, facts only
 3. Use `gh` CLI for all GitHub operations
 4. Minimal gates - stop for decisions, auto-proceed for execution
-5. Do not use aptu for issue reading - use `gh issue view`
+5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
+6. Do not use aptu for issue reading - use `gh issue view`
 
 ## Handoff Protocol
 
