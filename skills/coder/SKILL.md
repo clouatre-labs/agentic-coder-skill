@@ -35,7 +35,8 @@ SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [A
 3. Use `gh` CLI for all GitHub operations
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
-6. Do not use aptu for issue reading - use `gh issue view`
+6. Code analysis tools - use `code-analyze` for semantic analysis; never the native `analyze` tool
+7. Do not use aptu for issue reading - use `gh issue view`
 
 ## Handoff Protocol
 
@@ -379,8 +380,6 @@ WORKTREE=<actual-path>
 
 Run test suite and complexity check. Follow your agent instructions exactly.
 ```
-
-> Note: If context budget guard (Phase 1) is not deployed, spawn sequentially to avoid OOM.
 
 After both complete, verify handoffs exist:
 

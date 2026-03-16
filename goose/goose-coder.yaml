@@ -4,8 +4,8 @@ author:
   contact: "Hugues Clouatre"
 description: |
   Orchestrates coding tasks using delegates in a Scout/Guard research architecture.
-  Scout (creative, Haiku) explores the codebase and proposes approaches.
-  Guard (adversarial, Haiku) stress-tests those proposals for risk.
+  Scout (creative, Sonnet) explores the codebase and proposes approaches.
+  Guard (adversarial, MiniMax M2.5) stress-tests those proposals for risk.
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
@@ -119,7 +119,7 @@ instructions: |
     "source": "coder-scout",
     "extensions": ["developer", "context7", "brave_search", "code-analyze"],
     "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "model": "global.anthropic.claude-sonnet-4-6",
     "temperature": 0.5
   }
   ```
@@ -134,8 +134,8 @@ instructions: |
   {
     "source": "coder-guard",
     "extensions": ["developer", "context7", "brave_search", "code-analyze"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "minimax/minimax-m2.5",
     "temperature": 0.1
   }
   ```
@@ -273,10 +273,39 @@ instructions: |
 
   If `02-plan-A.json`, `02-plan-B.json`, etc. exist, spawn BUILD agents in parallel:
 
-  1. Create a sparse-checkout worktree for each shard to isolate file sets
+  1. Create a sparse-checkout worktree for each shard:
+     ```bash
+     git config extensions.worktreeConfig true
+     for shard in A B ...; do
+       git worktree add "$WORKTREE-$shard" <branch>
+       cd "$WORKTREE-$shard"
+       git sparse-checkout init --no-cone
+       jq -r '.files[].path' "$HANDOFF/02-plan-$shard.json" > .git/info/sparse-checkout
+       git sparse-checkout reapply
+       cd -
+     done
+     ```
   2. Spawn one BUILD delegate per shard; each processes its respective plan file (`02-plan-A.json`, etc.) and writes its results (`03-build-A.json`, etc.)
-  3. Wait for all BUILD agents to complete
-  4. Merge changes from shard worktrees into main worktree
+  3. Wait for all BUILD agents to complete. Verify all handoffs exist:
+     ```bash
+     for shard in A B ...; do
+       jq -c . "$HANDOFF/03-build-$shard.json" || echo "ERROR: build-$shard handoff missing"
+     done
+     ```
+     If any missing: retry that shard once. If still missing: STOP and ASK.
+  4. Merge changes from each shard worktree into the main worktree:
+     ```bash
+     for shard in A B ...; do
+       # Tracked modifications
+       git -C "$WORKTREE-$shard" diff > /tmp/shard-$shard.patch
+       git -C "$WORKTREE" apply /tmp/shard-$shard.patch
+       # Untracked new files (BUILD may create new test files etc.)
+       git -C "$WORKTREE-$shard" ls-files --others --exclude-standard | while read f; do
+         mkdir -p "$WORKTREE/$(dirname $f)"
+         cp "$WORKTREE-$shard/$f" "$WORKTREE/$f"
+       done
+     done
+     ```
   5. Merge `03-build-*.json` into unified `$HANDOFF/03-build.json`:
      - Combine `files_changed` arrays (union of all shards)
      - Pick worst lint/test/deny/type_check status (FAIL > issues > clean)
