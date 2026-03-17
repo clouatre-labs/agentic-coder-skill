@@ -64,7 +64,7 @@ For each approach, assess:
 
 ## Output
 
-Write `$HANDOFF/01b-research-guard.json` (compact: `| jq -c .`):
+Write `$HANDOFF/01b-research-guard.json` (compact: `| jq -c .`), then present:
 
 ```json
 {
