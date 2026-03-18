@@ -135,7 +135,7 @@ instructions: |
     "source": "coder-guard",
     "extensions": ["developer", "context7", "brave_search", "code-analyze"],
     "provider": "openrouter",
-    "model": "minimax/minimax-m2.5",
+    "model": "mistralai/mistral-small-2603",
     "temperature": 0.1
   }
   ```
@@ -254,8 +254,8 @@ instructions: |
   {
     "source": "coder-build",
     "extensions": ["developer"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "mistralai/mistral-small-2603",
     "temperature": 0.2
   }
   ```
@@ -361,8 +361,8 @@ instructions: |
   {
     "source": "coder-review",
     "extensions": ["developer", "aptu"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "mistralai/mistral-small-2603",
     "temperature": 0.1
   }
   ```
@@ -373,8 +373,8 @@ instructions: |
   {
     "source": "coder-qa",
     "extensions": ["developer"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "mistralai/mistral-small-2603",
     "temperature": 0.1
   }
   ```
@@ -403,8 +403,8 @@ instructions: |
   {
     "source": "coder-fixer",
     "extensions": ["developer"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "mistralai/mistral-small-2603",
     "temperature": 0.2
   }
   ```
