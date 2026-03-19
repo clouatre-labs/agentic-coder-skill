@@ -126,6 +126,8 @@ instructions: |
 
   After SCOUT completes, verify handoff exists: `cat $HANDOFF/01a-research-scout.json | jq -c .`
 
+  If missing: retry SCOUT once. If still missing: STOP and report failure. Do not proceed.
+
   **Say:** "Scout complete. Spawning GUARD research agent (session: SESSION_ID)..."
 
   ### GUARD Research Agent (runs second, reads scout's output)
@@ -199,8 +201,8 @@ instructions: |
     "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
     "tooling": {
       "language": "Rust|Python|TypeScript|etc",
-      "test_command": "cargo test|pytest|npm test",
-      "linter": "cargo clippy|ruff check|biome lint",
+      "test_command": "cargo test|pytest|bun test",
+      "linter": "cargo clippy|ruff check|biome check",
       "formatter": "cargo fmt|ruff format|biome format"
     },
     "complexity": "simple|medium|complex",

@@ -35,8 +35,8 @@ SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [A
 3. Use `gh` CLI for all GitHub operations
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
-6. Code analysis tools - use `code-analyze` for semantic analysis; never the native `analyze` tool
-7. Do not use aptu for issue reading - use `gh issue view`
+6. Do not use aptu for issue reading - use `gh issue view`
+7. Code analysis tools - use `code-analyze` for semantic analysis; never the native `analyze` tool
 
 ## Handoff Protocol
 
@@ -85,7 +85,7 @@ Store SESSION_ID and WORKTREE for all subsequent phases. Proceed immediately to 
 
 ---
 
-## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL]
+## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL] [GATE]
 
 Spawn SCOUT first, then GUARD (which reads scout's output).
 
@@ -236,7 +236,7 @@ After writing `$HANDOFF/02-plan.json`, attempt to partition the files array into
 
 ---
 
-## Phase 3: BUILD [AGENT]
+## Phase 3: BUILD & VERIFY [AGENT]
 
 Phase 3-early: parallel BUILD active (no SQLite prereq required).
 
@@ -383,19 +383,7 @@ Run test suite and complexity check. Follow your agent instructions exactly.
 
 After both complete, verify handoffs exist:
 
-```bash
-for handoff in $HANDOFF/05-review-findings.json $HANDOFF/05-qa-findings.json; do
-  jq -c . "$handoff" || {
-    echo "ERROR: Handoff missing: $handoff"
-    echo "Retrying REVIEW and QA agents once..."
-    # Re-spawn both agents and retry
-    if ! jq -c . "$handoff" 2>/dev/null; then
-      echo "FATAL: Handoff still missing after retry. STOP."
-      exit 1
-    fi
-  }
-done
-```
+If any missing: retry both agents once. If still missing: STOP and report failure.
 
 Then merge findings:
 
