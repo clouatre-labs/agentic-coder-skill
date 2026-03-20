@@ -1,27 +1,56 @@
 #!/bin/bash
 set -euo pipefail
 
-# Build allowlist dynamically from gitconfig files in home directory
-ALLOWED_EMAILS=()
-for cfg in "$HOME"/.gitconfig*; do
-    [[ -f "$cfg" ]] || continue
-    while IFS= read -r email; do
-        [[ -n "$email" ]] && ALLOWED_EMAILS+=("$email")
-    done < <(grep -E '^\s*email\s*=' "$cfg" 2>/dev/null | sed 's/^[^=]*=\s*//' | tr -d ' \t')
-done
+AUTHOR_EMAIL=$(git config user.email || echo "")
+AUTHOR_KEY=$(git config user.signingkey || echo "")
 
-# Validate we found at least one email
-if [[ ${#ALLOWED_EMAILS[@]} -eq 0 ]]; then
-    echo "ERROR: No emails found in ~/.gitconfig*"
+if [[ -z "$AUTHOR_EMAIL" ]]; then
+    echo "BLOCKED: No user.email configured"
     exit 1
 fi
 
-AUTHOR_EMAIL=$(git config user.email)
+if [[ -z "$AUTHOR_KEY" ]]; then
+    echo "BLOCKED: No user.signingkey configured for $AUTHOR_EMAIL"
+    exit 1
+fi
 
-# Check author email
-if [[ ! " ${ALLOWED_EMAILS[@]} " =~ " ${AUTHOR_EMAIL} " ]]; then
+# Build email->key map and allowlist from ~/.gitconfig-* identity files at runtime.
+# Each file that contains an email= line is one identity; signingkey= is paired with it.
+ALLOWED_EMAILS=()
+EXPECTED_KEY=""
+
+for cfg in "$HOME"/.gitconfig*; do
+    [[ -f "$cfg" ]] || continue
+    _email=$(grep -E '^\s*email\s*=' "$cfg" 2>/dev/null | head -1 | sed 's/^[^=]*=\s*//' | tr -d ' \t') || true
+    [[ -z "$_email" ]] && continue
+    ALLOWED_EMAILS+=("$_email")
+    if [[ "$_email" == "$AUTHOR_EMAIL" ]]; then
+        _key=$(grep -E '^\s*signingkey\s*=' "$cfg" 2>/dev/null | head -1 | sed 's/^[^=]*=\s*//' | tr -d ' \t') || true
+        [[ -n "$_key" ]] && EXPECTED_KEY="$_key"
+    fi
+done
+
+# Layer 1: email must be in allowlist
+EMAIL_OK=0
+for _e in "${ALLOWED_EMAILS[@]}"; do
+    [[ "$_e" == "$AUTHOR_EMAIL" ]] && EMAIL_OK=1 && break
+done
+if [[ $EMAIL_OK -eq 0 ]]; then
     echo "BLOCKED: Email not in allowlist: $AUTHOR_EMAIL"
-    echo "Allowed: ${ALLOWED_EMAILS[*]}"
+    printf "  Allowed: %s\n" "${ALLOWED_EMAILS[@]}"
+    exit 1
+fi
+
+# Layer 2: signing key must match the key declared for this email in its identity file
+if [[ -z "$EXPECTED_KEY" ]]; then
+    echo "BLOCKED: No signingkey found in identity file for $AUTHOR_EMAIL"
+    exit 1
+fi
+if [[ "$AUTHOR_KEY" != "$EXPECTED_KEY" ]]; then
+    echo "BLOCKED: Signing key mismatch for $AUTHOR_EMAIL"
+    echo "  Expected: $EXPECTED_KEY"
+    echo "  Got:      $AUTHOR_KEY"
+    echo "Do not override user.signingkey via -c or local git config."
     exit 1
 fi
 
