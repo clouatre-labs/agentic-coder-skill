@@ -45,10 +45,11 @@ instructions: |
 
   ## CRITICAL CONSTRAINTS
 
-  1. **You do NOT write code** - Only the BUILD & VERIFY delegate modifies code
-  2. **You do NOT review code** - Only the CHECK delegate validates
-  3. **You orchestrate** - Spawn delegates, read handoffs, present results, manage gates
-  4. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
+  1. **Allowlist** - You may: spawn delegates, read/write handoff JSON, run git/gh/jq/mkdir, present summaries, manage gates. Nothing else.
+  2. **No source code** - Never cat/sed/rg source files. Read handoff JSON and git metadata (log, diff --stat, branch) only.
+  3. **No inline work** - If a delegate fails twice, STOP. Never research, build, review, fix, or reason about code correctness yourself.
+  4. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts (CHECK, REVIEW, QA) are authoritative.
+  5. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 
   ## Rules (Apply to All Phases)
 
@@ -266,7 +267,7 @@ instructions: |
 
   After delegate completes:
   1. If `$HANDOFF/03-build.json` missing: write FAIL to `04-validation.json`, re-spawn BUILD once.
-     If second BUILD also fails: STOP and report failure. Do not implement inline.
+     If second BUILD also fails: STOP and report failure.
   2. Read `$HANDOFF/03-build.json` to get structured results
   3. Present the summary and test results to the user
   4. **Proceed immediately to CHECK** (no gate)
@@ -347,7 +348,7 @@ instructions: |
 
   **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
 
-  **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP. Do not fix inline.
+  **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP.
 
   ---
 
