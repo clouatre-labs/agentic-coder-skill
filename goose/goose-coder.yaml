@@ -1,4 +1,4 @@
-version: "4.6.0"
+version: "4.7.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -9,7 +9,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check, v4.4.0 add code-analyze-mcp to SCOUT/GUARD delegates for semantic codebase analysis, v4.3.0 headless mode via prompt/parameters for goose run, v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK.
+  Recent changes: v4.7.0 orchestrator crafts issue-specific code-analyze targets for SCOUT/GUARD spawn, v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check, v4.4.0 add code-analyze-mcp to SCOUT/GUARD delegates for semantic codebase analysis, v4.3.0 headless mode via prompt/parameters for goose run, v4.2.2 remove aws_knowledge (tool confusion, bloat), v4.2.1 bookend delegate prompts with reminder blocks, v4.2.0 line budget enforcement in BUILD/CHECK.
 
 parameters:
   - key: issue_ref
@@ -115,6 +115,8 @@ instructions: |
 
   ### SCOUT Research Agent (runs first)
 
+  Before spawning, include issue-specific `code-analyze` targets in the `instructions` parameter: which directories to orient on, which files to deep-dive, which symbols to trace for blast radius.
+
   ```json
   {
     "source": "coder-scout",
@@ -132,6 +134,8 @@ instructions: |
   **Say:** "Scout complete. Spawning GUARD research agent (session: SESSION_ID)..."
 
   ### GUARD Research Agent (runs second, reads scout's output)
+
+  Before spawning, include targeted `code-analyze` verification tasks in the `instructions` parameter based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
 
   ```json
   {

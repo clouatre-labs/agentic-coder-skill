@@ -28,6 +28,17 @@ SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [A
 3. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
 4. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
 
+## code-analyze Tool Usage
+
+SCOUT and GUARD have `code-analyze` tools. Use them instead of reading entire files:
+
+- `analyze_directory` -- orient on repo structure (start here, max_depth=2, summary=true)
+- `analyze_module` -- lightweight file index (function names + imports); triage many files fast
+- `analyze_file` -- full signatures and types; use on 3-5 key files max, not every file
+- `analyze_symbol` -- call graph for a specific function; use for blast radius and data flow
+
+The orchestrator should include issue-specific `code-analyze` targets in SCOUT/GUARD instructions at spawn time.
+
 ## Rules (All Phases)
 
 1. No emojis in code, commits, PRs, docs, or responses
