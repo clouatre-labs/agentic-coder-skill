@@ -27,11 +27,10 @@ if echo "$COMMIT_MSG" | grep -qE '\.$'; then
 fi
 
 # BREAKING CHANGE footer must use correct token format (spec rules 12-16)
-# Valid separators per spec: ': ' (colon-space) or ' #' (space-hash).
 # Token must be uppercase; BREAKING-CHANGE is an accepted alias.
-# Only lines starting with the token pattern are checked (anchored at ^).
-if grep -iE "^breaking[ -]change(: | #)" "$COMMIT_MSG_FILE" | grep -qvE "^BREAKING[ -]CHANGE(: | #)"; then
-    echo "BLOCKED: BREAKING CHANGE footer token must be uppercase"
+# Valid separators: ': ' (colon-space) or ' #' (space-hash).
+if grep -iE "^breaking[ -]change" "$COMMIT_MSG_FILE" | grep -qvE "^BREAKING[ -]CHANGE(: | #)"; then
+    echo "BLOCKED: BREAKING CHANGE footer token must be uppercase with correct separator"
     echo "  Valid forms: 'BREAKING CHANGE: <description>' or 'BREAKING CHANGE #<value>'"
     exit 1
 fi
@@ -58,47 +57,47 @@ if ! grep -q "^Signed-off-by: ${EXPECTED_NAME} <${EXPECTED_EMAIL}>$" "$COMMIT_MS
     exit 1
 fi
 
-# Delegate body/footer structure and line-length checks to commitlint.
-# commitlint's parser handles RFC-2822 folding correctly; the manual bash
-# walk above does not (indented continuation lines after a blank line are
-# mis-classified as footer by the bash heuristic).
-#
-# Uses ~/.config/commitlint as the commitlint home so deps are always
-# available even in Rust/non-JS repos. Picks up a repo-local config when
-# present; falls back to the shared config in the commitlint home.
-COMMITLINT_HOME="$HOME/.config/commitlint"
-COMMITLINT_BIN="$COMMITLINT_HOME/node_modules/.bin/commitlint"
+# Body/footer structure and line-length checks via pure bash state machine.
+# Read all lines into indexed array (bash 3.2 compatible).
+declare -a lines
+while IFS= read -r line; do
+    lines[${#lines[@]}]="$line"
+done < "$COMMIT_MSG_FILE"
 
-if [ ! -x "$COMMITLINT_BIN" ]; then
-    echo "WARNING: commitlint not found at $COMMITLINT_BIN; skipping parser-level checks"
-    echo "Run: cd ~/.config/commitlint && npm install"
-    exit 0
+total=${#lines[@]}
+
+# body-leading-blank: if total line count > 1 and lines[1] is not empty, block
+if [ $total -gt 1 ] && [ -n "${lines[1]}" ]; then
+    echo "BLOCKED: Body must be separated from subject by a blank line"
+    exit 1
 fi
 
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-COMMITLINT_CONFIG="$COMMITLINT_HOME/commitlint.config.cjs"
-if [ -n "$REPO_ROOT" ]; then
-    for cfg in \
-        "$REPO_ROOT/.commitlintrc" \
-        "$REPO_ROOT/.commitlintrc.yml" \
-        "$REPO_ROOT/.commitlintrc.yaml" \
-        "$REPO_ROOT/.commitlintrc.json" \
-        "$REPO_ROOT/.commitlintrc.js" \
-        "$REPO_ROOT/.commitlintrc.cjs" \
-        "$REPO_ROOT/.commitlintrc.mjs" \
-        "$REPO_ROOT/commitlint.config.js" \
-        "$REPO_ROOT/commitlint.config.cjs" \
-        "$REPO_ROOT/commitlint.config.mjs"; do
-        if [ -f "$cfg" ]; then
-            COMMITLINT_CONFIG="$cfg"
-            break
+# footer-leading-blank and line-length checks
+# Walk lines from index 1 onward, tracking previous line state.
+# On first footer token match, check if previous line was blank.
+# For all non-subject lines, check length > 100.
+found_footer=0
+for ((i = 1; i < total; i++)); do
+    line="${lines[$i]}"
+    prev="${lines[$((i - 1))]}"
+    
+    # Check line length (skip subject at index 0)
+    if [ ${#line} -gt 100 ]; then
+        echo "BLOCKED: Line $((i + 1)) exceeds 100 characters"
+        exit 1
+    fi
+    
+    # Check for footer token (only on first match)
+    if [ $found_footer -eq 0 ]; then
+        if echo "$line" | grep -qE '^[A-Za-z][A-Za-z0-9-]*: |^[A-Za-z][A-Za-z0-9-]* #|^BREAKING CHANGE(: | #)'; then
+            # First footer token found; check if previous line was blank
+            if [ -n "$prev" ]; then
+                echo "BLOCKED: Footer must be separated from body by a blank line"
+                exit 1
+            fi
+            found_footer=1
         fi
-    done
-fi
+    fi
+done
 
-# --edit reads the file and resolves relative paths against --cwd (repo root).
-# Use REPO_ROOT as cwd so git context is correct; the binary is invoked via
-# its absolute path so it does not need to be on PATH.
-CWD="${REPO_ROOT:-$PWD}"
-"$COMMITLINT_BIN" --edit "$COMMIT_MSG_FILE" --cwd "$CWD" --config "$COMMITLINT_CONFIG"
-exit $?
+exit 0
