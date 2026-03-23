@@ -508,7 +508,7 @@ extensions:
       - "--read-only"
     env_keys:
       - GITHUB_TOKEN
-      - GROQ_API_KEY
+      - OPENROUTER_API_KEY
 
   - type: stdio
     name: code-analyze
