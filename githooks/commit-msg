@@ -58,9 +58,50 @@ if ! grep -q "^Signed-off-by: ${EXPECTED_NAME} <${EXPECTED_EMAIL}>$" "$COMMIT_MS
     exit 1
 fi
 
-# Check body line length (max 100 chars, excluding Signed-off-by and comments)
-if tail -n +2 "$COMMIT_MSG_FILE" | grep -v "^Signed-off-by:" | grep -v "^#" | grep -E "^.{101,}"; then
-    echo "BLOCKED: Commit body lines must be <= 100 characters"
+# A footer token line is one of the known trailer forms:
+#   Signed-off-by: ...
+#   BREAKING CHANGE: ...  / BREAKING-CHANGE: ...
+#   Co-authored-by: ...   (blocked elsewhere, but still a token)
+#   Any single-word hyphen-safe token followed by ': ' or ' #<digits>'
+#   Per spec, token must not contain spaces (BREAKING CHANGE is the only two-word exception).
+FOOTER_TOKEN_RE='^(BREAKING[ -]CHANGE: |[A-Za-z][A-Za-z0-9-]*: |[A-Za-z][A-Za-z0-9-]* #[0-9])'
+
+# Body must be separated from subject by a blank line (body-leading-blank).
+# Line 2 must be empty unless it is itself a footer token (subject-only commit
+# with a trailing footer and no body is valid: subject\nSigned-off-by: ...).
+LINE2=$(sed -n '2p' "$COMMIT_MSG_FILE")
+if [[ "$LINE2" != "#"* ]] && [ -n "$LINE2" ]; then
+    if ! echo "$LINE2" | grep -qE "$FOOTER_TOKEN_RE"; then
+        echo "BLOCKED: Blank line required between subject and body"
+        exit 1
+    fi
+fi
+
+# Footer must be separated from body by a blank line (footer-leading-blank).
+# Walk backwards: collect the trailing footer block, then the first non-footer,
+# non-comment line above it must be blank (or must be the subject line, which is
+# the no-body case and is valid).
+TOTAL_LINES=$(grep -c '' "$COMMIT_MSG_FILE")
+IN_FOOTER=0
+for (( i=TOTAL_LINES; i>=1; i-- )); do
+    LINE=$(sed -n "${i}p" "$COMMIT_MSG_FILE")
+    [[ "$LINE" == "#"* ]] && continue
+    if echo "$LINE" | grep -qE "$FOOTER_TOKEN_RE"; then
+        IN_FOOTER=1
+    elif [ "$IN_FOOTER" -eq 1 ]; then
+        # First non-footer line above the footer block.
+        # If it is blank: fine. If it is non-blank and not the subject (i > 1): error.
+        if [ -n "$LINE" ] && [ "$i" -gt 1 ]; then
+            echo "BLOCKED: Blank line required before footer"
+            exit 1
+        fi
+        break
+    fi
+done
+
+# Line length: body and footer lines must be <= 100 chars (excluding Signed-off-by and comments)
+if tail -n +2 "$COMMIT_MSG_FILE" | grep -v "^Signed-off-by:" | grep -v "^#" | grep -qE "^.{101,}"; then
+    echo "BLOCKED: Commit lines must be <= 100 characters (body and footer)"
     exit 1
 fi
 
