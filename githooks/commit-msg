@@ -20,6 +20,22 @@ if ! echo "$COMMIT_MSG" | grep -qE "$CONVENTIONAL_REGEX"; then
     exit 1
 fi
 
+# Subject must not end with a period (conventional commits spec rule 7)
+if echo "$COMMIT_MSG" | grep -qE '\.$'; then
+    echo "BLOCKED: Commit subject must not end with a period"
+    exit 1
+fi
+
+# BREAKING CHANGE footer must use correct token format (spec rules 12-16)
+# Valid separators per spec: ': ' (colon-space) or ' #' (space-hash).
+# Token must be uppercase; BREAKING-CHANGE is an accepted alias.
+# Only lines starting with the token pattern are checked (anchored at ^).
+if grep -iE "^breaking[ -]change(: | #)" "$COMMIT_MSG_FILE" | grep -qvE "^BREAKING[ -]CHANGE(: | #)"; then
+    echo "BLOCKED: BREAKING CHANGE footer token must be uppercase"
+    echo "  Valid forms: 'BREAKING CHANGE: <description>' or 'BREAKING CHANGE #<value>'"
+    exit 1
+fi
+
 # Check for Co-authored-by trailers
 if grep -iE "Co-authored-by:" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
     echo "BLOCKED: Co-authored-by trailers not allowed"
