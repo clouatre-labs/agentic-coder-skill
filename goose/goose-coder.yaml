@@ -114,7 +114,7 @@ instructions: |
 
   ### SCOUT Research Agent (runs first)
 
-  Before spawning, include issue-specific `code-analyze` targets in the `instructions` parameter: which directories to orient on, which files to deep-dive, which symbols to trace for blast radius.
+  Before spawning, include 1-2 `code-analyze` entry points in the `instructions` parameter: the top-level source directory to start from, and any specific file or symbol named in the issue.
 
   ```json
   {

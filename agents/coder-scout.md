@@ -45,8 +45,8 @@ cd $WORKTREE
 
 ## Phase3: Relevant Code Analysis
 
-- Use `code-analyze` for comprehensive codebase exploration: `analyze_directory` to orient on structure, `analyze_module` for lightweight file triage, `analyze_file` for deep dives, `analyze_symbol` to trace call chains
-- Search patterns with `rg`; trace call chains; note test coverage
+- Orient with `code-analyze` first: `analyze_directory` for structure overview, `analyze_module` for lightweight file triage, `analyze_file` for deep dives, `analyze_symbol` to trace call chains
+- Search patterns with `rg` only after code-analyze orientation; note test coverage
 
 ## Phase4: Ecosystem Research
 
