@@ -14,7 +14,7 @@ compatibility:
 Orchestrates the full contribution flow using sub-agents.
 
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
+SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
                                                                               |                    |
                                                                          FAIL -> Back to BUILD (1x) FAIL (after FIXER) -> Stop & Ask
 ```
@@ -27,6 +27,8 @@ SETUP -> RESEARCH [scout then guard, sequential] -> PLAN -> BUILD -> CHECK -> [A
 2. **You do NOT review code** - Only CHECK validates
 3. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
 4. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
+5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts (CHECK, REVIEW, QA) are authoritative.
+6. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 
 ## code-analyze Tool Usage
 
@@ -104,6 +106,8 @@ Spawn SCOUT first, then GUARD (which reads scout's output).
 
 ### SCOUT
 
+Before spawning, include 1-2 `code-analyze` entry points in the instructions: the top-level source directory to start from, and any specific file or symbol named in the issue.
+
 Invoke the `coder-scout` agent via Task tool. Pass in the task prompt:
 
 ```
@@ -124,6 +128,8 @@ If missing: retry SCOUT once. If still missing: STOP and report failure. Do not 
 **Say:** "Scout complete. Spawning GUARD research agent (session: $SESSION_ID)..."
 
 ### GUARD
+
+Before spawning, include targeted `code-analyze` verification tasks in the instructions based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
 
 Invoke the `coder-guard` agent via Task tool. Pass in the task prompt:
 
@@ -169,7 +175,7 @@ After approach selection, produce the structured plan. No gate - auto-proceed to
 
 **Quality standards (KISS/YAGNI/DRY):**
 - Plan ONLY what solves the problem - no speculative features
-- Sum estimated lines changed across all files (new + modified)
+- Sum estimated lines changed across all files (new + modified + moved)
 - If >500 lines: STOP and ASK before proceeding to BUILD. Include breakdown of new vs modified lines.
 - Reuse existing patterns from the codebase (reference 01a-research-scout.json)
 - Incorporate guard's `implementation_constraints` and `warnings` verbatim
@@ -248,8 +254,6 @@ After writing `$HANDOFF/02-plan.json`, attempt to partition the files array into
 ---
 
 ## Phase 3: BUILD & VERIFY [AGENT]
-
-Phase 3-early: parallel BUILD active (no SQLite prereq required).
 
 ### Single BUILD (if no sub-plans)
 
@@ -479,6 +483,6 @@ Done. Worktree preserved for audit or resume.
 
 ## Tooling Reference
 
-- **Python:** uv, ruff, pyright, pytest
+- **Python:** uv, ruff, pyright
 - **JavaScript/TypeScript:** bun, biome, vitest
 - **Rust:** cargo build/test/clippy/fmt/deny
