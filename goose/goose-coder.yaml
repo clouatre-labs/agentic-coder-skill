@@ -1,4 +1,4 @@
-version: "4.7.0"
+version: "4.9.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -9,7 +9,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.8.0 all delegates on gcp_vertex_ai/haiku, drop mistral/openrouter, remove temperature from SCOUT (incompatible with sonnet-4-6 adaptive thinking), v4.7.0 orchestrator crafts issue-specific code-analyze targets for SCOUT/GUARD spawn, v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check.
+  Recent changes: v4.9.0 GUARD on openrouter/mistral-small-2603, BUILD/FIXER/CHECK/REVIEW/QA on openrouter/mercury-2 (exp6 results), v4.8.0 all delegates on gcp_vertex_ai/haiku, drop mistral/openrouter, remove temperature from SCOUT (incompatible with sonnet-4-6 adaptive thinking), v4.7.0 orchestrator crafts issue-specific code-analyze targets for SCOUT/GUARD spawn, v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check.
 
 parameters:
   - key: issue_ref
@@ -139,8 +139,8 @@ instructions: |
   {
     "source": "coder-guard",
     "extensions": ["developer", "context7", "brave_search", "code-analyze"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
+    "provider": "openrouter",
+    "model": "mistralai/mistral-small-2603",
     "temperature": 0.1
   }
   ```
@@ -259,8 +259,8 @@ instructions: |
   {
     "source": "coder-build",
     "extensions": ["developer"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
+    "provider": "openrouter",
+    "model": "inception/mercury-2",
     "temperature": 0.2
   }
   ```
@@ -334,8 +334,8 @@ instructions: |
   {
     "source": "coder-check",
     "extensions": ["developer", "aptu"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
+    "provider": "openrouter",
+    "model": "inception/mercury-2",
     "temperature": 0.1
   }
   ```
@@ -366,8 +366,8 @@ instructions: |
   {
     "source": "coder-review",
     "extensions": ["developer", "aptu"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
+    "provider": "openrouter",
+    "model": "inception/mercury-2",
     "temperature": 0.1
   }
   ```
@@ -378,8 +378,8 @@ instructions: |
   {
     "source": "coder-qa",
     "extensions": ["developer"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
+    "provider": "openrouter",
+    "model": "inception/mercury-2",
     "temperature": 0.1
   }
   ```
@@ -408,8 +408,8 @@ instructions: |
   {
     "source": "coder-fixer",
     "extensions": ["developer"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
+    "provider": "openrouter",
+    "model": "inception/mercury-2",
     "temperature": 0.2
   }
   ```
