@@ -22,8 +22,8 @@ prompt: |
   {% if issue_ref %}Work on {{ issue_ref }}. Accept the recommendation after RESEARCH and proceed through all phases. Create the PR but do not merge.{% endif %}
 
 settings:
-  goose_provider: aws_bedrock
-  goose_model: global.anthropic.claude-sonnet-4-6
+  goose_provider: anthropic
+  goose_model: claude-sonnet-4-6
   max_turns: 175
 
 instructions: |
