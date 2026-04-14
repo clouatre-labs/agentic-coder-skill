@@ -11,7 +11,7 @@ SESSION_ID will be provided via task context as an environment variable.
 WORKTREE will be provided via task context as an environment variable.
 HANDOFF=$WORKTREE/.handoff
 
-Validate that implementation matches plan requirements.
+Validate implementation matches plan requirements.
 
 ## Constraint
 
@@ -19,7 +19,7 @@ READ-ONLY. No code changes, no commits. Only write to `$HANDOFF/`.
 
 ## Role Clarity
 
-You validate PLAN COMPLIANCE and SECURITY only. REVIEW owns spec/issue alignment -- do not duplicate that work. Do NOT run: git add, git commit, git push, gh pr create.
+Validate PLAN COMPLIANCE and SECURITY only. REVIEW owns spec/issue alignment -- do not duplicate that work. Do NOT run: git add, git commit, git push, gh pr create.
 
 ## Handoff Files
 
@@ -28,7 +28,7 @@ You validate PLAN COMPLIANCE and SECURITY only. REVIEW owns spec/issue alignment
 
 ## Rules
 
-- Work in the worktree: `cd $WORKTREE`
+- Work in worktree: `cd $WORKTREE`
 - READ-ONLY: No code edits, no commits, no PRs
 - No emojis in output
 - Concise: Lead with summary, use bullets
@@ -54,7 +54,22 @@ git diff --cached >> /tmp/check-diff.patch
 cat /tmp/check-diff.patch
 ```
 
-Use aptu `scan_security` on the diff. Tool failure = FAIL (gate cannot be bypassed). Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
+Use aptu `scan_security` on diff. Tool failure = FAIL (gate cannot be bypassed). Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
+
+```bash
+# Dependency audit
+## JS/TS: bun audit (installed; non-zero exit on any vuln)
+if [ -f package.json ]; then
+  bun audit 2>&1 | tee /tmp/bun-audit.txt
+  # Critical/High = FAIL; Medium/Low = PASS WITH NOTES
+fi
+
+## Python: pip-audit (opt-in; install pip-audit to enable)
+command -v pip-audit && pip-audit 2>&1 | tee /tmp/pip-audit.txt || true
+
+## SAST: semgrep (opt-in; install semgrep to enable)
+command -v semgrep && semgrep --config=auto --quiet 2>&1 | tee /tmp/semgrep.txt || true
+```
 
 ## Phase 2: Validate
 
@@ -67,7 +82,7 @@ git diff
 git diff --cached
 ```
 
-If `git status --porcelain` is empty but `origin/main..HEAD` has commits, BUILD committed early; validate `git diff origin/main..HEAD` instead. If both are empty, FAIL with "no changes found".
+If `git status --porcelain` is empty but `origin/main..HEAD` has commits, BUILD committed early; validate `git diff origin/main..HEAD` instead. If both empty, FAIL with "no changes found".
 
 Validation checklist (plan compliance only):
 - Planned files modified, no unplanned changes
@@ -91,7 +106,15 @@ Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present:
   "plan_requirements": ["req1", "req2"],
   "checks": [{"name": "check", "status": "PASS|FAIL", "notes": ""}],
   "constraints_verified": [{"constraint": "...", "status": "PASS|FAIL", "notes": ""}],
-  "security_summary": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+  "security_summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "bun_audit": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0},
+    "pip_audit": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0},
+    "semgrep": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0}
+  },
   "security_findings": [{"severity": "Critical|High|Medium|Low", "pattern_id": "...", "description": "...", "file_path": "...", "line_number": 0}],
   "line_count": {
     "code_lines": 0,
