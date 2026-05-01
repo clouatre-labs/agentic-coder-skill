@@ -448,7 +448,7 @@ git log --show-signature -1  # Verify GPG + DCO
 
 ```bash
 git push origin <branch>
-gh pr create --title "type: description" --body "$(cat <<'EOF'
+cat > /tmp/pr-body.md << 'EOF'
 ## Summary
 <bullets from 02-plan.json overview>
 
@@ -460,8 +460,10 @@ gh pr create --title "type: description" --body "$(cat <<'EOF'
 - [ ] Linter clean
 - [ ] Security scan clean (see 04-validation.json security_summary)
 EOF
-)"
+gh pr create --title "type: description" --body-file /tmp/pr-body.md
 ```
+
+Write the PR body as flowing prose -- do not hard-wrap lines at any column width.
 
 After PR is created, run AI review via aptu:
 - Use `aptu review_pr` on the new PR number
