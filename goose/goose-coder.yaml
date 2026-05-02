@@ -58,7 +58,7 @@ instructions: |
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Aptu is read-only** - Server enforced via --read-only flag (clouatre-labs/aptu#775)
   6. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
-  7. **Code analysis tools** - Use `code-analyze` for semantic analysis; never the native `analyze` tool.
+  7. **Code analysis tools** - Use `aptu-coder` for semantic analysis; never the native `analyze` tool.
 
   ## Handoff Files
 
@@ -114,12 +114,12 @@ instructions: |
 
   ### SCOUT Research Agent (runs first)
 
-  Before spawning, include 1-2 `code-analyze` entry points in the `instructions` parameter: the top-level source directory to start from, and any specific file or symbol named in the issue.
+  Before spawning, include 1-2 `aptu-coder` entry points in the `instructions` parameter: the top-level source directory to start from, and any specific file or symbol named in the issue.
 
   ```json
   {
     "source": "coder-scout",
-    "extensions": ["developer", "context7", "brave_search", "code-analyze"],
+    "extensions": ["developer", "context7", "brave_search", "aptu-coder"],
     "provider": "gcp_vertex_ai",
     "model": "claude-sonnet-4-6@default"
   }
@@ -133,12 +133,12 @@ instructions: |
 
   ### GUARD Research Agent (runs second, reads scout's output)
 
-  Before spawning, include targeted `code-analyze` verification tasks in the `instructions` parameter based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
+  Before spawning, include targeted `aptu-coder` verification tasks in the `instructions` parameter based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
 
   ```json
   {
     "source": "coder-guard",
-    "extensions": ["developer", "context7", "brave_search", "code-analyze"],
+    "extensions": ["developer", "context7", "brave_search", "aptu-coder"],
     "provider": "openrouter",
     "model": "mistralai/mistral-small-2603",
     "temperature": 0.1
@@ -513,7 +513,7 @@ extensions:
       - OPENROUTER_API_KEY
 
   - type: stdio
-    name: code-analyze
-    cmd: code-analyze-mcp
+    name: aptu-coder
+    cmd: aptu-coder
     args: []
     timeout: 30

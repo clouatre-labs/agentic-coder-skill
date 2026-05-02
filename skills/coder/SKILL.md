@@ -30,16 +30,16 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts (CHECK, REVIEW, QA) are authoritative.
 6. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 
-## code-analyze Tool Usage
+## aptu-coder Tool Usage
 
-SCOUT and GUARD have `code-analyze` tools. Use them instead of reading entire files:
+SCOUT and GUARD have `aptu-coder` tools. Use them instead of reading entire files:
 
 - `analyze_directory` -- orient on repo structure (start here, max_depth=2, summary=true)
 - `analyze_module` -- lightweight file index (function names + imports); triage many files fast
 - `analyze_file` -- full signatures and types; use on 3-5 key files max, not every file
 - `analyze_symbol` -- call graph for a specific function; use for blast radius and data flow
 
-The orchestrator should include issue-specific `code-analyze` targets in SCOUT/GUARD instructions at spawn time.
+The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUARD instructions at spawn time.
 
 ## Rules (All Phases)
 
@@ -49,7 +49,7 @@ The orchestrator should include issue-specific `code-analyze` targets in SCOUT/G
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
 6. Do not use aptu for issue reading - use `gh issue view`
-7. Code analysis tools - use `code-analyze` for semantic analysis; never the native `analyze` tool
+7. Code analysis tools - use `aptu-coder` for semantic analysis; never the native `analyze` tool
 
 ## Handoff Protocol
 
@@ -106,7 +106,7 @@ Spawn SCOUT first, then GUARD (which reads scout's output).
 
 ### SCOUT
 
-Before spawning, include 1-2 `code-analyze` entry points in the instructions: the top-level source directory to start from, and any specific file or symbol named in the issue.
+Before spawning, include 1-2 `aptu-coder` entry points in the instructions: the top-level source directory to start from, and any specific file or symbol named in the issue.
 
 Invoke the `coder-scout` agent via Task tool. Pass in the task prompt:
 
@@ -129,7 +129,7 @@ If missing: retry SCOUT once. If still missing: STOP and report failure. Do not 
 
 ### GUARD
 
-Before spawning, include targeted `code-analyze` verification tasks in the instructions based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
+Before spawning, include targeted `aptu-coder` verification tasks in the instructions based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
 
 Invoke the `coder-guard` agent via Task tool. Pass in the task prompt:
 

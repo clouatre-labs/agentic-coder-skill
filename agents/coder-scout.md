@@ -2,7 +2,7 @@
 name: coder-scout
 description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Receives SESSION_ID and WORKTREE via task context.
 model: sonnet
-tools: ["Read", "Write", "Grep", "Glob", "Bash", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__code-analyze__analyze_directory", "mcp__code-analyze__analyze_module", "mcp__code-analyze__analyze_file", "mcp__code-analyze__analyze_symbol"]
+tools: ["Read", "Write", "Grep", "Glob", "Bash", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol"]
 ---
 
 # SCOUT Research Agent (READ-ONLY)
@@ -45,8 +45,8 @@ cd $WORKTREE
 
 ## Phase3: Relevant Code Analysis
 
-- Orient with `code-analyze` first: `analyze_directory` for structure overview, `analyze_module` for lightweight file triage, `analyze_file` for deep dives, `analyze_symbol` to trace call chains
-- Search patterns with `rg` only after code-analyze orientation; note test coverage
+- Orient with `aptu-coder` first: `analyze_directory` for structure overview, `analyze_module` for lightweight file triage, `analyze_file` for deep dives, `analyze_symbol` to trace call chains
+- Search patterns with `rg` only after aptu-coder orientation; note test coverage
 
 ## Phase4: Ecosystem Research
 
