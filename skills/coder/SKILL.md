@@ -1,10 +1,14 @@
 ---
 name: coder
-version: "1.0.0"
+version: "1.1.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
   - claude-code
+# Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
+# Changelog:
+#   1.1.0 -- sync from goose-coder v4.10.0: explicit absolute-path injection for BUILD/CHECK/FIXER delegates
+#   1.0.0 -- initial
 ---
 
 # Goose Coder - Scout/Guard Architecture
@@ -263,7 +267,7 @@ If no `02-plan-A.json` etc. exist, invoke single BUILD:
 
 ```
 SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
+WORKTREE=<actual-absolute-path>
 
 Implement the approved plan. Follow your agent instructions exactly.
 ```
@@ -352,7 +356,7 @@ Invoke the `coder-check` agent via Task tool. Pass in the task prompt:
 
 ```
 SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
+WORKTREE=<actual-absolute-path>
 
 Validate the implementation against the plan. Follow your agent instructions exactly.
 ```
@@ -412,7 +416,7 @@ Merge into `$HANDOFF/05-acceptance.json`:
 Spawn FIXER agent:
 ```
 SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
+WORKTREE=<actual-absolute-path>
 
 Address critical and major findings from acceptance gate. Follow your agent instructions exactly.
 ```
