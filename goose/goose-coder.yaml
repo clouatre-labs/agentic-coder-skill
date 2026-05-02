@@ -1,4 +1,4 @@
-version: "4.9.0"
+version: "4.10.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -9,7 +9,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.9.0 GUARD on openrouter/mistral-small-2603, BUILD/FIXER/CHECK/REVIEW/QA on openrouter/mercury-2 (exp6 results), v4.8.0 all delegates on gcp_vertex_ai/haiku, drop mistral/openrouter, remove temperature from SCOUT (incompatible with sonnet-4-6 adaptive thinking), v4.7.0 orchestrator crafts issue-specific code-analyze targets for SCOUT/GUARD spawn, v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check.
+  Recent changes: v4.10.0 BUILD/CHECK/FIXER spawn blocks now include explicit absolute-path instructions (Worktree/Handoff dir/Plan file) matching proven retry format; switch BUILD/CHECK/FIXER from openrouter/mercury-2 to gcp_vertex_ai/haiku. v4.9.0 GUARD on openrouter/mistral-small-2603, BUILD/FIXER/CHECK/REVIEW/QA on openrouter/mercury-2 (exp6 results), v4.8.0 all delegates on gcp_vertex_ai/haiku, drop mistral/openrouter, remove temperature from SCOUT (incompatible with sonnet-4-6 adaptive thinking), v4.7.0 orchestrator crafts issue-specific code-analyze targets for SCOUT/GUARD spawn, v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check.
 
 parameters:
   - key: issue_ref
@@ -253,14 +253,14 @@ instructions: |
 
   **Say:** "Spawning BUILD & VERIFY delegate (session: SESSION_ID)..."
 
-  **Call the `delegate` tool with these exact parameters:**
+  Before spawning, set the `instructions` parameter to the absolute paths: `Worktree: <WORKTREE>`, `Handoff dir: <WORKTREE>/.handoff`, `Plan file: <WORKTREE>/.handoff/02-plan.json`.
 
   ```json
   {
     "source": "coder-build",
     "extensions": ["developer"],
-    "provider": "openrouter",
-    "model": "inception/mercury-2",
+    "provider": "gcp_vertex_ai",
+    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.2
   }
   ```
@@ -328,14 +328,14 @@ instructions: |
 
   **Say:** "Spawning CHECK delegate (session: SESSION_ID)..."
 
-  **Call the `delegate` tool with these exact parameters:**
+  Before spawning, set the `instructions` parameter to the absolute paths: `Worktree: <WORKTREE>`, `Handoff dir: <WORKTREE>/.handoff`.
 
   ```json
   {
     "source": "coder-check",
     "extensions": ["developer", "aptu"],
-    "provider": "openrouter",
-    "model": "inception/mercury-2",
+    "provider": "gcp_vertex_ai",
+    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.1
   }
   ```
@@ -402,14 +402,14 @@ instructions: |
 
   **If any critical or major findings exist:**
 
-  Spawn FIXER delegate:
+  Before spawning, set the `instructions` parameter to the absolute paths: `Worktree: <WORKTREE>`, `Handoff dir: <WORKTREE>/.handoff`.
 
   ```json
   {
     "source": "coder-fixer",
     "extensions": ["developer"],
-    "provider": "openrouter",
-    "model": "inception/mercury-2",
+    "provider": "gcp_vertex_ai",
+    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.2
   }
   ```
