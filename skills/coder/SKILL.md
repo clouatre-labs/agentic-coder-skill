@@ -5,6 +5,8 @@ description: Orchestrates coding tasks using Scout/Guard research architecture. 
 type: orchestration
 compatibility:
   - claude-code
+  - codex
+  - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
 #   1.1.0 -- sync from goose-coder v4.10.0: explicit absolute-path injection for BUILD/CHECK/FIXER delegates
