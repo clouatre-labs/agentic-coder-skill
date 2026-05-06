@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "1.1.0"
+version: "1.2.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   1.2.0 -- sync from goose-coder v4.11.0: add analyze_raw and exec_command to aptu-coder tool list
 #   1.1.0 -- sync from goose-coder v4.10.0: explicit absolute-path injection for BUILD/CHECK/FIXER delegates
 #   1.0.0 -- initial
 ---
@@ -44,6 +45,8 @@ SCOUT and GUARD have `aptu-coder` tools. Use them instead of reading entire file
 - `analyze_module` -- lightweight file index (function names + imports); triage many files fast
 - `analyze_file` -- full signatures and types; use on 3-5 key files max, not every file
 - `analyze_symbol` -- call graph for a specific function; use for blast radius and data flow
+- `analyze_raw` -- exact line-range reads without AST overhead; use for targeted line ranges
+- `exec_command` -- shell commands (e.g., `cargo info`, `gh issue view`); only for commands with no file-read equivalent
 
 The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUARD instructions at spawn time.
 
