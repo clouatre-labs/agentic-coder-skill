@@ -2,7 +2,7 @@
 name: coder-guard
 description: Adversarial reviewer focusing on risk, safety, and minimalism. Stress-tests Scout's proposals and re-ranks by safety. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["Read", "Write", "Grep", "Glob", "Bash", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol"]
+tools: ["Read", "Write", "Grep", "Glob", "Bash", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__analyze_raw"]
 ---
 
 # GUARD Research Agent (READ-ONLY)
@@ -39,7 +39,7 @@ cd $WORKTREE && jq . $HANDOFF/01a-research-scout.json
 
 ## Phase2: Verify Scout's Claims
 
-- Spot-check identified files with `aptu-coder` (using `analyze_directory` for overview and `analyze_module` for lightweight file scanning); verify conventions; validate feasibility of proposed approaches
+- Spot-check identified files with `aptu-coder` (using `analyze_directory` for overview, `analyze_module` for lightweight file scanning, `analyze_raw` for exact line-range reads); verify conventions; validate feasibility of proposed approaches
 
 ## Phase3: Risk Analysis (for each approach)
 
