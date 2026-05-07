@@ -110,16 +110,19 @@ Spawn SCOUT first, then GUARD (which reads scout's output).
 
 ### SCOUT
 
-Before spawning, include 1-2 `aptu-coder` entry points in the instructions: the top-level source directory to start from, and any specific file or symbol named in the issue.
-
-Invoke the `coder-scout` agent via Task tool. Pass in the task prompt:
+Set the task prompt using this template -- fill in the bracketed values:
 
 ```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
-
-Research the issue and propose 2-3 solution approaches. Follow your agent instructions exactly.
+Worktree: <WORKTREE>
+Handoff dir: <WORKTREE>/.handoff
+Issue: <ISSUE_URL>
+Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
+Output: write $HANDOFF/01a-research-scout.json (compact: jq -c .) then stop.
+Schema fields: session_id, lens, relevant_files, conventions, patterns, approaches, recommendation.
+Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
+
+Invoke the `coder-scout` agent via Task tool with the filled-in prompt.
 
 After SCOUT completes, verify handoff exists:
 
@@ -133,16 +136,19 @@ If missing: retry SCOUT once. If still missing: STOP and report failure. Do not 
 
 ### GUARD
 
-Before spawning, include targeted `aptu-coder` verification tasks in the instructions based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
-
-Invoke the `coder-guard` agent via Task tool. Pass in the task prompt:
+Set the task prompt using this template -- fill in the bracketed values:
 
 ```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
-
-Stress-test scout's proposals. Follow your agent instructions exactly.
+Worktree: <WORKTREE>
+Handoff dir: <WORKTREE>/.handoff
+Scout handoff: <WORKTREE>/.handoff/01a-research-scout.json
+Verification targets: <2-3 specific checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
+Output: write $HANDOFF/01b-research-guard.json (compact: jq -c .) then stop.
+Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
+Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
+
+Invoke the `coder-guard` agent via Task tool with the filled-in prompt.
 
 After GUARD completes, verify handoff exists:
 
@@ -244,12 +250,18 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 
 **Say:** "Spawning BUILD agent (session: $SESSION_ID)..."
 
-```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-absolute-path>
+Set the task prompt using this template -- fill in the bracketed values:
 
-Implement the approved plan. Follow your agent instructions exactly.
 ```
+Worktree: <WORKTREE>
+Handoff dir: <WORKTREE>/.handoff
+Plan file: <WORKTREE>/.handoff/02-plan.json
+Output: write $HANDOFF/03-build.json (compact: jq -c .) then stop.
+Schema fields: session_id, files_changed, test_results, lint_result, notes.
+Constraint: Implement plan only. No git add, commit, or push.
+```
+
+Invoke the `coder-build` agent via Task tool with the filled-in prompt.
 
 After BUILD completes:
 
@@ -269,14 +281,19 @@ After BUILD completes:
 
 **Say:** "Spawning CHECK agent (session: $SESSION_ID)..."
 
-Invoke the `coder-check` agent via Task tool. Pass in the task prompt:
+Set the task prompt using this template -- fill in the bracketed values:
 
 ```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-absolute-path>
-
-Validate the implementation against the plan. Follow your agent instructions exactly.
+Worktree: <WORKTREE>
+Handoff dir: <WORKTREE>/.handoff
+Build handoff: <WORKTREE>/.handoff/03-build.json
+Plan file: <WORKTREE>/.handoff/02-plan.json
+Output: write $HANDOFF/04-validation.json (compact: jq -c .) then stop.
+Schema fields: session_id, verdict, issues, security_summary, notes, retry_instructions.
+Constraint: READ-ONLY. No code changes. Validate only.
 ```
+
+Invoke the `coder-check` agent via Task tool with the filled-in prompt.
 
 After CHECK completes:
 

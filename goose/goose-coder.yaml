@@ -109,14 +109,24 @@ instructions: |
 
   ### SCOUT Research Agent (runs first)
 
-  Before spawning, include 1-2 `aptu-coder` entry points in the `instructions` parameter: the top-level source directory to start from, and any specific file or symbol named in the issue.
+  Set the `instructions` parameter using this template -- fill in the bracketed values:
+
+  ```
+  Worktree: <WORKTREE>
+  Handoff dir: <WORKTREE>/.handoff
+  Issue: <ISSUE_URL>
+  Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
+  Output: write $HANDOFF/01a-research-scout.json (compact: jq -c .) then stop.
+  Schema fields: session_id, lens, relevant_files, conventions, patterns, approaches, recommendation.
+  Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
+  ```
 
   ```json
   {
     "source": "coder-scout",
     "extensions": ["context7", "brave_search", "aptu-coder"],
     "provider": "gcp_vertex_ai",
-    "model": "claude-sonnet-4-6@default"
+    "model": "claude-haiku-4-5@20251001"
   }
   ```
 
@@ -128,12 +138,22 @@ instructions: |
 
   ### GUARD Research Agent (runs second, reads scout's output)
 
-  Before spawning, include targeted `aptu-coder` verification tasks in the `instructions` parameter based on SCOUT's findings: which blast radius claims to verify, which API surfaces to confirm. Limit to 2-3 checks.
+  Set the `instructions` parameter using this template -- fill in the bracketed values:
+
+  ```
+  Worktree: <WORKTREE>
+  Handoff dir: <WORKTREE>/.handoff
+  Scout handoff: <WORKTREE>/.handoff/01a-research-scout.json
+  Verification targets: <2-3 specific aptu-coder checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
+  Output: write $HANDOFF/01b-research-guard.json (compact: jq -c .) then stop.
+  Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
+  Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
+  ```
 
   ```json
   {
     "source": "coder-guard",
-    "extensions": ["developer", "context7", "brave_search", "aptu-coder"],
+    "extensions": ["context7", "brave_search", "aptu-coder"],
     "provider": "openrouter",
     "model": "mistralai/mistral-small-2603",
     "temperature": 0.1
@@ -231,12 +251,21 @@ instructions: |
 
   **Say:** "Spawning BUILD & VERIFY delegate (session: SESSION_ID)..."
 
-  Before spawning, set the `instructions` parameter to the absolute paths: `Worktree: <WORKTREE>`, `Handoff dir: <WORKTREE>/.handoff`, `Plan file: <WORKTREE>/.handoff/02-plan.json`.
+  Set the `instructions` parameter using this template -- fill in the bracketed values:
+
+  ```
+  Worktree: <WORKTREE>
+  Handoff dir: <WORKTREE>/.handoff
+  Plan file: <WORKTREE>/.handoff/02-plan.json
+  Output: write $HANDOFF/03-build.json (compact: jq -c .) then stop.
+  Schema fields: session_id, files_changed, test_results, lint_result, notes.
+  Constraint: Implement plan only. No git add, commit, or push.
+  ```
 
   ```json
   {
     "source": "coder-build",
-    "extensions": ["developer"],
+    "extensions": ["aptu-coder"],
     "provider": "gcp_vertex_ai",
     "model": "claude-haiku-4-5@20251001",
     "temperature": 0.2
@@ -260,12 +289,22 @@ instructions: |
 
   **Say:** "Spawning CHECK delegate (session: SESSION_ID)..."
 
-  Before spawning, set the `instructions` parameter to the absolute paths: `Worktree: <WORKTREE>`, `Handoff dir: <WORKTREE>/.handoff`.
+  Set the `instructions` parameter using this template -- fill in the bracketed values:
+
+  ```
+  Worktree: <WORKTREE>
+  Handoff dir: <WORKTREE>/.handoff
+  Build handoff: <WORKTREE>/.handoff/03-build.json
+  Plan file: <WORKTREE>/.handoff/02-plan.json
+  Output: write $HANDOFF/04-validation.json (compact: jq -c .) then stop.
+  Schema fields: session_id, verdict, issues, security_summary, notes, retry_instructions.
+  Constraint: READ-ONLY. No code changes. Validate only.
+  ```
 
   ```json
   {
     "source": "coder-check",
-    "extensions": ["developer", "aptu"],
+    "extensions": ["aptu-coder", "aptu"],
     "provider": "gcp_vertex_ai",
     "model": "claude-haiku-4-5@20251001",
     "temperature": 0.1

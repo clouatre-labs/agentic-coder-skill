@@ -2,7 +2,7 @@
 name: coder-check
 description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["Read", "Write", "Bash", "Glob", "Grep", "mcp__aptu__scan_security"]
+tools: ["mcp__aptu-coder__analyze_raw", "mcp__aptu-coder__exec_command", "mcp__aptu__scan_security"]
 ---
 
 # CHECK Delegate (READ-ONLY)

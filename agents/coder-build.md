@@ -2,7 +2,7 @@
 name: coder-build
 description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
+tools: ["mcp__aptu-coder__analyze_raw", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__edit_replace", "mcp__aptu-coder__edit_insert", "mcp__aptu-coder__edit_rename", "mcp__aptu-coder__exec_command"]
 ---
 
 # BUILD & VERIFY Delegate (WRITE)
