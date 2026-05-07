@@ -55,7 +55,7 @@ instructions: |
 
   1. **No emojis** - Never in code, commits, PRs, docs, or responses
   2. **Concise** - Lead with summary, use bullets, facts only
-  3. **Use gh CLI** - Prefer `gh` over `git` for GitHub operations
+  3. **Use gh CLI** - `gh issue view` / `gh pr list` / `gh api` for all GitHub data; `exec_command` has a full authenticated shell. Pass this rule to every delegate.
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Aptu is read-only** - Server enforced via --read-only flag (clouatre-labs/aptu#775)
   6. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary

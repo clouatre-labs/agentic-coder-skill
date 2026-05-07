@@ -55,7 +55,7 @@ The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUA
 
 1. No emojis in code, commits, PRs, docs, or responses
 2. Concise - lead with summary, use bullets, facts only
-3. Use `gh` CLI for all GitHub operations
+3. Use `gh` CLI for all GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has a full authenticated shell. Pass this rule to every delegate.
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
 6. Do not use aptu for issue reading - use `gh issue view`
