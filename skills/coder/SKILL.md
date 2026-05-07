@@ -46,8 +46,7 @@ SCOUT and GUARD have `aptu-coder` tools. Use them instead of reading entire file
 - `analyze_module` -- lightweight file index (function names + imports); triage many files fast
 - `analyze_file` -- full signatures and types; use on 3-5 key files max, not every file
 - `analyze_symbol` -- call graph for a specific function; use for blast radius and data flow
-- `analyze_raw` -- exact line-range reads without AST overhead; use for targeted line ranges
-- `exec_command` -- shell commands (e.g., `cargo info`, `gh issue view`); only for commands with no file-read equivalent
+- `exec_command` -- shell commands (e.g., `cargo info`, `gh issue view`)
 
 The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUARD instructions at spawn time.
 

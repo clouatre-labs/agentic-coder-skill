@@ -2,7 +2,7 @@
 name: coder-scout
 description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__analyze_raw", "mcp__aptu-coder__exec_command"]
+tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command"]
 ---
 
 # SCOUT Research Agent (READ-ONLY)
@@ -47,7 +47,7 @@ cd $WORKTREE
 
 ## Phase3: Relevant Code Analysis
 
-- Orient with `aptu-coder` first: `analyze_directory` for structure overview, then `analyze_module` for function/import index. Use `analyze_file` only when you need signatures or class details. Use `analyze_symbol` to trace call chains. Use `analyze_raw` for targeted ranges (both params required, know the range first); for non-code files (shell, YAML, Markdown, Dockerfiles) where `analyze_module` returns nothing, omit both params to read the full file in one call.
+- Orient with `aptu-coder` first: `analyze_directory` for structure overview, then `analyze_module` for function/import index. Use `analyze_file` only when you need signatures or class details. Use `analyze_symbol` to trace call chains.
 - Search patterns with `rg` only after aptu-coder orientation; note test coverage
 
 ## Phase4: Ecosystem Research

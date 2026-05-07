@@ -2,7 +2,7 @@
 name: coder-build
 description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__analyze_raw", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__edit_replace", "mcp__aptu-coder__edit_insert", "mcp__aptu-coder__edit_rename", "mcp__aptu-coder__exec_command"]
+tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__edit_replace", "mcp__aptu-coder__edit_insert", "mcp__aptu-coder__edit_rename", "mcp__aptu-coder__exec_command"]
 ---
 
 # BUILD & VERIFY Delegate (WRITE)
@@ -57,7 +57,7 @@ If 04-validation.json has FAIL verdict, address those issues.
 - Keep it simple (KISS)
 - Honor all implementation_constraints from the plan
 - Stay within plan's line_budget.total_max and line_budget.test_ratio_max if specified; if unable, document deviation in 03-build.json
-- Read order: `analyze_module` → `analyze_file` → `analyze_symbol` → `analyze_raw(start_line, end_line)`. For non-code files (shell, YAML, Markdown, Dockerfiles) where `analyze_module` returns nothing, omit both params to read in one call. For JSON/TOML/handoffs use `exec_command + jq`.
+- Read order: `analyze_module` → `analyze_file` → `analyze_symbol`. For JSON/TOML/handoffs use `exec_command + jq`.
 
 ## Phase 3: Verify
 

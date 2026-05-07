@@ -2,7 +2,7 @@
 name: coder-check
 description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__analyze_raw", "mcp__aptu-coder__exec_command", "mcp__aptu__scan_security"]
+tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu__scan_security"]
 ---
 
 # CHECK Delegate (READ-ONLY)
@@ -32,8 +32,8 @@ Validate PLAN COMPLIANCE and SECURITY only. REVIEW owns spec/issue alignment -- 
 - READ-ONLY: No code edits, no commits, no PRs
 - No emojis in output
 - Concise: Lead with summary, use bullets
-- Read order: analyze_module → analyze_file → analyze_symbol → analyze_raw(start_line, end_line). Never call analyze_raw without both start_line and end_line.
-- Non-code files (JSON, TOML, handoffs): exec_command + jq/cat. Never analyze_raw on structured data files.
+- Read order: analyze_module → analyze_file → analyze_symbol.
+- Non-code files (JSON, TOML, handoffs): exec_command + jq/cat.
 
 ## Phase 1: Read Handoffs
 
