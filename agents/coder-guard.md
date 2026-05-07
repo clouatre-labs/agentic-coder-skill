@@ -41,7 +41,7 @@ cd $WORKTREE && jq . $HANDOFF/01a-research-scout.json
 
 ## Phase2: Verify Scout's Claims
 
-- Spot-check identified files with `aptu-coder`: use `analyze_directory` for overview, `analyze_module` for lightweight file scanning. Use `analyze_raw` ONLY for a line range you already know from a prior tool call -- never as the first read of any file, never without both `start_line` and `end_line`. Verify conventions; validate feasibility of proposed approaches.
+- Spot-check identified files with `aptu-coder`: `analyze_directory` for overview, `analyze_module` for lightweight file scanning, `analyze_raw` for targeted ranges (both params required, know the range first); for non-code files (shell, YAML, Markdown, Dockerfiles) where `analyze_module` returns nothing, omit both params. Verify conventions; validate feasibility of proposed approaches.
 
 ## Phase3: Risk Analysis (for each approach)
 

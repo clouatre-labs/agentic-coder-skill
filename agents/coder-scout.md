@@ -47,7 +47,7 @@ cd $WORKTREE
 
 ## Phase3: Relevant Code Analysis
 
-- Orient with `aptu-coder` first: `analyze_directory` for structure overview, then `analyze_module` for function/import index. Use `analyze_file` only when you need signatures or class details. Use `analyze_symbol` to trace call chains. Use `analyze_raw` ONLY for a line range you already know from a prior tool call -- never as the first read of any file, never without both `start_line` and `end_line`.
+- Orient with `aptu-coder` first: `analyze_directory` for structure overview, then `analyze_module` for function/import index. Use `analyze_file` only when you need signatures or class details. Use `analyze_symbol` to trace call chains. Use `analyze_raw` for targeted ranges (both params required, know the range first); for non-code files (shell, YAML, Markdown, Dockerfiles) where `analyze_module` returns nothing, omit both params to read the full file in one call.
 - Search patterns with `rg` only after aptu-coder orientation; note test coverage
 
 ## Phase4: Ecosystem Research

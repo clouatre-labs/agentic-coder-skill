@@ -57,8 +57,7 @@ If 04-validation.json has FAIL verdict, address those issues.
 - Keep it simple (KISS)
 - Honor all implementation_constraints from the plan
 - Stay within plan's line_budget.total_max and line_budget.test_ratio_max if specified; if unable, document deviation in 03-build.json
-- Read order: analyze_module (index) → analyze_file (signatures) → analyze_symbol (call graph) → analyze_raw(start_line, end_line) (targeted range). Never call analyze_raw without both start_line and end_line.
-- Non-code files (JSON, TOML, handoffs): exec_command + jq/cat. Never analyze_raw on structured data files.
+- Read order: `analyze_module` → `analyze_file` → `analyze_symbol` → `analyze_raw(start_line, end_line)`. For non-code files (shell, YAML, Markdown, Dockerfiles) where `analyze_module` returns nothing, omit both params to read in one call. For JSON/TOML/handoffs use `exec_command + jq`.
 
 ## Phase 3: Verify
 
