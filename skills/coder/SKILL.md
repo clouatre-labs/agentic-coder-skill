@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "1.2.0"
+version: "2.0.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.0.0 -- sync from goose-coder v5.0.0: drop Phase 4.5 (REVIEW/QA/FIXER retired); drop parallel BUILD; add PLAN source-read constraint; add retry_instructions to CHECK output schema
 #   1.2.0 -- sync from goose-coder v4.11.0: add analyze_raw and exec_command to aptu-coder tool list
 #   1.1.0 -- sync from goose-coder v4.10.0: explicit absolute-path injection for BUILD/CHECK/FIXER delegates
 #   1.0.0 -- initial
@@ -21,9 +22,9 @@ compatibility:
 Orchestrates the full contribution flow using sub-agents.
 
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
+SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> COMMIT/PR -> aptu review_pr
                                                                               |                    |
-                                                                         FAIL -> Back to BUILD (1x) FAIL (after FIXER) -> Stop & Ask
+                                                                         FAIL -> Back to BUILD (1x) FAIL -> Stop & Ask
 ```
 
 **You handle PLAN and COMMIT directly. Delegate SCOUT, GUARD, BUILD, and CHECK via the Task tool.**
@@ -34,7 +35,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 2. **You do NOT review code** - Only CHECK validates
 3. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
 4. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
-5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts (CHECK, REVIEW, QA) are authoritative.
+5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
 6. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 
 ## aptu-coder Tool Usage
@@ -68,15 +69,9 @@ All phases communicate via `$WORKTREE/.handoff/`:
 |------|-----------|---------|
 | `01a-research-scout.json` | SCOUT agent | GUARD agent, orchestrator |
 | `01b-research-guard.json` | GUARD agent | orchestrator (PLAN phase) |
-| `02-plan.json` | orchestrator | BUILD agent (single) or orchestrator (parallel) |
-| `02-plan-A.json`, `02-plan-B.json`, etc. | orchestrator (optional) | BUILD agents (parallel shards) |
-| `03-build.json` | BUILD agent (single) or orchestrator (merged) | CHECK agent, orchestrator |
-| `03-build-A.json`, `03-build-B.json`, etc. | BUILD agents (parallel shards) | orchestrator (merge) |
+| `02-plan.json` | orchestrator | BUILD agent |
+| `03-build.json` | BUILD agent | CHECK agent, orchestrator |
 | `04-validation.json` | CHECK agent | BUILD agent (on retry), orchestrator |
-| `05-review-findings.json` | REVIEW agent | orchestrator |
-| `05-qa-findings.json` | QA agent | orchestrator |
-| `05-acceptance.json` | orchestrator (merged) | FIXER agent, orchestrator |
-| `06-fixer.json` | FIXER agent | orchestrator |
 
 Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent context, `jq .` for human presentation.
 
@@ -193,7 +188,7 @@ After approach selection, produce the structured plan. No gate - auto-proceed to
 - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
 - Build plan based on selected approach
 - Include guard's `implementation_constraints` verbatim in the plan
-- Identify specific files and approximate line ranges
+- Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
 - Map out implementation steps (5-10 steps)
 - Identify risks and edge cases from guard's analysis
 - Plan test strategy including guard's `guard_test_gaps`
@@ -243,30 +238,9 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 - Risks identified
 - Complexity estimate
 
-### Partition for Parallel BUILD
-
-After writing `$HANDOFF/02-plan.json`, attempt to partition the files array into 2+ groups with strictly non-overlapping file sets (no file appears in two groups):
-
-1. Examine each file in `02-plan.json` files array
-2. Check for cross-file dependencies (e.g., "Update file A and B together because X")
-3. If a valid partition exists (2+ disjoint groups): write `02-plan-A.json`, `02-plan-B.json` (etc.), each containing:
-   - A subset of files (no overlap between groups)
-   - Steps scoped only to those files
-   - Copy all top-level fields from `02-plan.json` (overview, session_id, worktree, tooling, implementation_constraints, risks, test_strategy, complexity, line_budget, recommended_approach); then scope `files` and `steps` to only this shard's subset
-4. If no valid partition (files share dependencies or insufficient files): log "parallel BUILD not applicable: [reason]" and proceed with single BUILD (single `02-plan.json` only)
-5. Present the partition decision to the user before proceeding to BUILD
-
-**Example:** If plan touches 5 independent agent configs and 2 independent spec files, create:
-- `02-plan-A.json` with agent config changes
-- `02-plan-B.json` with spec changes
-
 ---
 
 ## Phase 3: BUILD & VERIFY [AGENT]
-
-### Single BUILD (if no sub-plans)
-
-If no `02-plan-A.json` etc. exist, invoke single BUILD:
 
 **Say:** "Spawning BUILD agent (session: $SESSION_ID)..."
 
@@ -288,68 +262,6 @@ After BUILD completes:
 2. Read `$HANDOFF/03-build.json` and present summary and test results.
 
 3. Proceed immediately to CHECK (no gate).
-
-### Parallel BUILD (if sub-plans exist)
-
-If `02-plan-A.json`, `02-plan-B.json`, etc. exist:
-
-1. **Say:** "Spawning BUILD agents in parallel (session: $SESSION_ID, N shards)..."
-
-2. Create a sparse-checkout worktree for each shard:
-   ```bash
-   git config extensions.worktreeConfig true
-   for shard in A B ...; do
-     git worktree add $WORKTREE-$shard <branch>
-     cd $WORKTREE-$shard
-     git sparse-checkout init --no-cone
-     # Write the files for this shard (one path per line)
-     jq -r '.files[].path' $HANDOFF/02-plan-$shard.json > .git/info/sparse-checkout
-     git sparse-checkout reapply
-     cd -
-   done
-   ```
-
-3. Spawn N coder-build agents in parallel via Task tool (one per shard). Each agent receives:
-   ```
-   SESSION_ID=<actual-value>
-   WORKTREE=<actual-path-for-this-shard>
-
-   Read 02-plan-X.json instead of 02-plan.json (located in the main HANDOFF dir: <main-worktree>/.handoff/).
-   Write 03-build-X.json to the same HANDOFF dir.
-   Implement your shard of the plan. Follow your agent instructions exactly.
-   ```
-
-4. Wait for all N agents to complete. Verify all handoffs exist:
-   ```bash
-   for shard in A B ...; do
-     jq -c . $HANDOFF/03-build-$shard.json || echo "ERROR: build-$shard handoff missing"
-   done
-   ```
-   If any missing: retry that shard's agent once. If still missing: STOP and ASK.
-
-5. **Merge changes** from each shard worktree into the main worktree:
-   ```bash
-   for shard in A B ...; do
-     # Tracked modifications
-     git -C $WORKTREE-$shard diff > /tmp/shard-$shard.patch
-     git -C $WORKTREE apply /tmp/shard-$shard.patch
-     # Untracked new files (BUILD may create new test files etc.)
-     git -C $WORKTREE-$shard ls-files --others --exclude-standard | while read f; do
-       mkdir -p $WORKTREE/$(dirname $f)
-       cp $WORKTREE-$shard/$f $WORKTREE/$f
-     done
-   done
-   ```
-
-6. **Merge** `03-build-*.json` into unified `$HANDOFF/03-build.json`:
-   - Combine `files_changed` arrays (union of all shards)
-   - Pick worst lint/test/deny/type_check status (FAIL > issues > clean)
-   - Collect all deviations and constraints_honored into single arrays
-   - Sum test_results counts
-
-7. Read merged `$HANDOFF/03-build.json` and present summary and test results.
-
-8. Proceed immediately to CHECK (no gate).
 
 ---
 
@@ -380,65 +292,6 @@ After CHECK completes:
 **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT, or address notes first?"
 
 **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP. Do not fix inline.
-
----
-
-## Phase 4.5: ACCEPTANCE GATE [PARALLEL AGENTS]
-
-**Say:** "Spawning ACCEPTANCE GATE (REVIEW agent + QA agent in parallel, session: $SESSION_ID)..."
-
-Spawn REVIEW agent and QA agent simultaneously via two Task tool calls:
-
-**REVIEW agent task prompt:**
-```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
-
-Review spec alignment of the implementation. Follow your agent instructions exactly.
-```
-
-**QA agent task prompt:**
-```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
-
-Run test suite and complexity check. Follow your agent instructions exactly.
-```
-
-After both complete, verify handoffs exist:
-
-If any missing: retry both agents once. If still missing: STOP and report failure.
-
-Then merge findings:
-
-Merge into `$HANDOFF/05-acceptance.json`:
-- Combined findings from both agents
-- Overall verdict: FAIL if either agent verdict is FAIL, PASS WITH NOTES if any PASS WITH NOTES, else PASS
-- Zero critical findings required to proceed
-
-**If any critical or major findings exist in `05-acceptance.json`:**
-
-Spawn FIXER agent:
-```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-absolute-path>
-
-Address critical and major findings from acceptance gate. Follow your agent instructions exactly.
-```
-
-After FIXER agent completes, re-run REVIEW agent on critical findings only:
-```
-SESSION_ID=<actual-value>
-WORKTREE=<actual-path>
-
-Re-review CRITICAL findings only from 05-acceptance.json. Follow your agent instructions exactly.
-```
-
-Update `05-acceptance.json` with re-review results.
-
-**Gate:** Zero critical findings required before proceeding to COMMIT. If critical findings remain after one fixer iteration: **STOP and ASK user.**
-
-**If PASS or PASS WITH NOTES (minor only):** Proceed to COMMIT.
 
 ---
 

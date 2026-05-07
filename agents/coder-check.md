@@ -95,7 +95,9 @@ Validation checklist (plan compliance only):
 
 ## Output
 
-Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present:
+Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present.
+
+`retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough that BUILD can act without reading source code (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
 
 ```json
 {
@@ -103,6 +105,7 @@ Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present:
   "timestamp": "<ISO 8601>",
   "branch": "<branch-name>",
   "verdict": "PASS|FAIL|PASS WITH NOTES",
+  "retry_instructions": ["Specific action BUILD must take on retry, e.g. 'Fix test_foo: expected timed_out=true, got false'"],
   "plan_requirements": ["req1", "req2"],
   "checks": [{"name": "check", "status": "PASS|FAIL", "notes": ""}],
   "constraints_verified": [{"constraint": "...", "status": "PASS|FAIL", "notes": ""}],

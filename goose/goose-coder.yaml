@@ -1,16 +1,16 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "4.11.0"
+version: "5.0.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
 description: |
   Orchestrates coding tasks using delegates in a Scout/Guard research architecture.
   Scout (creative, Sonnet) explores the codebase and proposes approaches.
-  Guard (adversarial, MiniMax M2.5) stress-tests those proposals for risk.
+  Guard (adversarial, Mistral Small) stress-tests those proposals for risk.
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v4.11.0 drop developer from SCOUT spawn; replace Read/Write/Grep/Glob/Bash with exec_command in coder-scout tools allowlist; add analyze_raw and exec_command to SKILL.md aptu-coder tool list. v4.10.0 BUILD/CHECK/FIXER spawn blocks now include explicit absolute-path instructions (Worktree/Handoff dir/Plan file) matching proven retry format; switch BUILD/CHECK/FIXER from openrouter/mercury-2 to gcp_vertex_ai/haiku. v4.9.0 GUARD on openrouter/mistral-small-2603, BUILD/FIXER/CHECK/REVIEW/QA on openrouter/mercury-2 (exp6 results), v4.8.0 all delegates on gcp_vertex_ai/haiku, drop mistral/openrouter, remove temperature from SCOUT (incompatible with sonnet-4-6 adaptive thinking), v4.7.0 orchestrator crafts issue-specific code-analyze targets for SCOUT/GUARD spawn, v4.6.0 add Phase 4.5 ACCEPTANCE GATE with REVIEW/QA delegates and FIXER iteration, sync handoff protocol with parallel BUILD, update test_strategy schema and COMMIT message template, v4.5.0 replace embedded delegate JSON with delegate(source:) for scout/guard/build/check.
+  Recent changes: v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu review_pr at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -38,9 +38,9 @@ instructions: |
   ## Workflow Overview
 
   ```
-  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> [ACCEPTANCE GATE 4.5] -> COMMIT/PR
+  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> COMMIT/PR -> aptu review_pr
                                                                               |                                    |
-                                                                         FAIL -> [GATE] -> Back to BUILD     FAIL (after FIXER) -> Stop & Ask
+                                                                         FAIL -> [GATE] -> Back to BUILD     FAIL -> Stop & Ask
   ```
 
   ## CRITICAL CONSTRAINTS
@@ -48,7 +48,7 @@ instructions: |
   1. **Allowlist** - You may: spawn delegates, read/write handoff JSON, run git/gh/jq/mkdir, present summaries, manage gates. Nothing else.
   2. **No source code** - Never cat/sed/rg source files. Read handoff JSON and git metadata (log, diff --stat, branch) only.
   3. **No inline work** - If a delegate fails twice, STOP. Never research, build, review, fix, or reason about code correctness yourself.
-  4. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts (CHECK, REVIEW, QA) are authoritative.
+  4. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
   5. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 
   ## Rules (Apply to All Phases)
@@ -69,15 +69,9 @@ instructions: |
   |------|-----------|---------|
   | `01a-research-scout.json` | SCOUT agent | GUARD agent, orchestrator |
   | `01b-research-guard.json` | GUARD agent | orchestrator (PLAN phase) |
-  | `02-plan.json` | orchestrator | BUILD agent (single) or orchestrator (parallel) |
-  | `02-plan-A.json`, `02-plan-B.json`, etc. | orchestrator (optional) | BUILD agents (parallel shards) |
-  | `03-build.json` | BUILD agent (single) or orchestrator (merged) | CHECK agent, orchestrator |
-  | `03-build-A.json`, `03-build-B.json`, etc. | BUILD agents (parallel shards) | orchestrator (merge) |
+  | `02-plan.json` | orchestrator | BUILD agent |
+  | `03-build.json` | BUILD agent | CHECK agent, orchestrator |
   | `04-validation.json` | CHECK agent | BUILD agent (on retry), orchestrator |
-  | `05-review-findings.json` | REVIEW agent | orchestrator |
-  | `05-qa-findings.json` | QA agent | orchestrator |
-  | `05-acceptance.json` | orchestrator (merged) | FIXER agent, orchestrator |
-  | `06-fixer.json` | FIXER agent | orchestrator |
 
   ---
 
@@ -177,7 +171,7 @@ instructions: |
   - Create detailed implementation plan based on selected approach
   - Include guard's implementation_constraints verbatim
   - Define minimal scope
-  - Identify specific files and approximate line ranges
+  - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
   - Map out implementation steps (5-10 steps)
   - Identify risks and edge cases (from guard's analysis)
   - Plan test strategy (including guard's test_gaps)
@@ -227,23 +221,6 @@ instructions: |
   - Risks identified
   - Complexity estimate
 
-  ### Partition for Parallel BUILD
-
-  After writing `$HANDOFF/02-plan.json`, attempt to partition the files array into 2+ groups with strictly non-overlapping file sets (no file appears in two groups):
-
-  1. Examine each file in `02-plan.json` files array
-  2. Check for cross-file dependencies (e.g., "Update file A and B together because X")
-  3. If a valid partition exists (2+ disjoint groups): write `02-plan-A.json`, `02-plan-B.json` (etc.), each containing:
-     - A subset of files (no overlap between groups)
-     - Steps scoped only to those files
-     - Copy all top-level fields from `02-plan.json` (overview, session_id, worktree, tooling, implementation_constraints, risks, test_strategy, complexity, line_budget, recommended_approach); then scope `files` and `steps` to only this shard's subset
-  4. If no valid partition (files share dependencies or insufficient files): log "parallel BUILD not applicable: [reason]" and proceed with single BUILD (single `02-plan.json` only)
-  5. Present the partition decision to the user before proceeding to BUILD
-
-  **Example:** If plan touches 5 independent agent configs and 2 independent spec files, create:
-  - `02-plan-A.json` with agent config changes
-  - `02-plan-B.json` with spec changes
-
   Proceed immediately to BUILD & VERIFY.
 
   ---
@@ -274,52 +251,6 @@ instructions: |
   2. Read `$HANDOFF/03-build.json` to get structured results
   3. Present the summary and test results to the user
   4. **Proceed immediately to CHECK** (no gate)
-
-  ### Parallel BUILD (if sub-plans exist)
-
-  If `02-plan-A.json`, `02-plan-B.json`, etc. exist, spawn BUILD agents in parallel:
-
-  1. Create a sparse-checkout worktree for each shard:
-     ```bash
-     git config extensions.worktreeConfig true
-     for shard in A B ...; do
-       git worktree add "$WORKTREE-$shard" <branch>
-       cd "$WORKTREE-$shard"
-       git sparse-checkout init --no-cone
-       jq -r '.files[].path' "$HANDOFF/02-plan-$shard.json" > .git/info/sparse-checkout
-       git sparse-checkout reapply
-       cd -
-     done
-     ```
-  2. Spawn one BUILD delegate per shard; each processes its respective plan file (`02-plan-A.json`, etc.) and writes its results (`03-build-A.json`, etc.)
-  3. Wait for all BUILD agents to complete. Verify all handoffs exist:
-     ```bash
-     for shard in A B ...; do
-       jq -c . "$HANDOFF/03-build-$shard.json" || echo "ERROR: build-$shard handoff missing"
-     done
-     ```
-     If any missing: retry that shard once. If still missing: STOP and ASK.
-  4. Merge changes from each shard worktree into the main worktree:
-     ```bash
-     for shard in A B ...; do
-       # Tracked modifications
-       git -C "$WORKTREE-$shard" diff > /tmp/shard-$shard.patch
-       git -C "$WORKTREE" apply /tmp/shard-$shard.patch
-       # Untracked new files (BUILD may create new test files etc.)
-       git -C "$WORKTREE-$shard" ls-files --others --exclude-standard | while read f; do
-         mkdir -p "$WORKTREE/$(dirname $f)"
-         cp "$WORKTREE-$shard/$f" "$WORKTREE/$f"
-       done
-     done
-     ```
-  5. Merge `03-build-*.json` into unified `$HANDOFF/03-build.json`:
-     - Combine `files_changed` arrays (union of all shards)
-     - Pick worst lint/test/deny/type_check status (FAIL > issues > clean)
-     - Collect all deviations and constraints_honored into single arrays
-     - Sum test_results counts
-  6. Read merged `$HANDOFF/03-build.json` and present summary and test results
-
-  Proceed immediately to CHECK (no gate).
 
   ---
 
@@ -352,76 +283,6 @@ instructions: |
   **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
 
   **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP.
-
-  ---
-
-  ## Phase 4.5: ACCEPTANCE GATE [PARALLEL AGENTS]
-
-  **Say:** "Spawning ACCEPTANCE GATE (REVIEW agent + QA agent in parallel, session: SESSION_ID)..."
-
-  Spawn REVIEW agent and QA agent simultaneously via two delegate tool calls:
-
-  **REVIEW delegate:**
-
-  ```json
-  {
-    "source": "coder-review",
-    "extensions": ["developer", "aptu"],
-    "provider": "openrouter",
-    "model": "inception/mercury-2",
-    "temperature": 0.1
-  }
-  ```
-
-  **QA delegate:**
-
-  ```json
-  {
-    "source": "coder-qa",
-    "extensions": ["developer"],
-    "provider": "openrouter",
-    "model": "inception/mercury-2",
-    "temperature": 0.1
-  }
-  ```
-
-  Both delegates run in parallel. You will receive their outputs once they complete.
-
-  After both complete, verify handoffs exist:
-
-  ```bash
-  jq -c . $HANDOFF/05-review-findings.json || echo "ERROR: review handoff missing"
-  jq -c . $HANDOFF/05-qa-findings.json || echo "ERROR: qa handoff missing"
-  ```
-
-  If any missing: retry both agents once. If still missing: STOP and report failure.
-
-  Then merge findings into `$HANDOFF/05-acceptance.json`:
-  - Combined findings from both agents
-  - Overall verdict: FAIL if either agent verdict is FAIL, PASS WITH NOTES if any PASS WITH NOTES, else PASS
-  - Zero critical findings required to proceed
-
-  **If any critical or major findings exist:**
-
-  Before spawning, set the `instructions` parameter to the absolute paths: `Worktree: <WORKTREE>`, `Handoff dir: <WORKTREE>/.handoff`.
-
-  ```json
-  {
-    "source": "coder-fixer",
-    "extensions": ["developer"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
-    "temperature": 0.2
-  }
-  ```
-
-  After FIXER completes, re-run REVIEW delegate on critical findings only.
-
-  Update `05-acceptance.json` with re-review results.
-
-  **Gate:** Zero critical findings required before proceeding to COMMIT. If critical findings remain after one fixer iteration: STOP and ASK user.
-
-  If PASS or PASS WITH NOTES (minor only): Proceed to COMMIT.
 
   ---
 
