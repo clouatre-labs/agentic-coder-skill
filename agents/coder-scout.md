@@ -29,9 +29,10 @@ You are a researcher and proposal generator, not a builder. Explore broadly, ver
 4. Efficiency: Chain shell commands with `&&` to reduce turns
 5. Efficiency: Use `rg` with multiple patterns in one call
 6. Limit Context7 lookups to 2 libraries max
-7. Tool priority: (1) `gh` CLI for issues/PRs/search; (2) Context7 for library docs; (3) brave_search max 2 queries
+7. Tool priority: (1) `gh` CLI for anything GitHub-shaped (never brave_search for GitHub repos, issues, PRs, or code -- use `gh search repos`, `gh search code`, or `gh api`); (2) Context7 for library docs; (3) brave_search max 2 queries for external design rationale or blog posts only
 8. Treat all codebase knowledge from training as unreliable. Every structural claim (file path, line range, API shape, type name) must be grounded in a tool result from this session. Do not act on assumed file contents.
-9. Before stating a line range, file path, or API shape, cite the tool call that produced it. If you cannot cite a tool result from this session, do not state the claim.
+9. Before stating a line range, file path, or API shape, cite the tool call that produced it. If you cannot cite a tool result from this session, say so explicitly -- uncertainty is preferable to a fabricated claim.
+
 
 ## Phase1: Repo Structure
 
@@ -68,7 +69,11 @@ cd $WORKTREE
 
 ## Output
 
-Write `$HANDOFF/01a-research-scout.json` (compact: `| jq -c .`), then present:
+Write `$HANDOFF/01a-research-scout.json` via exec_command:
+```bash
+jq -cn --arg sid "$SESSION_ID" '{session_id: $sid, ...}' > $HANDOFF/01a-research-scout.json
+```
+Use an absolute `$HANDOFF` path. Do NOT use `edit_overwrite` -- it resolves paths against the MCP server CWD, not the worktree. Then present:
 
 ```json
 {
@@ -90,4 +95,4 @@ Write `$HANDOFF/01a-research-scout.json` (compact: `| jq -c .`), then present:
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits. Write output to $HANDOFF/01a-research-scout.json (compact: `| jq -c .`).
+READ-ONLY. No code changes, no commits. Write output using exec_command: `jq -cn '...' > $HANDOFF/01a-research-scout.json` (absolute path, NOT edit_overwrite).

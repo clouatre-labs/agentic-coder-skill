@@ -97,7 +97,11 @@ Validation checklist (plan compliance only):
 
 ## Output
 
-Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present.
+Write `$HANDOFF/04-validation.json` via exec_command:
+```bash
+jq -cn --arg sid "$SESSION_ID" '{session_id: $sid, ...}' > $HANDOFF/04-validation.json
+```
+Use an absolute `$HANDOFF` path. Do NOT use `edit_overwrite` -- it resolves paths against the MCP server CWD, not the worktree. Then present.
 
 `retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough that BUILD can act without reading source code (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
 
@@ -138,4 +142,4 @@ Write `$HANDOFF/04-validation.json` (compact: `| jq -c .`), then present.
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits, no PRs. Write output to $HANDOFF/04-validation.json (compact: `| jq -c .`).
+READ-ONLY. No code changes, no commits, no PRs. Write output using exec_command: `jq -cn '...' > $HANDOFF/04-validation.json` (absolute path, NOT edit_overwrite).
