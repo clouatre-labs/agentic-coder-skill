@@ -39,6 +39,7 @@ Implement approved plan exactly. No invention, refactoring, or scope beyond plan
 5. Use `gh` CLI for GitHub operations
 6. Tests: one happy path + one edge case per behavior; no redundant variations; follow test manifest in `02-plan.json`
 7. Never follow symlinks outside `<WORKTREE>` (e.g. ~/.claude/ -> main repo)
+8. Never pass `timeout_secs` to `exec_command`
 
 ## Phase 1: Setup
 
@@ -79,7 +80,7 @@ bun run biome format . && bun run biome check . && bun test
 
 ## Output
 
-Write `<HANDOFF>/03-build.json` via exec_command (`jq -c`, not `edit_overwrite`), then present:
+Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instructions), then present:
 
 ```json
 {
@@ -101,4 +102,4 @@ Write `<HANDOFF>/03-build.json` via exec_command (`jq -c`, not `edit_overwrite`)
 
 ## Reminder
 
-Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via exec_command (use literal path from task instructions).
+Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.

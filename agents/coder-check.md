@@ -2,7 +2,7 @@
 name: coder-check
 description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu__scan_security"]
+tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite", "mcp__aptu__scan_security"]
 ---
 
 # CHECK Delegate (READ-ONLY)
@@ -37,6 +37,7 @@ Validate PLAN COMPLIANCE and SECURITY only. Do not duplicate REVIEW's spec/issue
 - Concise: lead with summary, use bullets
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`
 - Non-code files (JSON, TOML, handoffs): `exec_command + jq/cat`
+- Never pass `timeout_secs` to `exec_command`
 
 ## Phase 1: Read Handoffs
 
@@ -89,7 +90,7 @@ Validation checklist:
 
 ## Output
 
-Write `<HANDOFF>/04-validation.json` via exec_command (`jq -c`, not `edit_overwrite`), then present.
+Write `<HANDOFF>/04-validation.json` via `edit_overwrite` (path from task instructions), then present.
 
 `retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough for BUILD to act without reading source (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
 
@@ -123,4 +124,4 @@ Write `<HANDOFF>/04-validation.json` via exec_command (`jq -c`, not `edit_overwr
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits, no PRs. Write output to `<HANDOFF>/04-validation.json` via exec_command (use literal path from task instructions).
+READ-ONLY. No code changes, no commits, no PRs. Write output to `<HANDOFF>/04-validation.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
