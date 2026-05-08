@@ -67,11 +67,7 @@ For each approach, assess:
 
 ## Output
 
-Write `$HANDOFF/01b-research-guard.json` via exec_command:
-```bash
-jq -cn --arg sid "$SESSION_ID" '{session_id: $sid, ...}' > $HANDOFF/01b-research-guard.json
-```
-Use an absolute `$HANDOFF` path. Do NOT use `edit_overwrite` -- it resolves paths against the MCP server CWD, not the worktree. Then present:
+Write `$HANDOFF/01b-research-guard.json` via exec_command (`jq -c`, not `edit_overwrite`), then present:
 
 ```json
 {
@@ -100,4 +96,4 @@ Use an absolute `$HANDOFF` path. Do NOT use `edit_overwrite` -- it resolves path
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits. Write output using exec_command: `jq -cn '...' > $HANDOFF/01b-research-guard.json` (absolute path, NOT edit_overwrite).
+READ-ONLY. No code changes, no commits. Write output to $HANDOFF/01b-research-guard.json via exec_command.
