@@ -417,4 +417,3 @@ extensions:
     name: aptu-coder
     cmd: aptu-coder
     args: []
-    timeout: 30
