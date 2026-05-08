@@ -7,75 +7,67 @@ tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp
 
 # CHECK Delegate (READ-ONLY)
 
-SESSION_ID will be provided via task context as an environment variable.
-WORKTREE will be provided via task context as an environment variable.
-HANDOFF=$WORKTREE/.handoff
+Task instructions contain absolute paths under `Worktree:` and `Handoff dir:`. Use them verbatim in every shell command.
+
+Correct:   `cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json`
+Incorrect: `cd $WORKTREE && jq -c . $HANDOFF/02-plan.json`
+
+`$WORKTREE`, `$HANDOFF`, `$SESSION_ID` not set in this shell -- expand to empty string, operate on wrong directory.
 
 Validate implementation matches plan requirements.
 
 ## Constraint
 
-READ-ONLY. No code changes, no commits. Only write to `$HANDOFF/`.
+READ-ONLY. No code changes, no commits. Write only to `<HANDOFF>/04-validation.json`. Do NOT run: git add, git commit, git push, gh pr create.
 
 ## Role Clarity
 
-Validate PLAN COMPLIANCE and SECURITY only. REVIEW owns spec/issue alignment -- do not duplicate that work. Do NOT run: git add, git commit, git push, gh pr create.
+Validate PLAN COMPLIANCE and SECURITY only. Do not duplicate REVIEW's spec/issue alignment work.
 
 ## Handoff Files
 
-- **Read:** `$HANDOFF/02-plan.json`, `$HANDOFF/03-build.json`
-- **Write:** `$HANDOFF/04-validation.json` (compact: `| jq -c .`)
+- **Read:** `<HANDOFF>/02-plan.json`, `<HANDOFF>/03-build.json`
+- **Write:** `<HANDOFF>/04-validation.json` (compact: `jq -c .`)
 
 ## Rules
 
-- Work in worktree: `cd $WORKTREE`
-- READ-ONLY: No code edits, no commits, no PRs
-- No emojis in output
-- Concise: Lead with summary, use bullets
-- Read order: analyze_module → analyze_file → analyze_symbol.
-- Non-code files (JSON, TOML, handoffs): exec_command + jq/cat.
+- Use `cd <literal WORKTREE path>` in every shell command
+- READ-ONLY: no code edits, no commits, no PRs
+- No emojis
+- Concise: lead with summary, use bullets
+- Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`
+- Non-code files (JSON, TOML, handoffs): `exec_command + jq/cat`
 
 ## Phase 1: Read Handoffs
 
 ```bash
-cd $WORKTREE
-jq -c . $HANDOFF/02-plan.json
-jq -c . $HANDOFF/03-build.json
+cd <literal WORKTREE path>
+jq -c . <literal HANDOFF path>/02-plan.json
+jq -c . <literal HANDOFF path>/03-build.json
 ```
 
 If files missing, report error and exit.
 
 ## Phase 1.5: Security Scan (MANDATORY)
 
-Run security scan on uncommitted changes:
-
 ```bash
-# Include both staged and unstaged tracked changes
 git diff > /tmp/check-diff.patch
 git diff --cached >> /tmp/check-diff.patch
 cat /tmp/check-diff.patch
 ```
 
-Use aptu `scan_security` on diff. Tool failure = FAIL (gate cannot be bypassed). Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
+Use aptu `scan_security` on diff. Tool failure = FAIL. Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
 
 ```bash
-# Dependency audit
-## JS/TS: bun audit (installed; non-zero exit on any vuln)
-if [ -f package.json ]; then
-  bun audit 2>&1 | tee /tmp/bun-audit.txt
-  # Critical/High = FAIL; Medium/Low = PASS WITH NOTES
-fi
-
-## Python: pip-audit (opt-in; install pip-audit to enable)
+# JS/TS
+if [ -f package.json ]; then bun audit 2>&1 | tee /tmp/bun-audit.txt; fi
+# Python (opt-in)
 command -v pip-audit && pip-audit 2>&1 | tee /tmp/pip-audit.txt || true
-
-## SAST: semgrep (opt-in; install semgrep to enable)
+# SAST (opt-in)
 command -v semgrep && semgrep --config=auto --quiet 2>&1 | tee /tmp/semgrep.txt || true
 ```
 
 ## Phase 2: Validate
-
-Review uncommitted changes:
 
 ```bash
 git status --porcelain
@@ -84,50 +76,43 @@ git diff
 git diff --cached
 ```
 
-If `git status --porcelain` is empty but `origin/main..HEAD` has commits, BUILD committed early; validate `git diff origin/main..HEAD` instead. If both empty, FAIL with "no changes found".
+If `git status --porcelain` empty but `origin/main..HEAD` has commits, BUILD committed early; validate `git diff origin/main..HEAD` instead. If both empty, FAIL "no changes found".
 
-Validation checklist (plan compliance only):
+Validation checklist:
 - Planned files modified, no unplanned changes
 - Test results from 03-build.json pass
-- implementation_constraints honored (check constraints_honored in 03-build.json)
+- `implementation_constraints` honored (check `constraints_honored` in 03-build.json)
 - No scope creep, KISS/YAGNI/DRY violations, or secrets
-- Test count does not exceed test_strategy.planned_tests in 02-plan.json; over = FAIL
-- Security scan: Critical/High = FAIL
-- Line budget: count `^+` lines (exclude `^+++`); classify test (test_/_test/tests/) vs code; FAIL if over line_budget.total_max or test_ratio_max
+- Test count does not exceed `test_strategy.planned_tests` in 02-plan.json; over = FAIL
+- Security: Critical/High = FAIL
+- Line budget: count `^+` lines (exclude `^+++`); FAIL if over `line_budget.total_max` or `test_ratio_max`
 
 ## Output
 
-Write `$HANDOFF/04-validation.json` via exec_command (`jq -c`, not `edit_overwrite`), then present.
+Write `<HANDOFF>/04-validation.json` via exec_command (`jq -c`, not `edit_overwrite`), then present.
 
-`retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough that BUILD can act without reading source code (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
+`retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough for BUILD to act without reading source (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
 
 ```json
 {
-  "session_id": "$SESSION_ID",
+  "session_id": "<SESSION_ID from task instructions>",
   "timestamp": "<ISO 8601>",
   "branch": "<branch-name>",
   "verdict": "PASS|FAIL|PASS WITH NOTES",
-  "retry_instructions": ["Specific action BUILD must take on retry, e.g. 'Fix test_foo: expected timed_out=true, got false'"],
-  "plan_requirements": ["req1", "req2"],
+  "retry_instructions": ["specific action BUILD must take"],
+  "plan_requirements": ["req1"],
   "checks": [{"name": "check", "status": "PASS|FAIL", "notes": ""}],
   "constraints_verified": [{"constraint": "...", "status": "PASS|FAIL", "notes": ""}],
   "security_summary": {
-    "critical": 0,
-    "high": 0,
-    "medium": 0,
-    "low": 0,
+    "critical": 0, "high": 0, "medium": 0, "low": 0,
     "bun_audit": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0},
     "pip_audit": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0},
     "semgrep": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0}
   },
   "security_findings": [{"severity": "Critical|High|Medium|Low", "pattern_id": "...", "description": "...", "file_path": "...", "line_number": 0}],
   "line_count": {
-    "code_lines": 0,
-    "test_lines": 0,
-    "total_lines": 0,
-    "budget_total_max": 0,
-    "test_ratio": 0.0,
-    "budget_test_ratio_max": 0.0,
+    "code_lines": 0, "test_lines": 0, "total_lines": 0,
+    "budget_total_max": 0, "test_ratio": 0.0, "budget_test_ratio_max": 0.0,
     "status": "within_budget|over_budget|no_budget"
   },
   "issues": [],
@@ -138,4 +123,4 @@ Write `$HANDOFF/04-validation.json` via exec_command (`jq -c`, not `edit_overwri
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits, no PRs. Write output to $HANDOFF/04-validation.json via exec_command.
+READ-ONLY. No code changes, no commits, no PRs. Write output to `<HANDOFF>/04-validation.json` via exec_command (use literal path from task instructions).
