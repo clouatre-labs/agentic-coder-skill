@@ -383,6 +383,8 @@ instructions: |
 extensions:
   - type: platform
     name: summon
+  - type: builtin
+    name: developer
   - type: streamable_http
     name: context7
     uri: https://mcp.context7.com/mcp
