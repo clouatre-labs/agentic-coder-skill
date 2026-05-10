@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.0.0"
+version: "5.1.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -50,6 +50,7 @@ instructions: |
   3. **No inline work** - If a delegate fails twice, STOP. Never research, build, review, fix, or reason about code correctness yourself.
   4. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
   5. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
+  6. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
 
   ## Rules (Apply to All Phases)
 
@@ -59,7 +60,7 @@ instructions: |
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Aptu is read-only** - Server enforced via --read-only flag (clouatre-labs/aptu#775)
   6. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
-  7. **Code analysis tools** - Use `aptu-coder` for semantic analysis; never the native `analyze` tool. Research delegates must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive for research work.
+  7. **Code analysis tools** - See Critical Constraint #6. Pass this constraint to every delegate you spawn.
 
   ## Handoff Files
 

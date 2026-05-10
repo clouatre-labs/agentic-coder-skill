@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.0.0"
+version: "2.1.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.1.0 -- sync from goose-coder v5.1.0: promote aptu-coder/developer mutual exclusivity to Critical Constraint #7; add same to global agentsmd
 #   2.0.0 -- sync from goose-coder v5.0.0: drop Phase 4.5 (REVIEW/QA/FIXER retired); drop parallel BUILD; add PLAN source-read constraint; add retry_instructions to CHECK output schema
 #   1.2.0 -- sync from goose-coder v4.11.0: add analyze_raw and exec_command to aptu-coder tool list
 #   1.1.0 -- sync from goose-coder v4.10.0: explicit absolute-path injection for BUILD/CHECK/FIXER delegates
@@ -37,6 +38,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 4. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
 5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
 6. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
+7. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
 
 ## aptu-coder Tool Usage
 
@@ -58,7 +60,7 @@ The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUA
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
 6. Do not use aptu for issue reading - use `gh issue view`
-7. Code analysis tools - use `aptu-coder` for semantic analysis; never the native `analyze` tool. Research delegates must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive for research work.
+7. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
 
 ## Handoff Protocol
 
