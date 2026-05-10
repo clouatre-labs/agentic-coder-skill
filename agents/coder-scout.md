@@ -32,7 +32,7 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 4. Chain shell commands with `&&`
 5. Use `rg` with multiple patterns in one call
 6. Context7: max 2 libraries
-7. Tool priority: (1) `gh` CLI for GitHub (never brave_search for repos/issues/PRs/code); (2) Context7 for library docs; (3) brave_search max 2 queries for external rationale only
+7. Tool priority: (1) `gh` CLI for all github.com content -- never brave_search for any github.com URL; (2) Context7 for library and framework docs; (3) direct URL fetch or REST API when the endpoint is already known; (4) brave_search only for sites with no structured access method, max 2 queries
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
 10. Never pass `timeout_secs` to `exec_command`

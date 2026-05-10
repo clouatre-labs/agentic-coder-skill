@@ -54,11 +54,11 @@ The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUA
 
 1. No emojis in code, commits, PRs, docs, or responses
 2. Concise - lead with summary, use bullets, facts only
-3. Use `gh` CLI for all GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has a full authenticated shell. Pass this rule to every delegate.
+3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch or REST API when endpoint already known; use brave_search only for sites with no structured access method. Pass this rule to every delegate.
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
 6. Do not use aptu for issue reading - use `gh issue view`
-7. Code analysis tools - use `aptu-coder` for semantic analysis; never the native `analyze` tool
+7. Code analysis tools - use `aptu-coder` for semantic analysis; never the native `analyze` tool. Research delegates must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive for research work.
 
 ## Handoff Protocol
 
