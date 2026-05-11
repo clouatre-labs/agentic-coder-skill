@@ -268,7 +268,7 @@ instructions: |
     "source": "coder-build",
     "extensions": ["aptu-coder"],
     "provider": "gcp_vertex_ai",
-    "model": "gemini-3.1-flash-lite-preview",
+    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.2
   }
   ```
@@ -307,7 +307,7 @@ instructions: |
     "source": "coder-check",
     "extensions": ["aptu-coder", "aptu"],
     "provider": "gcp_vertex_ai",
-    "model": "gemini-3.1-flash-lite-preview",
+    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.1
   }
   ```
