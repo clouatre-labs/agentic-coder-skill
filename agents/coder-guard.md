@@ -2,7 +2,7 @@
 name: coder-guard
 description: Adversarial reviewer focusing on risk, safety, and minimalism. Stress-tests Scout's proposals and re-ranks by safety. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
+tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__remote_tree", "mcp__aptu-coder__remote_file"]
 ---
 
 # GUARD Research Agent (READ-ONLY)
