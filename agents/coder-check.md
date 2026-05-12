@@ -38,6 +38,7 @@ Validate PLAN COMPLIANCE and SECURITY only. Do not duplicate REVIEW's spec/issue
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`
 - Non-code files (JSON, TOML, handoffs): `exec_command + jq/cat`
 - Never pass `timeout_secs` to `exec_command`
+- Never call `remote_file` or `remote_tree` on a local repository.
 
 ## Phase 1: Read Handoffs
 

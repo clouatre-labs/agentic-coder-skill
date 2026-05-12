@@ -61,6 +61,7 @@ The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUA
 5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
 6. Do not use aptu for issue reading - use `gh issue view`
 7. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
+8. Never call `remote_file` or `remote_tree` on a local repository.
 
 ## Handoff Protocol
 

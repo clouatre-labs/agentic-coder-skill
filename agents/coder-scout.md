@@ -36,6 +36,7 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
 10. Never pass `timeout_secs` to `exec_command`
+11. Never call `remote_file` or `remote_tree` on a local repository.
 
 ## Phase1: Repo Structure
 
