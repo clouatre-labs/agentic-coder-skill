@@ -69,6 +69,7 @@ Write `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (path from task i
 ```json
 {
   "session_id": "<SESSION_ID from task instructions>",
+  "file_structure_summary": {"root": "...", "top_level_dirs": ["..."], "key_files": ["..."], "total_source_files": 0},
   "lens": "scout",
   "relevant_files": [{"path": "...", "line_range": "...", "role": "..."}],
   "conventions": {"commits": "...", "testing": "...", "linting": "...", "error_handling": "..."},

@@ -360,7 +360,7 @@ instructions: |
   Write the PR body as flowing prose -- do not hard-wrap lines at any column width.
 
   After PR is created, run AI-powered review:
-  - Use aptu `review_pr` on the new PR to get AI analysis
+  - Run `aptu pr review <PR_URL> -o json` via exec_command to get AI analysis
   - If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
 
   **Present (no gate):**
@@ -405,15 +405,6 @@ extensions:
       - "stdio"
     env_keys:
       - BRAVE_API_KEY
-
-  - type: stdio
-    name: aptu
-    cmd: aptu-mcp
-    args:
-      - "--read-only"
-    env_keys:
-      - GITHUB_TOKEN
-      - OPENROUTER_API_KEY
 
   - type: stdio
     name: aptu-coder

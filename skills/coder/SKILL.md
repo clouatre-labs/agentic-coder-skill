@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.1.0"
+version: "2.2.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.2.0 -- sync from goose-coder: replace aptu MCP review_pr with CLI; add file_structure_summary to SCOUT schema fields (issues #543 #544)
 #   2.1.0 -- sync from goose-coder v5.1.0: promote aptu-coder/developer mutual exclusivity to Critical Constraint #7; add same to global agentsmd
 #   2.0.0 -- sync from goose-coder v5.0.0: drop Phase 4.5 (REVIEW/QA/FIXER retired); drop parallel BUILD; add PLAN source-read constraint; add retry_instructions to CHECK output schema
 #   1.2.0 -- sync from goose-coder v4.11.0: add analyze_raw and exec_command to aptu-coder tool list
@@ -120,7 +121,7 @@ Handoff dir: <WORKTREE>/.handoff
 Issue: <ISSUE_URL>
 Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
 Output: write $HANDOFF/01a-research-scout.json (compact: jq -c .) then stop.
-Schema fields: session_id, lens, relevant_files, conventions, patterns, approaches, recommendation.
+Schema fields: session_id, file_structure_summary, lens, relevant_files, conventions, patterns, approaches, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
 
@@ -347,7 +348,7 @@ gh pr create --title "type: description" --body-file /tmp/pr-body.md
 Write the PR body as flowing prose -- do not hard-wrap lines at any column width.
 
 After PR is created, run AI review via aptu:
-- Use `aptu review_pr` on the new PR number
+- Run `aptu pr review <PR_URL> -o json` via `exec_command` to get AI analysis
 - If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
 
 **Present (no gate):**

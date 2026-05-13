@@ -2,7 +2,7 @@
 name: coder-check
 description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite", "mcp__aptu__scan_security"]
+tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
 ---
 
 # CHECK Delegate (READ-ONLY)
@@ -52,13 +52,7 @@ If files missing, report error and exit.
 
 ## Phase 1.5: Security Scan (MANDATORY)
 
-```bash
-git diff > /tmp/check-diff.patch
-git diff --cached >> /tmp/check-diff.patch
-cat /tmp/check-diff.patch
-```
-
-Use aptu `scan_security` on diff. Tool failure = FAIL. Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
+Run `git diff HEAD` via exec_command piped to `aptu scan-security --diff - -o json`. Tool failure = FAIL. Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
 
 ```bash
 # JS/TS
