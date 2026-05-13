@@ -312,7 +312,7 @@ instructions: |
   ```json
   {
     "source": "coder-check",
-    "extensions": ["aptu-coder", "aptu"],
+    "extensions": ["aptu-coder"],
     "provider": "gcp_vertex_ai",
     "model": "claude-haiku-4-5@20251001",
     "temperature": 0.1
