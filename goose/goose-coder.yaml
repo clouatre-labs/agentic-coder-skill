@@ -391,8 +391,6 @@ instructions: |
 extensions:
   - type: platform
     name: summon
-  - type: builtin
-    name: developer
   - type: streamable_http
     name: context7
     uri: https://mcp.context7.com/mcp
@@ -412,7 +410,6 @@ extensions:
     env_keys:
       - BRAVE_API_KEY
 
-  - type: stdio
+  - type: streamable_http
     name: aptu-coder
-    cmd: aptu-coder
-    args: []
+    uri: http://127.0.0.1:49200/mcp
