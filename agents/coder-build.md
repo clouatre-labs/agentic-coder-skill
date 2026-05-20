@@ -40,7 +40,6 @@ Implement approved plan exactly. No invention, refactoring, or scope beyond plan
 6. Tests: one happy path + one edge case per behavior; no redundant variations; follow test manifest in `02-plan.json`
 7. Never follow symlinks outside `<WORKTREE>` (e.g. ~/.claude/ -> main repo)
 8. Never pass `timeout_secs` to `exec_command`
-9. Never call `remote_file` or `remote_tree` on a local repository.
 
 ## Phase 1: Setup
 

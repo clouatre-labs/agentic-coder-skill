@@ -2,7 +2,7 @@
 name: coder-scout
 description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__remote_tree", "mcp__aptu-coder__remote_file"]
+tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
 ---
 
 # SCOUT Research Agent (READ-ONLY)
@@ -36,7 +36,6 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
 10. Never pass `timeout_secs` to `exec_command`
-11. Never call `remote_file` or `remote_tree` on a local repository.
 
 ## Phase1: Repo Structure
 
