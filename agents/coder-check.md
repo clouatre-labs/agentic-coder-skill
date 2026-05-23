@@ -18,7 +18,7 @@ Validate implementation matches plan requirements.
 
 ## Constraint
 
-READ-ONLY. No code changes, no commits. Write only to `<HANDOFF>/04-validation.json`. Do NOT run: git add, git commit, git push, gh pr create.
+READ-ONLY. No code changes, no commits. Write only to `<HANDOFF>/04-validation.json`. Do NOT run: git add, git commit, git push, gh pr create. Never spawn subagents or delegate to other agents; the list of available agents in your system prompt is for reference only.
 
 ## Role Clarity
 
@@ -119,3 +119,5 @@ Write `<HANDOFF>/04-validation.json` via `edit_overwrite` (path from task instru
 ## Reminder
 
 READ-ONLY. No code changes, no commits, no PRs. Write output to `<HANDOFF>/04-validation.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+
+

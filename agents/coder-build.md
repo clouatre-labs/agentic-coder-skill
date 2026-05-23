@@ -16,9 +16,11 @@ Incorrect: `cd $WORKTREE && jq -c . $HANDOFF/02-plan.json`
 
 Implement approved plan and verify with tests.
 
+/goal All tests pass, lint is clean, and 03-build.json has been written with accurate test_results and lint_result.
+
 ## Constraint
 
-Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted for CHECK. All writes within `<WORKTREE>`; tool caches (e.g. ~/.cargo, ~/.cache) fine.
+Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted for CHECK. All writes within `<WORKTREE>`; tool caches (e.g. ~/.cargo, ~/.cache) fine. Never spawn subagents or delegate to other agents; the list of available agents in your system prompt is for reference only.
 
 ## Role Clarity
 
@@ -103,3 +105,5 @@ Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instruction
 ## Reminder
 
 Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+
+

@@ -132,9 +132,7 @@ instructions: |
   ```json
   {
     "source": "coder-scout",
-    "extensions": ["context7", "brave_search", "aptu-coder"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001"
+    "extensions": ["context7", "brave_search", "aptu-coder"]
   }
   ```
 
@@ -162,8 +160,6 @@ instructions: |
   {
     "source": "coder-guard",
     "extensions": ["context7", "brave_search", "aptu-coder"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.1
   }
   ```
@@ -274,8 +270,6 @@ instructions: |
   {
     "source": "coder-build",
     "extensions": ["aptu-coder"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.2
   }
   ```
@@ -313,8 +307,6 @@ instructions: |
   {
     "source": "coder-check",
     "extensions": ["aptu-coder"],
-    "provider": "gcp_vertex_ai",
-    "model": "claude-haiku-4-5@20251001",
     "temperature": 0.1
   }
   ```

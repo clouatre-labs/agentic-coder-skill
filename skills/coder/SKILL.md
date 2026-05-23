@@ -90,10 +90,16 @@ SESSION_ID=$(date +%s)
 WORKTREE=.worktrees/$SESSION_ID
 HANDOFF=$WORKTREE/.handoff
 
-# Cleanup stale worktrees (older than 7 days)
-find .worktrees -maxdepth 1 -type d -mtime +7 -exec git worktree remove --force {} \; 2>/dev/null || true
-
-git fetch -p
+# Cleanup stale worktrees
+git fetch -p 2>/dev/null || true
+git worktree list --porcelain 2>/dev/null | awk '/^worktree /{wt=$2} /^branch /{br=substr($2,12)} /^HEAD /{if(wt!="" && wt!="."){print wt"\t"br}}' | while IFS=$'\t' read wt br; do
+  if [ -z "$br" ]; then
+    git worktree remove --force "$wt" 2>/dev/null || true
+  elif ! git show-ref --quiet "refs/remotes/origin/$br" 2>/dev/null; then
+    git worktree remove --force "$wt" 2>/dev/null && git branch -D "$br" 2>/dev/null || true
+  fi
+done
+find .worktrees -maxdepth 1 -type d -mtime +3 -exec git worktree remove --force {} \; 2>/dev/null || true
 git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
 git worktree add $WORKTREE origin/main
 mkdir -p $HANDOFF
@@ -264,6 +270,8 @@ Constraint: Implement plan only. No git add, commit, or push.
 ```
 
 Invoke the `coder-build` agent via Task tool with the filled-in prompt.
+
+Before writing 03-build.json and stopping: verify tests pass, lint is clean, and all implementation_constraints from the plan are honored.
 
 After BUILD completes:
 
