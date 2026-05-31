@@ -393,9 +393,9 @@ extensions:
 
   - type: stdio
     name: brave_search
-    cmd: npx
+    cmd: bunx
     args:
-      - "-y"
+      - "--bun"
       - "@brave/brave-search-mcp-server"
       - "--transport"
       - "stdio"
