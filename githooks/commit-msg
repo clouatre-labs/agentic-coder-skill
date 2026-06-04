@@ -93,6 +93,7 @@ for ((i = 1; i < total; i++)); do
             # First footer token found; check if previous line was blank
             if [ -n "$prev" ]; then
                 echo "BLOCKED: Footer must be separated from body by a blank line"
+                echo "Use: git commit -S --signoff (do not hardcode the trailer)"
                 exit 1
             fi
             found_footer=1
