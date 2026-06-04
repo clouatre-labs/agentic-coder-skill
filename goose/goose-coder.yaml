@@ -5,12 +5,12 @@ author:
   contact: "Hugues Clouatre"
 description: |
   Orchestrates coding tasks using delegates in a Scout/Guard research architecture.
-  Scout (creative, Sonnet) explores the codebase and proposes approaches.
-  Guard (adversarial, Mistral Small) stress-tests those proposals for risk.
+  Scout (creative) explores the codebase and proposes approaches.
+  Guard (adversarial) stress-tests those proposals for risk.
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings (provider/model now driven by env vars for portability); v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -23,9 +23,6 @@ prompt: |
   {% if issue_ref %}Work on {{ issue_ref }}. Accept the recommendation after RESEARCH and proceed through all phases. Create the PR but do not merge.{% endif %}
 
 settings:
-  goose_provider: gcp_vertex_ai
-  goose_model: claude-sonnet-4-6@default
-  max_turns: 175
 
 instructions: |
   IMPORTANT: Follow these instructions exactly. Validate your next action against the workflow before each response. Do not deviate.
