@@ -22,7 +22,7 @@ READ-ONLY for validation. WRITE for commit and PR on PASS verdict only. Allowed 
 
 ## Role Clarity
 
-Validate PLAN COMPLIANCE and SECURITY only. On PASS, run commit and PR sequence. Do not duplicate REVIEW's spec/issue alignment work.
+Validate PLAN COMPLIANCE and SECURITY only. On PASS, run commit and PR sequence.
 
 ## Handoff Files
 
