@@ -38,7 +38,7 @@ instructions: |
   ## Workflow Overview
 
   ```
-  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> COMMIT/PR -> aptu pr review
+  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, commits+PR on PASS] -> aptu pr review
                                                                               |                                    |
                                                                          FAIL -> [GATE] -> Back to BUILD     FAIL -> Stop & Ask
   ```
@@ -232,6 +232,7 @@ instructions: |
       "total_max": 500,
       "test_ratio_max": 1.5
     },
+    "commit_message": "type(scope): subject (max 100 chars, derived from issue and scout/guard handoffs)",
     "recommended_approach": "Which approach, with reasoning from both scout and guard"
   }
   ```
@@ -299,8 +300,8 @@ instructions: |
   Build handoff: <WORKTREE>/.handoff/03-build.json
   Plan file: <WORKTREE>/.handoff/02-plan.json
   Output: write $HANDOFF/04-validation.json (compact: jq -c .) then stop.
-  Schema fields: session_id, verdict, issues, security_summary, notes, retry_instructions.
-  Constraint: READ-ONLY. No code changes. Validate only.
+  Schema fields: session_id, verdict, pr_url, issues, security_summary, notes, retry_instructions.
+  Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence and write pr_url to 04-validation.json.
   ```
 
   ```json
@@ -327,37 +328,17 @@ instructions: |
 
   ## Phase 5: COMMIT & PR
 
-  After validation PASS, commit and create PR:
+  After validation PASS, read `pr_url` from `$HANDOFF/04-validation.json`:
 
   ```bash
-  cd $WORKTREE
-  git fetch -p && git rebase origin/main
-  git branch --show-current  # Verify feature branch
-  git add <specific-files>
-  git commit -S --signoff -m "type(scope): description"
-  git log --show-signature -1  # Verify GPG + DCO
+  jq -r '.pr_url // empty' $HANDOFF/04-validation.json
   ```
 
-  ```bash
-  git push origin <branch>
-  cat > /tmp/pr-body.md << 'EOF'
-  ## Summary
-  <bullets from 02-plan.json overview>
+  **If `pr_url` is present:** CHECK already committed and created the PR. Skip the commit sequence entirely. Proceed directly to aptu pr review using the `pr_url` value.
 
-  ## Changes
-  <files from 03-build.json files_changed>
+  **If `pr_url` is absent:** CHECK did not create the PR (git or gh failure). Read `notes` from `04-validation.json` for the error. Present the error to the user and **ASK** how to proceed. Do not attempt commit inline.
 
-  ## Test plan
-  - [ ] Tests pass (see 03-build.json test_results)
-  - [ ] Linter clean
-  - [ ] Security scan clean (see 04-validation.json security_summary)
-  EOF
-  gh pr create --title "type: description" --body-file /tmp/pr-body.md
-  ```
-
-  Write the PR body as flowing prose -- do not hard-wrap lines at any column width.
-
-  After PR is created, run AI-powered review:
+  After PR is confirmed, run AI-powered review:
   - Run `aptu pr review <PR_URL> -o json` via exec_command to get AI analysis
   - If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
 

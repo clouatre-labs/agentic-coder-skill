@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.3.0"
+version: "2.4.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.4.0 -- delegate commit+PR to CHECK on PASS; orchestrator Phase 5 gates on pr_url; add commit_message to 02-plan.json schema
 #   2.3.0 -- remove aptu-coder tool guidance block and BUILD pre-write verification sentence (orchestrator noise; delegate context only)
 #   2.2.0 -- sync from goose-coder: replace aptu MCP review_pr with CLI; add file_structure_summary to SCOUT schema fields (issues #543 #544)
 #   2.1.0 -- sync from goose-coder v5.1.0: promote aptu-coder/developer mutual exclusivity to Critical Constraint #7; add same to global agentsmd
@@ -25,7 +26,7 @@ compatibility:
 Orchestrates the full contribution flow using sub-agents.
 
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate] -> COMMIT/PR -> aptu review_pr
+SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, commits+PR on PASS] -> aptu review_pr
                                                                               |                    |
                                                                          FAIL -> Back to BUILD (1x) FAIL -> Stop & Ask
 ```
@@ -228,6 +229,7 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
     "total_max": 500,
     "test_ratio_max": 1.5
   },
+  "commit_message": "type(scope): subject (max 100 chars, derived from issue and scout/guard handoffs)",
   "recommended_approach": "Which approach, with reasoning from both scout and guard"
 }
 ```
@@ -311,37 +313,17 @@ After CHECK completes:
 
 ## Phase 5: COMMIT & PR
 
-After validation PASS:
+After validation PASS, read `pr_url` from `$HANDOFF/04-validation.json`:
 
 ```bash
-cd $WORKTREE
-git fetch -p && git rebase origin/main
-git branch --show-current  # Must be a feature branch, not main/master
-git add <specific-files-from-03-build.json>
-git commit -S --signoff -m "type(scope): description"
-git log --show-signature -1  # Verify GPG + DCO
+jq -r '.pr_url // empty' $HANDOFF/04-validation.json
 ```
 
-```bash
-git push origin <branch>
-cat > /tmp/pr-body.md << 'EOF'
-## Summary
-<bullets from 02-plan.json overview>
+**If `pr_url` is present:** CHECK already committed and created the PR. Skip the commit sequence entirely. Proceed directly to aptu review using the `pr_url` value.
 
-## Changes
-<files from 03-build.json files_changed>
+**If `pr_url` is absent:** CHECK did not create the PR (git or gh failure). Read `notes` from `04-validation.json` for the error. Present the error to the user and **ASK** how to proceed. Do not attempt commit inline.
 
-## Test plan
-- [ ] Tests pass (see 03-build.json test_results)
-- [ ] Linter clean
-- [ ] Security scan clean (see 04-validation.json security_summary)
-EOF
-gh pr create --title "type: description" --body-file /tmp/pr-body.md
-```
-
-Write the PR body as flowing prose -- do not hard-wrap lines at any column width.
-
-After PR is created, run AI review via aptu:
+After PR is confirmed, run AI review via aptu:
 - Run `aptu pr review <PR_URL> -o json` via `exec_command` to get AI analysis
 - If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
 
