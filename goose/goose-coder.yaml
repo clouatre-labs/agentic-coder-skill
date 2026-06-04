@@ -125,7 +125,7 @@ instructions: |
   Issue: <ISSUE_URL>
   Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
   Output: write $HANDOFF/01a-research-scout.json (compact: jq -c .) then stop.
-  Schema fields: session_id, lens, relevant_files, conventions, patterns, approaches, recommendation.
+  Schema fields: session_id, file_structure_summary, lens, relevant_files, conventions, patterns, approaches, recommendation.
   Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
   ```
 

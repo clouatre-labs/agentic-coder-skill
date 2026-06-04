@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.2.0"
+version: "2.3.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.3.0 -- remove aptu-coder tool guidance block and BUILD pre-write verification sentence (orchestrator noise; delegate context only)
 #   2.2.0 -- sync from goose-coder: replace aptu MCP review_pr with CLI; add file_structure_summary to SCOUT schema fields (issues #543 #544)
 #   2.1.0 -- sync from goose-coder v5.1.0: promote aptu-coder/developer mutual exclusivity to Critical Constraint #7; add same to global agentsmd
 #   2.0.0 -- sync from goose-coder v5.0.0: drop Phase 4.5 (REVIEW/QA/FIXER retired); drop parallel BUILD; add PLAN source-read constraint; add retry_instructions to CHECK output schema
@@ -40,18 +41,6 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
 6. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 7. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
-
-## aptu-coder Tool Usage
-
-SCOUT and GUARD have `aptu-coder` tools. Use them instead of reading entire files:
-
-- `analyze_directory` -- orient on repo structure (start here, max_depth=2, summary=true)
-- `analyze_module` -- lightweight file index (function names + imports); triage many files fast
-- `analyze_file` -- full signatures and types; use on 3-5 key files max, not every file
-- `analyze_symbol` -- call graph for a specific function; use for blast radius and data flow
-- `exec_command` -- shell commands (e.g., `cargo info`, `gh issue view`)
-
-The orchestrator should include issue-specific `aptu-coder` targets in SCOUT/GUARD instructions at spawn time.
 
 ## Rules (All Phases)
 
@@ -270,8 +259,6 @@ Constraint: Implement plan only. No git add, commit, or push.
 ```
 
 Invoke the `coder-build` agent via Task tool with the filled-in prompt.
-
-Before writing 03-build.json and stopping: verify tests pass, lint is clean, and all implementation_constraints from the plan are honored.
 
 After BUILD completes:
 
