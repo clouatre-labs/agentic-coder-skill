@@ -49,9 +49,8 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 2. Concise - lead with summary, use bullets, facts only
 3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch or REST API when endpoint already known; use brave_search only for sites with no structured access method. Pass this rule to every delegate.
 4. Minimal gates - stop for decisions, auto-proceed for execution
-5. Aptu is read-only - server enforced via --read-only flag (clouatre-labs/aptu#775)
-6. Do not use aptu for issue reading - use `gh issue view`
-7. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
+5. Do not use aptu for issue reading - use `gh issue view`
+6. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
 
 ## Handoff Protocol
 
