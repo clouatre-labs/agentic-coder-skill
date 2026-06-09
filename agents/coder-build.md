@@ -1,7 +1,7 @@
 ---
 name: coder-build
 description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Receives SESSION_ID and WORKTREE via task context.
-model: haiku
+model: sonnet
 tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__edit_replace", "mcp__aptu-coder__exec_command"]
 ---
 

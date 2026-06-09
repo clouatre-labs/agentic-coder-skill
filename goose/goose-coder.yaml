@@ -273,7 +273,7 @@ instructions: |
     "source": "coder-build",
     "extensions": ["aptu-coder"],
     "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "model": "global.anthropic.claude-sonnet-4-6",
     "temperature": 0.2
   }
   ```
