@@ -51,7 +51,7 @@ Commit style, testing patterns, linting, error handling, import organization.
 
 ## Phase3: Relevant Code Analysis
 
-Orient with `aptu-coder` first: `analyze_directory` for overview, `analyze_module` for function/import index. Use `analyze_file` only for signatures/class details. Use `analyze_symbol` for call chains. Then `rg` for patterns; note test coverage.
+Orient with `aptu-coder` first: `analyze_directory` for overview, `analyze_module` for function/import index. Use `analyze_file` only for signatures/class details. Use `analyze_symbol` for call chains. Then `rg` for patterns. For each test function adjacent to the insertion point, record its name and a one-line behavior description in `existing_tests`; PLAN uses these to drop planned tests that duplicate existing coverage.
 
 ## Phase4: Ecosystem Research
 
@@ -79,7 +79,7 @@ Write `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (path from task i
   "patterns": ["existing pattern 1"],
   "related_issues": [{"number": 0, "title": "...", "relevance": "..."}],
   "constraints": ["architectural constraint 1"],
-  "test_coverage": "description of existing test coverage for affected areas",
+  "existing_tests": [{"name": "test_name_1", "covers": "one-line behavior description"}],
   "library_findings": [{"library": "...", "version": "...", "relevant_api": "...", "notes": "..."}],
   "approaches": [
     {"name": "...", "description": "...", "pros": [], "cons": [], "complexity": "simple|medium|complex", "files_touched": 0}
