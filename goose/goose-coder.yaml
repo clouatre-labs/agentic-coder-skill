@@ -199,7 +199,7 @@ instructions: |
   - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
   - Map out implementation steps (5-10 steps)
   - Identify risks and edge cases (from guard's analysis)
-  - Plan test strategy: populate `existing_tests` from `01a-research-scout.json`; drop any planned test whose behavior is already covered by an entry there; then add guard's test_gaps
+  - Plan test strategy: populate `existing_tests` from `01a-research-scout.json`; drop any planned test whose behavior is already covered by an entry there; then add guard's test_gaps -- but first filter `guard_test_gaps` against `existing_tests` the same way, dropping any guard gap whose behavior is already covered
 
   **Write `$HANDOFF/02-plan.json`:**
 
@@ -219,7 +219,7 @@ instructions: |
         {"name": "test_name", "behavior": "which behavior", "type": "happy_path|edge_case"}
       ],
       "existing_tests": [{"name": "test_name", "covers": "behavior"}],
-      "guard_test_gaps": ["specific tests guard identified as missing"]
+      "guard_test_gaps": [{"name": "test_name", "covers": "behavior -- sourced from 01b-research-guard.json, filtered against existing_tests"}]
     },
     "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
     "tooling": {

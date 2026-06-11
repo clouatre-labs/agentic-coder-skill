@@ -58,7 +58,7 @@ Verify API claims before flagging non-existent; unverified blockers are themselv
 - **Breaking changes:** Public API or contract changed?
 - **Blast radius:** Callers/dependents affected?
 - **Dependency risk:** Add/upgrade deps?
-- **Test gap:** Skip if type system or existing coverage catches it
+- **Test gap:** Skip if type system or existing coverage catches it; also skip if the behavior is already described in an entry in Scout's `existing_tests` list (read from `01a-research-scout.json`) -- only emit a `guard_test_gaps` entry for genuinely uncovered behaviors
 - **Rollback difficulty:** trivial|moderate|difficult
 - **Edge cases:** Inputs/states that could fail?
 
@@ -93,7 +93,7 @@ Write `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (path from task i
   ],
   "safety_ranking": ["approach name (safest)", "approach name (riskiest)"],
   "implementation_constraints": ["must do X", "must not do Y"],
-  "guard_test_gaps": ["test that must be added"],
+  "guard_test_gaps": [{"name": "test_name", "covers": "one-line behavior description"}],
   "warnings": ["critical warning 1"],
   "recommendation": "which approach and why"
 }
