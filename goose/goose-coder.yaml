@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.2.0"
+version: "5.3.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -120,7 +120,7 @@ instructions: |
   Handoff dir: <WORKTREE>/.handoff
   Issue: <ISSUE_URL>
   Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
-  Output: write $HANDOFF/01a-research-scout.json (compact: jq -c .) then stop.
+  Output: write <WORKTREE>/.handoff/01a-research-scout.json (compact: jq -c .) then stop.
   Schema fields: session_id, file_structure_summary, lens, relevant_files, conventions, patterns, approaches, recommendation.
   Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
   ```
@@ -150,7 +150,7 @@ instructions: |
   Handoff dir: <WORKTREE>/.handoff
   Scout handoff: <WORKTREE>/.handoff/01a-research-scout.json
   Verification targets: <2-3 specific aptu-coder checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
-  Output: write $HANDOFF/01b-research-guard.json (compact: jq -c .) then stop.
+  Output: write <WORKTREE>/.handoff/01b-research-guard.json (compact: jq -c .) then stop.
   Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
   Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
   ```
@@ -263,7 +263,7 @@ instructions: |
   Worktree: <WORKTREE>
   Handoff dir: <WORKTREE>/.handoff
   Plan file: <WORKTREE>/.handoff/02-plan.json
-  Output: write $HANDOFF/03-build.json (compact: jq -c .) then stop.
+  Output: write <WORKTREE>/.handoff/03-build.json (compact: jq -c .) then stop.
   Schema fields: session_id, files_changed, test_results, lint_result, notes.
   Constraint: Implement plan only. No git add, commit, or push.
   ```
@@ -302,7 +302,7 @@ instructions: |
   Handoff dir: <WORKTREE>/.handoff
   Build handoff: <WORKTREE>/.handoff/03-build.json
   Plan file: <WORKTREE>/.handoff/02-plan.json
-  Output: write $HANDOFF/04-validation.json (compact: jq -c .) then stop.
+  Output: write <WORKTREE>/.handoff/04-validation.json (compact: jq -c .) then stop.
   Schema fields: session_id, verdict, pr_url, issues, security_summary, notes, retry_instructions.
   Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence and write pr_url to 04-validation.json.
   ```

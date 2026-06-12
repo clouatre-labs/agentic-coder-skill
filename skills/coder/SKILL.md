@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.4.0"
+version: "2.5.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
 #   2.4.0 -- delegate commit+PR to CHECK on PASS; orchestrator Phase 5 gates on pr_url; add commit_message to 02-plan.json schema
 #   2.3.0 -- remove aptu-coder tool guidance block and BUILD pre-write verification sentence (orchestrator noise; delegate context only)
 #   2.2.0 -- sync from goose-coder: replace aptu MCP review_pr with CLI; add file_structure_summary to SCOUT schema fields (issues #543 #544)
@@ -114,7 +115,7 @@ Worktree: <WORKTREE>
 Handoff dir: <WORKTREE>/.handoff
 Issue: <ISSUE_URL>
 Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
-Output: write $HANDOFF/01a-research-scout.json (compact: jq -c .) then stop.
+Output: write <WORKTREE>/.handoff/01a-research-scout.json (compact: jq -c .) then stop.
 Schema fields: session_id, file_structure_summary, lens, relevant_files, conventions, patterns, approaches, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
@@ -140,7 +141,7 @@ Worktree: <WORKTREE>
 Handoff dir: <WORKTREE>/.handoff
 Scout handoff: <WORKTREE>/.handoff/01a-research-scout.json
 Verification targets: <2-3 specific checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
-Output: write $HANDOFF/01b-research-guard.json (compact: jq -c .) then stop.
+Output: write <WORKTREE>/.handoff/01b-research-guard.json (compact: jq -c .) then stop.
 Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
@@ -213,8 +214,8 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
     "planned_tests": [
       {"name": "test_name", "behavior": "which behavior", "type": "happy_path|edge_case"}
     ],
-    "variant_strategy": "If N variants share a code path, test 1 representative + 1 edge case, not all N",
-    "guard_test_gaps": ["specific tests guard identified as missing"]
+    "existing_tests": [{"name": "test_name", "covers": "behavior"}],
+    "guard_test_gaps": [{"name": "test_name", "covers": "behavior -- sourced from 01b-research-guard.json, filtered against existing_tests"}]
   },
   "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
   "tooling": {
@@ -254,7 +255,7 @@ Set the task prompt using this template -- fill in the bracketed values:
 Worktree: <WORKTREE>
 Handoff dir: <WORKTREE>/.handoff
 Plan file: <WORKTREE>/.handoff/02-plan.json
-Output: write $HANDOFF/03-build.json (compact: jq -c .) then stop.
+Output: write <WORKTREE>/.handoff/03-build.json (compact: jq -c .) then stop.
 Schema fields: session_id, files_changed, test_results, lint_result, notes.
 Constraint: Implement plan only. No git add, commit, or push.
 ```
@@ -286,7 +287,7 @@ Worktree: <WORKTREE>
 Handoff dir: <WORKTREE>/.handoff
 Build handoff: <WORKTREE>/.handoff/03-build.json
 Plan file: <WORKTREE>/.handoff/02-plan.json
-Output: write $HANDOFF/04-validation.json (compact: jq -c .) then stop.
+Output: write <WORKTREE>/.handoff/04-validation.json (compact: jq -c .) then stop.
 Schema fields: session_id, verdict, issues, security_summary, notes, retry_instructions.
 Constraint: READ-ONLY. No code changes. Validate only.
 ```
