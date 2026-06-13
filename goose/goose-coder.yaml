@@ -128,7 +128,7 @@ instructions: |
   ```json
   {
     "source": "coder-scout",
-    "extensions": ["context7", "brave_search", "aptu-coder"],
+    "extensions": ["brave_search", "aptu-coder"],
     "provider": "aws_bedrock",
     "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     "temperature": 0.5
@@ -158,7 +158,7 @@ instructions: |
   ```json
   {
     "source": "coder-guard",
-    "extensions": ["context7", "brave_search", "aptu-coder"],
+    "extensions": ["context7", "aptu-coder"],
     "provider": "aws_bedrock",
     "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     "temperature": 0.1
