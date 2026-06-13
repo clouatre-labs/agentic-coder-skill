@@ -53,7 +53,7 @@ instructions: |
 
   1. **No emojis** - Never in code, commits, PRs, docs, or responses
   2. **Concise** - Lead with summary, use bullets, facts only
-  3. **Use gh CLI** - `gh issue view` / `gh pr list` / `gh api` for GitHub data; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch or REST API when endpoint already known; use brave_search only for sites with no structured access method. Pass this rule to every delegate.
+  3. **Use gh CLI** - `gh issue view` / `gh pr list` / `gh api` for GitHub data; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
   6. **Code analysis tools** - See Critical Constraint #6. Pass this constraint to every delegate you spawn.

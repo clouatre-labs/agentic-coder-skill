@@ -35,8 +35,8 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 3. Concise: lead with summary, use bullets
 4. Chain shell commands with `&&`
 5. Use `rg` with multiple patterns in one call
-6. brave_search: max 2 queries total
-7. Tool priority: (1) gh CLI for all github.com content; (2) brave_search for ecosystem and library discovery; (3) direct URL fetch or REST API when endpoint already known
+6. brave_search: use freely to ground claims -- best practices, design patterns, library adoption, API conventions, current ecosystem trends; never rely on training data alone for factual or time-sensitive claims
+7. Tool priority for external content: (1) gh CLI for anything on github.com; (2) direct API or WebMCP when the site exposes one; (3) brave_search otherwise -- never search github.com with brave_search
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
 10. Never pass `timeout_secs` to `exec_command`
@@ -55,7 +55,7 @@ Orient with `aptu-coder` first: `analyze_directory` for overview, `analyze_modul
 
 ## Phase4: Ecosystem Research
 
-Identify 2-3 relevant libraries; use brave_search and gh search repos/code to discover libraries and verify ecosystem patterns. Check installed version with rg in the worktree (grep Cargo.toml, package.json, pyproject.toml). Max 2 brave_search queries.
+Identify 2-3 relevant libraries; use gh search repos/code and brave_search to discover libraries and verify ecosystem patterns. Check installed version with rg in the worktree (grep Cargo.toml, package.json, pyproject.toml). Use brave_search to ground best practices, current adoption, and API stability -- training data has a cutoff; live search does not.
 
 ## Phase5: Issue and PR Context
 
