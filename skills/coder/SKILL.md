@@ -91,7 +91,7 @@ git worktree list --porcelain 2>/dev/null | awk '/^worktree /{wt=$2} /^branch /{
 done
 find .worktrees -maxdepth 1 -type d -mtime +3 -exec git worktree remove --force {} \; 2>/dev/null || true
 git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
-git worktree add $WORKTREE origin/main
+[ -f "$WORKTREE/.git" ] || git worktree add $WORKTREE origin/main
 mkdir -p $HANDOFF
 echo "Session: $SESSION_ID | Worktree: $WORKTREE"
 ```
