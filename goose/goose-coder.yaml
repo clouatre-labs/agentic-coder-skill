@@ -159,8 +159,8 @@ instructions: |
   {
     "source": "coder-guard",
     "extensions": ["context7", "aptu-coder"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-v4-flash",
     "temperature": 0.1
   }
   ```
