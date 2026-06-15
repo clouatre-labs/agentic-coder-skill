@@ -79,8 +79,8 @@ Validation checklist:
 - Test results from 03-build.json pass
 - `implementation_constraints` honored (check `constraints_honored` in 03-build.json)
 - No scope creep, KISS/YAGNI/DRY violations, or secrets
-- Test count does not exceed `test_strategy.planned_tests` in 02-plan.json; over = FAIL
-- For each new test added by BUILD (visible in `git diff`), verify its described behavior is not already covered by an entry in `test_strategy.existing_tests` from `02-plan.json`. A new test whose behavior is a strict subset of an existing test = FAIL; populate `retry_instructions` with the redundant test name and the existing test it duplicates.
+- Test count does not exceed `test_strategy.test_behaviors` count in 02-plan.json; over = FAIL
+- For each new test added by BUILD (visible in `git diff`), verify its described behavior is not already covered by an entry in `test_strategy.existing_coverage` from `02-plan.json`. A new test whose behavior is a strict subset of an existing test = FAIL; populate `retry_instructions` with the redundant test name and the existing test it duplicates.
 - Security: Critical/High = FAIL
 - Line budget: count `^+` lines (exclude `^+++`); FAIL if over `line_budget.total_max` or `test_ratio_max`
 

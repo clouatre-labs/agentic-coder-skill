@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.5.0"
+version: "2.6.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
 #   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
 #   2.4.0 -- delegate commit+PR to CHECK on PASS; orchestrator Phase 5 gates on pr_url; add commit_message to 02-plan.json schema
 #   2.3.0 -- remove aptu-coder tool guidance block and BUILD pre-write verification sentence (orchestrator noise; delegate context only)
@@ -186,16 +187,16 @@ After approach selection, produce the structured plan. No gate - auto-proceed to
 - Sum estimated lines changed across all files (new + modified + moved)
 - If >500 lines: STOP and ASK before proceeding to BUILD. Include breakdown of new vs modified lines.
 - Reuse existing patterns from the codebase (reference 01a-research-scout.json)
-- Incorporate guard's `implementation_constraints` and `warnings` verbatim
+- Incorporate guard's `implementation_constraints` and `warnings`
 
 **Actions:**
 - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
 - Build plan based on selected approach
-- Include guard's `implementation_constraints` verbatim in the plan
+- Strip rationale from guard's `implementation_constraints` -- keep imperative verb + target only
 - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
 - Map out implementation steps (5-10 steps)
 - Identify risks and edge cases from guard's analysis
-- Plan test strategy including guard's `guard_test_gaps`
+- Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`, dedup by behavior (drop guard gap if behavior already in `test_behaviors`); drop any behavior already described in `existing_coverage`
 
 Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 
@@ -208,14 +209,10 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
     {"path": "path/to/file", "line_range": "45-67", "description": "changes"}
   ],
   "steps": ["Step 1", "Step 2"],
-  "implementation_constraints": ["from guard - must do X", "from guard - must not do Y"],
+  "implementation_constraints": ["must do X", "must not do Y"],
   "test_strategy": {
-    "distinct_behaviors": ["behavior 1", "behavior 2"],
-    "planned_tests": [
-      {"name": "test_name", "behavior": "which behavior", "type": "happy_path|edge_case"}
-    ],
-    "existing_tests": [{"name": "test_name", "covers": "behavior"}],
-    "guard_test_gaps": [{"name": "test_name", "covers": "behavior -- sourced from 01b-research-guard.json, filtered against existing_tests"}]
+    "test_behaviors": ["behavior description [happy_path|edge_case]"],
+    "existing_coverage": ["test_name: behavior"]
   },
   "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
   "tooling": {
@@ -238,8 +235,8 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 - Overview (2-3 sentences)
 - Files to modify with line ranges
 - Implementation steps (numbered list)
-- Implementation constraints (from guard, verbatim)
-- Test strategy including guard's test gaps
+- Implementation constraints (from guard, imperative-only)
+- Test strategy (test_behaviors consolidated from PLAN + guard gaps)
 - Risks identified
 - Complexity estimate
 

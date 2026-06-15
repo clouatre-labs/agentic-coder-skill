@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.3.0"
+version: "5.4.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -194,12 +194,12 @@ instructions: |
   **Actions:**
   - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
   - Create detailed implementation plan based on selected approach
-  - Include guard's implementation_constraints verbatim
+  - Strip rationale from guard's implementation_constraints -- keep imperative verb + target only
   - Define minimal scope
   - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
   - Map out implementation steps (5-10 steps)
   - Identify risks and edge cases (from guard's analysis)
-  - Plan test strategy: populate `existing_tests` from `01a-research-scout.json`; drop any planned test whose behavior is already covered by an entry there; then add guard's test_gaps -- but first filter `guard_test_gaps` against `existing_tests` the same way, dropping any guard gap whose behavior is already covered
+  - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`, dedup by behavior (drop guard gap if behavior already in `test_behaviors`); drop any behavior already described in `existing_coverage`
 
   **Write `$HANDOFF/02-plan.json`:**
 
@@ -209,17 +209,13 @@ instructions: |
     "worktree": "<WORKTREE>",
     "overview": "2-3 sentence summary",
     "files": [
-      {"path": "path/to/file", "line_range": "45-67", "description": "changes"}
+      {"path": "path/to/file", "line_range": "45-67"}
     ],
     "steps": ["Step 1", "Step 2", "..."],
-    "implementation_constraints": ["from guard - must do X", "from guard - must not do Y"],
+    "implementation_constraints": ["must do X", "must not do Y"],
     "test_strategy": {
-      "distinct_behaviors": ["behavior 1", "behavior 2"],
-      "planned_tests": [
-        {"name": "test_name", "behavior": "which behavior", "type": "happy_path|edge_case"}
-      ],
-      "existing_tests": [{"name": "test_name", "covers": "behavior"}],
-      "guard_test_gaps": [{"name": "test_name", "covers": "behavior -- sourced from 01b-research-guard.json, filtered against existing_tests"}]
+      "test_behaviors": ["behavior description [happy_path|edge_case]"],
+      "existing_coverage": ["test_name: behavior"]
     },
     "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
     "tooling": {

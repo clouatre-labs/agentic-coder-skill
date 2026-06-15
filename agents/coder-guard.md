@@ -58,7 +58,7 @@ Verify API claims before flagging non-existent; unverified blockers are themselv
 - **Breaking changes:** Public API or contract changed?
 - **Blast radius:** Callers/dependents affected?
 - **Dependency risk:** Add/upgrade deps?
-- **Test gap:** Skip if type system or existing coverage catches it; also skip if the behavior is already described in an entry in Scout's `existing_tests` list (read from `01a-research-scout.json`) -- only emit a `guard_test_gaps` entry for genuinely uncovered behaviors
+- **Test gap:** Skip if type system or existing coverage catches it; also skip if the behavior is already described in an entry in Scout's `existing_coverage` list (read from `01a-research-scout.json`) -- only emit a `guard_test_gaps` entry for genuinely uncovered behaviors
 - **Rollback difficulty:** trivial|moderate|difficult
 - **Edge cases:** Inputs/states that could fail?
 
