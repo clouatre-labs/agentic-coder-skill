@@ -149,7 +149,7 @@ instructions: |
   Worktree: <WORKTREE>
   Handoff dir: <WORKTREE>/.handoff
   Scout handoff: <WORKTREE>/.handoff/01a-research-scout.json
-  Verification targets: <2-3 specific aptu-coder checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
+  Verification targets: <2-3 specific checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
   Output: write <WORKTREE>/.handoff/01b-research-guard.json (compact: jq -c .) then stop.
   Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
   Constraint: READ-ONLY. No code changes, no commits. Write handoff only.

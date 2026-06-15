@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.6.0"
+version: "2.7.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.7.0 -- sync with goose-coder: fix CHECK schema (add pr_url, fix constraint to commit+PR on PASS); drop description from files schema; align PLAN/GUARD/Phase5/tooling wording
 #   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
 #   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
 #   2.4.0 -- delegate commit+PR to CHECK on PASS; orchestrator Phase 5 gates on pr_url; add commit_message to 02-plan.json schema
@@ -157,22 +158,14 @@ jq -c . $HANDOFF/01b-research-guard.json || echo "ERROR: guard handoff missing"
 
 If missing: retry GUARD once. If still missing: STOP and report failure. Do not proceed.
 
-### GATE: Synthesize and Present
-
-Read both handoffs and synthesize:
-
-```bash
-jq . $HANDOFF/01a-research-scout.json
-jq . $HANDOFF/01b-research-guard.json
-```
-
-Present to user:
-- Problem statement (in your own words)
-- Relevant files (from scout)
-- Conventions discovered
-- Scout's approaches with guard's risk annotations side by side
-- Agreements (where scout and guard align - high confidence)
-- Tensions (where they disagree - present both sides)
+After BOTH agents complete:
+1. Verify handoff files exist: `ls $HANDOFF/01*.json` (if missing, STOP and report failure)
+2. Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
+3. Synthesize both perspectives:
+   - **Agreements** (high confidence): Where scout and guard align
+   - **Tensions** (need decision): Where they disagree -- present both sides
+   - Scout's recommendation vs. Guard's recommendation
+4. Present: Problem statement, relevant files, conventions, approaches with risk annotations
 
 **Say:** "Proceeding with: [chosen approach and 1-line rationale]." Then proceed to PLAN.
 
@@ -185,14 +178,16 @@ After approach selection, produce the structured plan. No gate - auto-proceed to
 **Quality standards (KISS/YAGNI/DRY):**
 - Plan ONLY what solves the problem - no speculative features
 - Sum estimated lines changed across all files (new + modified + moved)
-- If >500 lines: STOP and ASK before proceeding to BUILD. Include breakdown of new vs modified lines.
+- If >500 lines: STOP and ASK before proceeding to BUILD. Include breakdown of new, modified, and moved lines in the estimate.
 - Reuse existing patterns from the codebase (reference 01a-research-scout.json)
 - Incorporate guard's `implementation_constraints` and `warnings`
+- Minimal scope: what changes, what stays the same
 
 **Actions:**
 - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
-- Build plan based on selected approach
+- Create detailed implementation plan based on selected approach
 - Strip rationale from guard's `implementation_constraints` -- keep imperative verb + target only
+- Define minimal scope
 - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
 - Map out implementation steps (5-10 steps)
 - Identify risks and edge cases from guard's analysis
@@ -206,7 +201,7 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
   "worktree": "<WORKTREE>",
   "overview": "2-3 sentence summary",
   "files": [
-    {"path": "path/to/file", "line_range": "45-67", "description": "changes"}
+    {"path": "path/to/file", "line_range": "45-67"}
   ],
   "steps": ["Step 1", "Step 2"],
   "implementation_constraints": ["must do X", "must not do Y"],
@@ -233,10 +228,10 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 
 **Present (no gate):**
 - Overview (2-3 sentences)
-- Files to modify with line ranges
+- Files to modify (with line ranges)
 - Implementation steps (numbered list)
-- Implementation constraints (from guard, imperative-only)
-- Test strategy (test_behaviors consolidated from PLAN + guard gaps)
+- Implementation constraints (from guard)
+- Test strategy (including guard's test gaps)
 - Risks identified
 - Complexity estimate
 
@@ -285,8 +280,8 @@ Handoff dir: <WORKTREE>/.handoff
 Build handoff: <WORKTREE>/.handoff/03-build.json
 Plan file: <WORKTREE>/.handoff/02-plan.json
 Output: write <WORKTREE>/.handoff/04-validation.json (compact: jq -c .) then stop.
-Schema fields: session_id, verdict, issues, security_summary, notes, retry_instructions.
-Constraint: READ-ONLY. No code changes. Validate only.
+Schema fields: session_id, verdict, pr_url, issues, security_summary, notes, retry_instructions.
+Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence and write pr_url to 04-validation.json.
 ```
 
 Invoke the `coder-check` agent via Task tool with the filled-in prompt.
@@ -300,9 +295,9 @@ After CHECK completes:
 
 2. Present verdict to user.
 
-**If PASS:** Proceed to COMMIT (no gate).
+**If PASS:** Proceed to COMMIT & PR (no gate).
 
-**If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT, or address notes first?"
+**If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
 
 **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP. Do not fix inline.
 
@@ -316,7 +311,7 @@ After validation PASS, read `pr_url` from `$HANDOFF/04-validation.json`:
 jq -r '.pr_url // empty' $HANDOFF/04-validation.json
 ```
 
-**If `pr_url` is present:** CHECK already committed and created the PR. Skip the commit sequence entirely. Proceed directly to aptu review using the `pr_url` value.
+**If `pr_url` is present:** CHECK already committed and created the PR. Skip the commit sequence entirely. Proceed directly to aptu pr review using the `pr_url` value.
 
 **If `pr_url` is absent:** CHECK did not create the PR (git or gh failure). Read `notes` from `04-validation.json` for the error. Present the error to the user and **ASK** how to proceed. Do not attempt commit inline.
 
@@ -340,6 +335,6 @@ Done. Worktree preserved for audit or resume.
 
 ## Tooling Reference
 
-- **Python:** uv, ruff, pyright
-- **JavaScript/TypeScript:** bun, biome, vitest
-- **Rust:** cargo build/test/clippy/fmt/deny
+**Python:** uv, ruff, pyright
+**JavaScript/TypeScript:** bun/pnpm, biome, vitest
+**Rust:** cargo build/test/clippy/fmt/deny
