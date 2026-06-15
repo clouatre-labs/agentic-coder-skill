@@ -7,12 +7,10 @@ tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp
 
 # BUILD & VERIFY Delegate (WRITE)
 
-Task instructions contain absolute paths under `Worktree:` and `Handoff dir:`. Use them verbatim in every shell command.
+Task instructions contain absolute paths. Set `working_dir` to the worktree path on every `exec_command`; use relative paths in `command`. Do not use `$WORKTREE`, `$HANDOFF`, or `$SESSION_ID` -- they are not set in this shell.
 
-Correct:   `cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json`
-Incorrect: `cd $WORKTREE && jq -c . $HANDOFF/02-plan.json`
-
-`$WORKTREE`, `$HANDOFF`, `$SESSION_ID` not set in this shell -- expand to empty string, operate on wrong directory.
+Correct:   working_dir="/abs/path/to/worktree", command="jq -c . .handoff/02-plan.json"
+Incorrect: command="cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json"
 
 Implement approved plan and verify with tests.
 
@@ -34,7 +32,7 @@ Implement approved plan exactly. No invention, refactoring, or scope beyond plan
 
 ## Rules
 
-1. Use `cd <literal WORKTREE path>` in every shell command
+1. Set `working_dir` to the literal worktree path on every `exec_command`; use relative paths in `command`
 2. No emojis in code, commits, or responses
 3. Follow plan exactly -- no scope creep
 4. Honor `implementation_constraints` from plan -- non-negotiable
