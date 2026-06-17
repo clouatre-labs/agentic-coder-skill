@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.5.0"
+version: "5.6.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -269,7 +269,7 @@ instructions: |
     "source": "coder-build",
     "extensions": ["aptu-coder"],
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-pro",
+    "model": "deepseek/deepseek-v4-flash",
     "temperature": 0.2
   }
   ```
