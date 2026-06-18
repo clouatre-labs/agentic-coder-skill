@@ -190,10 +190,10 @@ instructions: |
   - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
   - Create detailed plan based on selected approach
   - Strip rationale from `implementation_constraints` -- keep imperative verb + target only
-  - Identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`)
+  - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
   - Map out implementation steps (5-10 steps)
   - Identify risks and edge cases
-  - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`, dedup by behavior; drop behaviors already in `existing_coverage`; drop library primitive behavior gaps
+  - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`, dedup by behavior (drop guard gap if behavior already in `test_behaviors`); drop any behavior already described in `existing_coverage`; drop any gap that describes library primitive behavior rather than a production call site
 
   **Write `$HANDOFF/02-plan.json`:**
 
@@ -319,6 +319,7 @@ instructions: |
   - `request_changes`: STOP, **ASK** user.
 
   **Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
+  Avoid `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
 
   ---
 
