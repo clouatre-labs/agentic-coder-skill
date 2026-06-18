@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.8.0"
+version: "2.9.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   2.9.0 -- sync with goose-coder v5.8.0: rename Phase 5 to PR REVIEW & READY; 
 #   2.8.0 -- sync with goose-coder v5.7.0: draft PR in CHECK, review gate + gh pr ready in orchestrator Phase 5; request_changes always ASK user
 #   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
 #   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
@@ -29,7 +30,7 @@ compatibility:
 Orchestrates the full contribution flow using sub-agents.
 
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, commits+PR on PASS] -> aptu review_pr
+SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, draft PR on PASS] -> PR REVIEW & READY [aptu pr review + gh pr ready]
                                                                               |                    |
                                                                          FAIL -> Back to BUILD (1x) FAIL -> Stop & Ask
 ```
@@ -277,13 +278,13 @@ Invoke the `coder-check` agent via Task tool with the filled-in prompt.
 
 After CHECK completes:
 1. Read `$HANDOFF/04-validation.json` and present verdict.
-2. **If PASS:** Proceed to COMMIT & PR (no gate).
-3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
+2. **If PASS:** Proceed immediately to PR REVIEW & READY (no gate).
+3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to PR REVIEW & READY, or address notes first?"
 4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" If BUILD+CHECK fails twice: STOP.
 
 ---
 
-## Phase 5: COMMIT & PR
+## Phase 5: PR REVIEW & READY
 
 Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **ASK** user.
 
