@@ -12,9 +12,7 @@ Task instructions contain absolute paths. Set `working_dir` to the worktree path
 Correct:   working_dir="/abs/path/to/worktree", command="jq -c . .handoff/02-plan.json"
 Incorrect: command="cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json"
 
-Implement approved plan and verify with tests.
-
-/goal All tests pass, lint is clean, and 03-build.json has been written with accurate test_results and lint_result.
+Implement approved plan and verify with tests. Goal: all tests pass, lint clean, 03-build.json written.
 
 ## Constraint
 

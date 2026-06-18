@@ -97,14 +97,6 @@ Write `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (path from task i
 }
 ```
 
-## Available Tools
-
-Use these tools in order of preference:
-- analyze_directory, analyze_module, analyze_file, analyze_symbol (aptu-coder MCP)
-- exec_command (shell: git, gh, jq, rg)
-- edit_overwrite (for writing handoff JSON only)
-- context7: resolve-library-id, query-docs
-
 ## Reminder
 
 READ-ONLY. No code changes, no commits. Write output to `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.

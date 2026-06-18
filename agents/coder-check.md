@@ -50,7 +50,7 @@ If files missing, report error and exit.
 
 ## Phase 1.5: Security Scan (MANDATORY)
 
-Run `git diff HEAD` via exec_command piped to `aptu scan-security --diff - -o json`. Tool failure = FAIL. Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
+Run `git diff HEAD` piped to `aptu scan-security --diff - -o json`. Critical/High = FAIL.
 
 ```bash
 # JS/TS
@@ -70,17 +70,17 @@ git diff
 git diff --cached
 ```
 
-If `git status --porcelain` empty but `origin/main..HEAD` has commits, BUILD committed early; validate `git diff origin/main..HEAD` instead. If both empty, FAIL "no changes found".
+If `git status --porcelain` empty but `origin/main..HEAD` has commits, validate `git diff origin/main..HEAD` instead. If both empty, FAIL "no changes found".
 
-Validation checklist:
+Checklist:
 - Planned files modified, no unplanned changes
 - Test results from 03-build.json pass
-- `implementation_constraints` honored (check `constraints_honored` in 03-build.json)
-- No scope creep, KISS/YAGNI/DRY violations, or secrets
-- Test count does not exceed `test_strategy.test_behaviors` count in 02-plan.json; over = FAIL
+- `implementation_constraints` honored
+- No scope creep, secrets, or KISS violations
+- Test count <= `test_strategy.test_behaviors` in 02-plan.json; over = FAIL
 - For each new test added by BUILD (visible in `git diff`), verify its described behavior is not already covered by an entry in `test_strategy.existing_coverage` from `02-plan.json`. A new test whose behavior is a strict subset of an existing test = FAIL; populate `retry_instructions` with the redundant test name and the existing test it duplicates.
 - Security: Critical/High = FAIL
-- Line budget: count `^+` lines (exclude `^+++`); FAIL if over `line_budget.total_max` or `test_ratio_max`
+- Line budget: count `^+` lines; FAIL if over `line_budget.total_max` or `test_ratio_max`
 
 ## Phase 3: Commit and PR (PASS verdict only)
 
@@ -115,43 +115,18 @@ EOF
 gh pr create --draft --title "<commit_message from 02-plan.json>" --body-file /tmp/pr-body.md
 ```
 
-PR body: flowing prose, no hard wraps. Capture URL, write to `04-validation.json` as `pr_url`. On git/gh failure: write error to notes, no `pr_url`, no recovery.
+Capture URL, write to `04-validation.json` as `pr_url`. On failure: write error to notes, no `pr_url`.
 
-**Retry path (`pr_url` present in `04-validation.json`):** Skip rebase and initial `git add`/`git commit`. Run `git add -A` + `git commit --amend -S --signoff --no-edit` + `git push --force-with-lease origin <branch>`. Skip `gh pr create`. Go to Output.
+**Retry path:** Skip rebase and initial `git add`/`git commit`. Run `git add -A` + `git commit --amend -S --signoff --no-edit` + `git push --force-with-lease origin <branch>`. Skip `gh pr create`.
 
 ## Output
 
-Write `<HANDOFF>/04-validation.json` via `edit_overwrite` (path from task instructions), then present.
+Write `<HANDOFF>/04-validation.json` via `edit_overwrite`, then present.
 
 `retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough for BUILD to act without reading source (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
 
 ```json
-{
-  "session_id": "<SESSION_ID from task instructions>",
-  "timestamp": "<ISO 8601>",
-  "branch": "<branch-name>",
-  "verdict": "PASS|FAIL|PASS WITH NOTES",
-  "pr_url": "<URL from gh pr create, or null if not yet created>",
-  "retry_instructions": ["specific action BUILD must take"],
-  "plan_requirements": ["req1"],
-  "checks": [{"name": "check", "status": "PASS|FAIL", "notes": ""}],
-  "constraints_verified": [{"constraint": "...", "status": "PASS|FAIL", "notes": ""}],
-  "security_summary": {
-    "critical": 0, "high": 0, "medium": 0, "low": 0,
-    "bun_audit": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0},
-    "pip_audit": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0},
-    "semgrep": {"status": "found|skipped", "critical": 0, "high": 0, "medium": 0, "low": 0}
-  },
-  "security_findings": [{"severity": "Critical|High|Medium|Low", "pattern_id": "...", "description": "...", "file_path": "...", "line_number": 0}],
-  "line_count": {
-    "code_lines": 0, "test_lines": 0, "total_lines": 0,
-    "budget_total_max": 0, "test_ratio": 0.0, "budget_test_ratio_max": 0.0,
-    "status": "within_budget|over_budget|no_budget"
-  },
-  "issues": [],
-  "recommendations": [],
-  "next_steps": "PR created (PASS) or fix issues (FAIL)"
-}
+{"session_id":"<SESSION_ID>","timestamp":"<ISO 8601>","branch":"<branch>","verdict":"PASS|FAIL|PASS WITH NOTES","pr_url":"<URL or null>","retry_instructions":["action"],"checks":[{"name":"check","status":"PASS|FAIL","notes":""}],"constraints_verified":[{"constraint":"...","status":"PASS|FAIL","notes":""}],"security_summary":{"critical":0,"high":0,"medium":0,"low":0,"bun_audit":{"status":"found|skipped","critical":0,"high":0,"medium":0,"low":0},"pip_audit":{"status":"found|skipped","critical":0,"high":0,"medium":0,"low":0},"semgrep":{"status":"found|skipped","critical":0,"high":0,"medium":0,"low":0}},"security_findings":[{"severity":"Critical|High|Medium|Low","pattern_id":"...","description":"...","file_path":"...","line_number":0}],"line_count":{"code_lines":0,"test_lines":0,"total_lines":0,"budget_total_max":0,"test_ratio":0.0,"budget_test_ratio_max":0.0,"status":"within_budget|over_budget|no_budget"},"issues":[],"recommendations":[],"next_steps":"PR created (PASS) or fix issues (FAIL)"}
 ```
 
 ## Reminder

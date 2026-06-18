@@ -104,7 +104,7 @@ Store SESSION_ID and WORKTREE for all subsequent phases. Proceed immediately to 
 
 ## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL] [GATE]
 
-Spawn SCOUT first, then GUARD (which reads scout's output).
+Spawn SCOUT first, then GUARD (reads scout's output).
 
 **Say:** "Spawning SCOUT research agent (session: $SESSION_ID)..."
 
@@ -158,40 +158,35 @@ jq -c . $HANDOFF/01b-research-guard.json || echo "ERROR: guard handoff missing"
 
 If missing: retry GUARD once. If still missing: STOP and report failure. Do not proceed.
 
-After BOTH agents complete:
-1. Verify handoff files exist: `ls $HANDOFF/01*.json` (if missing, STOP and report failure)
+After both agents complete:
+1. Verify handoff files exist: `ls $HANDOFF/01*.json`
 2. Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
-3. Synthesize both perspectives:
-   - **Agreements** (high confidence): Where scout and guard align
-   - **Tensions** (need decision): Where they disagree -- present both sides
-   - Scout's recommendation vs. Guard's recommendation
-4. Present: Problem statement, relevant files, conventions, approaches with risk annotations
+3. Synthesize: agreements, tensions, recommendations
+4. Present: problem, files, conventions, approaches with risk
 
-**Say:** "Proceeding with: [chosen approach and 1-line rationale]." Then proceed to PLAN.
+**Say:** "Proceeding with: [approach and rationale]." Then proceed to PLAN.
 
 ---
 
 ## Phase 2: PLAN
 
-After approach selection, produce the structured plan. No gate - auto-proceed to BUILD.
+Produce structured plan. No gate - auto-proceed to BUILD.
 
-**Quality standards (KISS/YAGNI/DRY):**
-- Plan ONLY what solves the problem - no speculative features
-- Sum estimated lines changed across all files (new + modified + moved)
-- If >500 lines: STOP and ASK before proceeding to BUILD. Include breakdown of new, modified, and moved lines in the estimate.
-- Reuse existing patterns from the codebase (reference 01a-research-scout.json)
+**Quality standards:**
+- Plan ONLY what solves the problem
+- Sum estimated lines changed; if >500: STOP and ASK
+- Reuse existing patterns
 - Incorporate guard's `implementation_constraints` and `warnings`
-- Minimal scope: what changes, what stays the same
+- Minimal scope
 
 **Actions:**
 - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
-- Create detailed implementation plan based on selected approach
-- Strip rationale from guard's `implementation_constraints` -- keep imperative verb + target only
-- Define minimal scope
-- Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
+- Create detailed plan based on selected approach
+- Strip rationale from `implementation_constraints` -- keep imperative verb + target only
+- Identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`)
 - Map out implementation steps (5-10 steps)
-- Identify risks and edge cases from guard's analysis
-- Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`, dedup by behavior (drop guard gap if behavior already in `test_behaviors`); drop any behavior already described in `existing_coverage`; drop any gap that describes library primitive behavior rather than a production call site
+- Identify risks and edge cases
+- Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`, dedup by behavior; drop behaviors already in `existing_coverage`; drop library primitive behavior gaps
 
 Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 
@@ -241,7 +236,7 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 
 **Say:** "Spawning BUILD agent (session: $SESSION_ID)..."
 
-Set the task prompt using this template -- fill in the bracketed values:
+Set the task prompt:
 
 ```
 Worktree: <WORKTREE>
@@ -255,15 +250,8 @@ Constraint: Implement plan only. No git add, commit, or push.
 Invoke the `coder-build` agent via Task tool with the filled-in prompt.
 
 After BUILD completes:
-
-1. Verify handoff exists:
-   ```bash
-   jq -c . $HANDOFF/03-build.json || echo "ERROR: build handoff missing"
-   ```
-   If missing: write a stub FAIL to `04-validation.json`, re-spawn BUILD once. If second BUILD also fails: STOP and ASK. Do not implement inline.
-
+1. Verify handoff exists: `jq -c . $HANDOFF/03-build.json`. If missing: re-spawn BUILD once. If second BUILD fails: STOP.
 2. Read `$HANDOFF/03-build.json` and present summary and test results.
-
 3. Proceed immediately to CHECK (no gate).
 
 ---
@@ -272,7 +260,7 @@ After BUILD completes:
 
 **Say:** "Spawning CHECK agent (session: $SESSION_ID)..."
 
-Set the task prompt using this template -- fill in the bracketed values:
+Set the task prompt:
 
 ```
 Worktree: <WORKTREE>
@@ -287,33 +275,22 @@ Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence an
 Invoke the `coder-check` agent via Task tool with the filled-in prompt.
 
 After CHECK completes:
-
-1. Read `$HANDOFF/04-validation.json`:
-   ```bash
-   jq . $HANDOFF/04-validation.json
-   ```
-
-2. Present verdict to user.
-
-**If PASS:** Proceed to COMMIT & PR (no gate).
-
-**If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
-
-**If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" On approval, re-invoke BUILD agent (pass `04-validation.json` exists as context). If BUILD+CHECK fails twice: STOP. Do not fix inline.
+1. Read `$HANDOFF/04-validation.json` and present verdict.
+2. **If PASS:** Proceed to COMMIT & PR (no gate).
+3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to COMMIT & PR, or address notes first?"
+4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" If BUILD+CHECK fails twice: STOP.
 
 ---
 
 ## Phase 5: COMMIT & PR
 
-Read `pr_url` from `$HANDOFF/04-validation.json`. **No `pr_url`:** CHECK failed -- read `notes`, **ASK** user. No inline commit.
+Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **ASK** user.
 
-**`pr_url` present:** CHECK created draft PR. Run `aptu pr review <PR_URL> -o json`.
+`pr_url` present: CHECK created draft PR. Run `aptu pr review <PR_URL> -o json`.
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
-- `request_changes`: STOP, **ASK** user (show concerns; approve retry to re-spawn BUILD+CHECK+review, or mark ready to skip).
+- `request_changes`: STOP, **ASK** user.
 
-**Merge only on explicit user request:** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`. No `--delete-branch`.
-
-Done. Worktree preserved for audit or resume.
+**Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
 
 ---
 
