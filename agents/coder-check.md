@@ -79,6 +79,7 @@ Checklist:
 - No scope creep, secrets, or KISS violations
 - Test count <= `test_strategy.test_behaviors` in 02-plan.json; over = FAIL
 - For each new test added by BUILD (visible in `git diff`), verify its described behavior is not already covered by an entry in `test_strategy.existing_coverage` from `02-plan.json`. A new test whose behavior is a strict subset of an existing test = FAIL; populate `retry_instructions` with the redundant test name and the existing test it duplicates.
+- Intra-PR duplicate test behaviors: scan `test_strategy.test_behaviors[]` from 02-plan.json for entries that duplicate each other. Flag as FAIL only when two entries share a near-identical function name AND a near-identical predicate core substring AND the same `[happy_path]` or `[edge_case]` tag. Entries with different tags (one `[happy_path]`, one `[edge_case]`) are NOT duplicates. When uncertain, do NOT flag. On FAIL: populate `retry_instructions` naming both conflicting entries by index (e.g., `test_behaviors[0] and test_behaviors[3] both test timeout_handling on parse_config; remove one`).
 - Security: Critical/High = FAIL
 - Line budget: count `^+` lines; FAIL if over `line_budget.total_max` or `test_ratio_max`
 
