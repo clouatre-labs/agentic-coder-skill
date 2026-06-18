@@ -187,6 +187,7 @@ Produce structured plan. No gate - auto-proceed to BUILD.
 - Map out implementation steps (5-10 steps)
 - Identify risks and edge cases
 - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`, dedup by behavior; drop behaviors already in `existing_coverage`; drop library primitive behavior gaps
+- If `existing_duplicates` from `01a-research-scout.json` is non-empty, do not add new tests that replicate the flagged duplicate patterns
 
 Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
 

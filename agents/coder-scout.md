@@ -49,7 +49,7 @@ Commit style, testing patterns, linting, error handling, import organization.
 
 ## Phase3: Relevant Code Analysis
 
-Orient with `aptu-coder` first: `analyze_directory` for overview, `analyze_module` for function/import index. Use `analyze_file` only for signatures/class details. Use `analyze_symbol` for call chains. Then `rg` for patterns. For each test function adjacent to the insertion point, record as `existing_coverage` string array in format `"test_name: behavior"`; PLAN uses these to drop planned tests that duplicate existing coverage.
+Orient with `aptu-coder`: `analyze_directory` -> overview, `analyze_module` -> function/import index, `analyze_file` -> signatures/class details, `analyze_symbol` -> call chains; `rg` for patterns. Record test functions as `existing_coverage["test_name: behavior"]`. Scan for duplicate test pairs (same function under test, same predicate, same file); record as `existing_duplicates["test_A duplicates test_B: both assert X on fn_Y in file F"]`; empty list if none.
 
 ## Phase4: Ecosystem Research
 
@@ -78,6 +78,7 @@ Write `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (path from task i
   "related_issues": [{"number": 0, "title": "...", "relevance": "..."}],
   "constraints": ["architectural constraint 1"],
   "existing_coverage": ["test_name_1: one-line behavior description"],
+  "existing_duplicates": ["test_A duplicates test_B: both assert X on fn_Y in file F"],
   "library_findings": [{"library": "...", "version": "...", "relevant_api": "...", "notes": "..."}],
   "approaches": [
     {"name": "...", "description": "...", "pros": [], "cons": [], "complexity": "simple|medium|complex", "files_touched": 0}
