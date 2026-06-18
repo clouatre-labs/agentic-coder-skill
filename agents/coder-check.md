@@ -16,7 +16,7 @@ Validate implementation matches plan requirements. On PASS verdict, run commit a
 
 ## Constraint
 
-READ-ONLY for validation. WRITE for commit and PR on PASS verdict only. Allowed git operations on PASS: `git fetch -p`, `git rebase origin/main`, `git add` (files from 03-build.json only), `git commit -S --signoff`, `git push origin <branch>`, `gh pr create`. No other writes. Never spawn subagents or delegate to other agents; the list of available agents in your system prompt is for reference only.
+READ-ONLY for validation. WRITE for commit and PR on PASS verdict only. Allowed git operations on PASS: `git fetch -p`, `git rebase origin/main`, `git add` (files from 03-build.json only), `git commit -S --signoff`, `git commit --amend -S --signoff`, `git push origin <branch>`, `git push --force-with-lease origin <branch>`, `gh pr create`, `gh pr ready`. No other writes. Never spawn subagents or delegate to other agents; the list of available agents in your system prompt is for reference only.
 
 ## Role Clarity
 
@@ -84,15 +84,13 @@ Validation checklist:
 
 ## Phase 3: Commit and PR (PASS verdict only)
 
-On PASS verdict, after writing `04-validation.json`, run the commit and PR sequence:
-
 ```bash
 cd <literal WORKTREE path>
 git fetch -p && git rebase origin/main
-git branch --show-current  # Verify feature branch, not main/master
+git branch --show-current  # must not be main/master
 ```
 
-Read `commit_message` from `02-plan.json` and validate format (`type(scope): subject`, max 100 chars). If absent or malformed, write error to `04-validation.json` notes and stop; do not attempt commit.
+Validate `commit_message` from `02-plan.json` (`type(scope): subject`, max 100 chars). Missing or malformed: write error to notes, stop.
 
 ```bash
 git add <files_changed from 03-build.json -- list each file explicitly>
@@ -100,8 +98,6 @@ git commit -S --signoff -m "<commit_message from 02-plan.json>"
 git log --show-signature -1  # Verify GPG + DCO
 git push origin <branch>
 ```
-
-Construct PR body from handoff data:
 
 ```bash
 cat > /tmp/pr-body.md << 'EOF'
@@ -116,14 +112,12 @@ cat > /tmp/pr-body.md << 'EOF'
 - [ ] Linter clean
 - [ ] Security scan clean (see 04-validation.json security_summary)
 EOF
-gh pr create --title "<commit_message from 02-plan.json>" --body-file /tmp/pr-body.md
+gh pr create --draft --title "<commit_message from 02-plan.json>" --body-file /tmp/pr-body.md
 ```
 
-Write the PR body as flowing prose -- do not hard-wrap lines at any column width.
+PR body: flowing prose, no hard wraps. Capture URL, write to `04-validation.json` as `pr_url`. On git/gh failure: write error to notes, no `pr_url`, no recovery.
 
-Capture the PR URL from `gh pr create` output. Update `04-validation.json` with `pr_url` field.
-
-On any git or gh failure: write error to `04-validation.json` notes; do not write `pr_url`; do not attempt recovery inline.
+**Retry path (`pr_url` present in `04-validation.json`):** Skip rebase and initial `git add`/`git commit`. Run `git add -A` + `git commit --amend -S --signoff --no-edit` + `git push --force-with-lease origin <branch>`. Skip `gh pr create`. Go to Output.
 
 ## Output
 

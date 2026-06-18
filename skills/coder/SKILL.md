@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.7.0"
+version: "2.8.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,7 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
-#   2.7.0 -- sync with goose-coder: fix CHECK schema (add pr_url, fix constraint to commit+PR on PASS); drop description from files schema; align PLAN/GUARD/Phase5/tooling wording
+#   2.8.0 -- sync with goose-coder v5.7.0: draft PR in CHECK, review gate + gh pr ready in orchestrator Phase 5; request_changes always ASK user
 #   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
 #   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
 #   2.4.0 -- delegate commit+PR to CHECK on PASS; orchestrator Phase 5 gates on pr_url; add commit_message to 02-plan.json schema
@@ -305,29 +305,13 @@ After CHECK completes:
 
 ## Phase 5: COMMIT & PR
 
-After validation PASS, read `pr_url` from `$HANDOFF/04-validation.json`:
+Read `pr_url` from `$HANDOFF/04-validation.json`. **No `pr_url`:** CHECK failed -- read `notes`, **ASK** user. No inline commit.
 
-```bash
-jq -r '.pr_url // empty' $HANDOFF/04-validation.json
-```
+**`pr_url` present:** CHECK created draft PR. Run `aptu pr review <PR_URL> -o json`.
+- `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
+- `request_changes`: STOP, **ASK** user (show concerns; approve retry to re-spawn BUILD+CHECK+review, or mark ready to skip).
 
-**If `pr_url` is present:** CHECK already committed and created the PR. Skip the commit sequence entirely. Proceed directly to aptu pr review using the `pr_url` value.
-
-**If `pr_url` is absent:** CHECK did not create the PR (git or gh failure). Read `notes` from `04-validation.json` for the error. Present the error to the user and **ASK** how to proceed. Do not attempt commit inline.
-
-After PR is confirmed, run AI review via aptu:
-- Run `aptu pr review <PR_URL> -o json` via `exec_command` to get AI analysis
-- If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
-
-**Present (no gate):**
-- Branch name
-- PR number and URL
-- Files changed count and lines added/removed
-- aptu review summary
-
-**Merge only on explicit user request:** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
-
-Do not use `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
+**Merge only on explicit user request:** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`. No `--delete-branch`.
 
 Done. Worktree preserved for audit or resume.
 

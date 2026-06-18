@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.6.0"
+version: "5.7.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.7.0 draft PR in CHECK, review gate + gh pr ready in orchestrator (request_changes always ASK user); v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -35,7 +35,7 @@ instructions: |
   ## Workflow Overview
 
   ```
-  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, commits+PR on PASS] -> aptu pr review
+  SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, draft PR on PASS] -> aptu pr review
                                                                               |                                    |
                                                                          FAIL -> [GATE] -> Back to BUILD     FAIL -> Stop & Ask
   ```
@@ -329,25 +329,11 @@ instructions: |
 
   ## Phase 5: COMMIT & PR
 
-  After validation PASS, read `pr_url` from `$HANDOFF/04-validation.json`:
+  Read `pr_url` from `$HANDOFF/04-validation.json`. **No `pr_url`:** CHECK failed -- read `notes`, **ASK** user. No inline commit.
 
-  ```bash
-  jq -r '.pr_url // empty' $HANDOFF/04-validation.json
-  ```
-
-  **If `pr_url` is present:** CHECK already committed and created the PR. Skip the commit sequence entirely. Proceed directly to aptu pr review using the `pr_url` value.
-
-  **If `pr_url` is absent:** CHECK did not create the PR (git or gh failure). Read `notes` from `04-validation.json` for the error. Present the error to the user and **ASK** how to proceed. Do not attempt commit inline.
-
-  After PR is confirmed, run AI-powered review:
-  - Run `aptu pr review <PR_URL> -o json` via exec_command to get AI analysis
-  - If review flags issues, **ASK:** "aptu flagged issues. Re-spawn BUILD to fix, or proceed as-is?"
-
-  **Present (no gate):**
-  - Branch name
-  - PR number and URL
-  - Files changed count and lines added/removed
-  - aptu review summary
+  **`pr_url` present:** CHECK created draft PR. Run `aptu pr review <PR_URL> -o json`.
+  - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
+  - `request_changes`: STOP, **ASK** user (show concerns; approve retry to re-spawn BUILD+CHECK+review, or mark ready to skip).
 
   **Merge (only on explicit user request):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
   Avoid `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
