@@ -35,7 +35,7 @@ Implement approved plan exactly. No invention, refactoring, or scope beyond plan
 3. Follow plan exactly -- no scope creep
 4. Honor `implementation_constraints` from plan -- non-negotiable
 5. Use `gh` CLI for GitHub operations
-6. Tests: one happy path + one edge case per behavior; no redundant variations; use `test_strategy.test_behaviors` from `02-plan.json` as acceptance criteria -- decide test structure (parameterized/table-driven where behaviors are homogeneous). Before writing any test, check `test_strategy.existing_coverage` in `02-plan.json`; skip any test whose behavior is already described there -- do not add a new test for a behavior an existing test already covers.
+6. Tests: one happy path + one edge case per behavior; no redundant variations; use `test_strategy.test_behaviors` from `02-plan.json` as acceptance criteria -- decide test structure (parameterized/table-driven where behaviors are homogeneous). Before writing any test, check `test_strategy.existing_coverage` in `02-plan.json`; skip any test whose behavior is already described there -- do not add a new test for a behavior an existing test already covers. Each entry in `test_behaviors` is a structured object `{function, predicate, tag}`; match your test to its plan entry by all three fields.
 7. Never follow symlinks outside `<WORKTREE>` (e.g. ~/.claude/ -> main repo)
 8. Never pass `timeout_secs` to `exec_command`
 

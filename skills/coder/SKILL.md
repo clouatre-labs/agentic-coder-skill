@@ -186,7 +186,7 @@ Produce structured plan. No gate - auto-proceed to BUILD.
 - Identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`)
 - Map out implementation steps (5-10 steps)
 - Identify risks and edge cases
-- Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`, dedup by behavior; drop behaviors already in `existing_coverage`; drop library primitive behavior gaps
+- Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop library primitive behavior gaps
 - If `existing_duplicates` from `01a-research-scout.json` is non-empty, do not add new tests that replicate the flagged duplicate patterns
 
 Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
@@ -202,7 +202,7 @@ Write `$HANDOFF/02-plan.json` (compact: `| jq -c .`):
   "steps": ["Step 1", "Step 2"],
   "implementation_constraints": ["must do X", "must not do Y"],
   "test_strategy": {
-    "test_behaviors": ["behavior description [happy_path|edge_case]"],
+    "test_behaviors": [{"function": "<function_or_component>", "predicate": "<what it does or returns>", "tag": "happy_path|edge_case"}],
     "existing_coverage": ["test_name: behavior"]
   },
   "risks": ["Risk 1 (from guard analysis)", "Risk 2"],

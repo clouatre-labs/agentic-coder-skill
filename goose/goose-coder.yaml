@@ -193,7 +193,7 @@ instructions: |
   - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
   - Map out implementation steps (5-10 steps)
   - Identify risks and edge cases
-  - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`, dedup by behavior (drop guard gap if behavior already in `test_behaviors`); drop any behavior already described in `existing_coverage`; drop any gap that describes library primitive behavior rather than a production call site
+  - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop any gap that describes library primitive behavior rather than a production call site
   - If `existing_duplicates` from `01a-research-scout.json` is non-empty, do not add new tests that replicate the flagged duplicate patterns
 
   **Write `$HANDOFF/02-plan.json`:**
@@ -209,7 +209,7 @@ instructions: |
     "steps": ["Step 1", "Step 2", "..."],
     "implementation_constraints": ["must do X", "must not do Y"],
     "test_strategy": {
-      "test_behaviors": ["behavior description [happy_path|edge_case]"],
+      "test_behaviors": [{"function": "<function_or_component>", "predicate": "<what it does or returns>", "tag": "happy_path|edge_case"}],
       "existing_coverage": ["test_name: behavior"]
     },
     "risks": ["Risk 1 (from guard analysis)", "Risk 2"],

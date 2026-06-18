@@ -91,7 +91,7 @@ Write `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (path from task i
   ],
   "safety_ranking": ["approach name (safest)", "approach name (riskiest)"],
   "implementation_constraints": ["must do X", "must not do Y"],
-  "guard_test_gaps": [{"name": "test_name", "covers": "one-line behavior description"}],
+  "guard_test_gaps": [{"function": "<production function or component>", "predicate": "one-line behavior description", "tag": "happy_path|edge_case"}],
   "warnings": ["critical warning 1"],
   "recommendation": "which approach and why"
 }
