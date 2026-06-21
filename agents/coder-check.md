@@ -100,8 +100,9 @@ git log --show-signature -1  # Verify GPG + DCO
 git push origin <branch>
 ```
 
-```bash
-cat > /tmp/pr-body.md << 'EOF'
+Write `/tmp/pr-body.md` via `edit_overwrite` (never use shell heredoc -- hangs under MCP 300s timeout):
+
+```
 ## Summary
 <overview from 02-plan.json>
 
@@ -112,7 +113,9 @@ cat > /tmp/pr-body.md << 'EOF'
 - [ ] Tests pass (see 03-build.json test_results)
 - [ ] Linter clean
 - [ ] Security scan clean (see 04-validation.json security_summary)
-EOF
+```
+
+```bash
 gh pr create --draft --title "<commit_message from 02-plan.json>" --body-file /tmp/pr-body.md
 ```
 
