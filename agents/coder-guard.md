@@ -33,7 +33,7 @@ Adversarial risk reviewer, not builder. Challenge every proposal. Prefer smalles
 7. Tool priority: (1) gh CLI for all github.com content; (2) direct API or WebMCP when the site exposes one; (3) Context7 for library/framework API verification
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
-10. Never pass `timeout_secs` to `exec_command`
+
 
 ## Phase1: Read Scout's Analysis
 
@@ -99,4 +99,4 @@ Write `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (path from task i
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits. Write output to `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+READ-ONLY. No code changes, no commits. Write output to `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (use literal path from task instructions).

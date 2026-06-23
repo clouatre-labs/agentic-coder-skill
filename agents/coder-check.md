@@ -2,7 +2,7 @@
 name: coder-check
 description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
 model: haiku
-tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
+tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__edit_replace"]
 ---
 
 # CHECK Delegate
@@ -29,19 +29,18 @@ Validate PLAN COMPLIANCE and SECURITY only. On PASS, run commit and PR sequence.
 
 ## Rules
 
-- Use `cd <literal WORKTREE path>` in every shell command
+- Set `working_dir` to the literal worktree path on every `exec_command`; use relative paths in `command`
 - READ-ONLY for validation: no code edits during validation phases
 - WRITE allowed on PASS: commit+PR sequence only; no other writes
 - No emojis
 - Concise: lead with summary, use bullets
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`
 - Non-code files (JSON, TOML, handoffs): `exec_command + jq/cat`
-- Never pass `timeout_secs` to `exec_command`
+
 
 ## Phase 1: Read Handoffs
 
 ```bash
-cd <literal WORKTREE path>
 jq -c . <literal HANDOFF path>/02-plan.json
 jq -c . <literal HANDOFF path>/03-build.json
 ```
@@ -100,7 +99,7 @@ git log --show-signature -1  # Verify GPG + DCO
 git push origin <branch>
 ```
 
-Write `/tmp/pr-body.md` via `edit_overwrite` (never use shell heredoc -- hangs under MCP 300s timeout):
+Write `/tmp/pr-body.md` via `edit_overwrite`:
 
 ```
 ## Summary
@@ -135,6 +134,6 @@ Write `<HANDOFF>/04-validation.json` via `edit_overwrite`, then present.
 
 ## Reminder
 
-READ-ONLY for validation; commit+PR allowed on PASS verdict only. Write output to `<HANDOFF>/04-validation.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+Use `edit_overwrite` or `edit_replace` for all file writes. READ-ONLY for validation; commit+PR allowed on PASS verdict only. Write output to `<HANDOFF>/04-validation.json` via `edit_overwrite` (use literal path from task instructions).
 
 

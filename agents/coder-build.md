@@ -37,7 +37,7 @@ Implement approved plan exactly. No invention, refactoring, or scope beyond plan
 5. Use `gh` CLI for GitHub operations
 6. Tests: one happy path + one edge case per behavior; no redundant variations; use `test_strategy.test_behaviors` from `02-plan.json` as acceptance criteria -- decide test structure (parameterized/table-driven where behaviors are homogeneous). Before writing any test, check `test_strategy.existing_coverage` in `02-plan.json`; skip any test whose behavior is already described there -- do not add a new test for a behavior an existing test already covers. Each entry in `test_behaviors` is a structured object `{function, predicate, tag}`; match your test to its plan entry by all three fields.
 7. Never follow symlinks outside `<WORKTREE>` (e.g. ~/.claude/ -> main repo)
-8. Never pass `timeout_secs` to `exec_command`
+
 
 ## Phase 1: Setup
 
@@ -101,7 +101,7 @@ Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instruction
 
 ## Reminder
 
-Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+Use `edit_overwrite` or `edit_replace` for all file writes. Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions).
 
 At turn 35, write `<HANDOFF>/03-build.json` with the full output schema, set `"status": "fail"`, record last known test output in `notes`, then stop immediately.
 

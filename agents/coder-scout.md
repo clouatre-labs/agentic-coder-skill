@@ -37,7 +37,7 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 7. Tool priority for external content: (1) gh CLI for anything on github.com; (2) direct API or WebMCP when the site exposes one; (3) brave_search otherwise -- never search github.com with brave_search
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
-10. Never pass `timeout_secs` to `exec_command`
+
 
 ## Phase1: Repo Structure
 
@@ -89,4 +89,4 @@ Write `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (path from task i
 
 ## Reminder
 
-READ-ONLY. No code changes, no commits. Write output to `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+READ-ONLY. No code changes, no commits. Write output to `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (use literal path from task instructions).
