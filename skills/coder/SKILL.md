@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "2.9.0"
+version: "3.0.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   3.0.0 -- sync with goose-coder v5.9.0: drop Phase 2.5 ceremony; fix cargo test pipefail; add turn-35 failure write to coder-build; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678)
 #   2.9.0 -- sync with goose-coder v5.8.0: rename Phase 5 to PR REVIEW & READY; 
 #   2.8.0 -- sync with goose-coder v5.7.0: draft PR in CHECK, review gate + gh pr ready in orchestrator Phase 5; request_changes always ASK user
 #   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
@@ -55,6 +56,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Do not use aptu for issue reading - use `gh issue view`
 6. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
+7. Never write file content via shell - use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
 
 ## Handoff Protocol
 
@@ -189,6 +191,7 @@ Produce structured plan. No gate - auto-proceed to BUILD.
 - Identify risks and edge cases
 - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop library primitive behavior gaps
 - If `existing_duplicates` from `01a-research-scout.json` is non-empty, do not add new tests that replicate the flagged duplicate patterns
+- If a risk item is phrased as a requirement (uses must/must not), move it to `implementation_constraints` and remove it from `risks` before writing 02-plan.json
 
 Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON. Compact: `| jq -c .`:
 

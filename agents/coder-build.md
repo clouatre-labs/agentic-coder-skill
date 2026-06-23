@@ -58,12 +58,13 @@ If 04-validation.json has FAIL verdict, address those issues first.
 - Honor all `implementation_constraints`
 - Stay within `line_budget.total_max` and `line_budget.test_ratio_max`; document deviations in 03-build.json
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`; for JSON/TOML use `exec_command + jq`
+- Prefer machine-readable output flags to reduce token volume (e.g. `--message-format=json-diagnostic-short`)
 
 ## Phase 3: Verify
 
 **Rust:**
 ```bash
-cargo fmt --check && cargo clippy -- -D warnings && cargo deny check advisories licenses; cargo test
+cargo fmt --check && cargo clippy --message-format=json-diagnostic-short -- -D warnings && cargo deny check advisories licenses; (set -o pipefail; cargo test 2>&1 | tail -60)
 ```
 
 **Python:**
@@ -101,5 +102,7 @@ Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instruction
 ## Reminder
 
 Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions). Never pass `timeout_secs` to `exec_command`.
+
+At turn 35, write `<HANDOFF>/03-build.json` with the full output schema, set `"status": "fail"`, record last known test output in `notes`, then stop immediately.
 
 

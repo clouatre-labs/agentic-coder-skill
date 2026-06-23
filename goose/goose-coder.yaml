@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.8.0"
+version: "5.9.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.8.0 rename Phase 5 to PR REVIEW & READY, harden auto-proceed language; v5.7.0 draft PR in CHECK, review gate + gh pr ready in orchestrator (request_changes always ASK user); v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.9.0 drop Phase 2.5 ceremony; fix cargo test pipefail; turn-35 failure write; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678); v5.8.0 rename Phase 5 to PR REVIEW & READY, harden auto-proceed language; v5.7.0 draft PR in CHECK, review gate + gh pr ready in orchestrator (request_changes always ASK user); v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -58,6 +58,7 @@ instructions: |
   5. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
   6. **Code analysis tools** - See Critical Constraint #6. Pass this constraint to every delegate you spawn.
   7. **Never call `remote_file` or `remote_tree` on a local repository.**
+  8. **Never write file content via shell** - Use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
 
   ## Handoff Files
 
@@ -195,6 +196,7 @@ instructions: |
   - Identify risks and edge cases
   - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop any gap that describes library primitive behavior rather than a production call site
   - If `existing_duplicates` from `01a-research-scout.json` is non-empty, do not add new tests that replicate the flagged duplicate patterns
+  - If a risk item is phrased as a requirement (uses must/must not), move it to `implementation_constraints` and remove it from `risks` before writing 02-plan.json
 
   **Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON.**
 
@@ -263,7 +265,8 @@ instructions: |
     "extensions": ["aptu-coder"],
     "provider": "openrouter",
     "model": "deepseek/deepseek-v4-flash",
-    "temperature": 0.2
+    "temperature": 0.2,
+    "max_turns": 40
   }
   ```
 
