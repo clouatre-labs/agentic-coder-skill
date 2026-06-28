@@ -51,15 +51,6 @@ If files missing, report error and exit.
 
 Run `git diff HEAD` piped to `aptu scan-security --diff - -o json`. Tool failure = FAIL. Critical/High = FAIL. Medium/Low = PASS WITH NOTES.
 
-```bash
-# JS/TS
-if [ -f package.json ]; then bun audit 2>&1 | tee /tmp/bun-audit.txt; fi
-# Python (opt-in)
-command -v pip-audit && pip-audit 2>&1 | tee /tmp/pip-audit.txt || true
-# SAST (opt-in)
-command -v semgrep && semgrep --config=auto --quiet 2>&1 | tee /tmp/semgrep.txt || true
-```
-
 ## Phase 2: Validate
 
 ```bash
@@ -99,7 +90,7 @@ git log --show-signature -1  # Verify GPG + DCO
 git push origin <branch>
 ```
 
-Write `/tmp/pr-body.md` via `edit_overwrite`:
+Write `<HANDOFF>/pr-body.md` via `edit_overwrite` (use the literal handoff path from task instructions):
 
 ```
 ## Summary
@@ -114,8 +105,14 @@ Write `/tmp/pr-body.md` via `edit_overwrite`:
 - [ ] Security scan clean (see 04-validation.json security_summary)
 ```
 
+Verify the file was written before proceeding:
+
 ```bash
-gh pr create --draft --title "<commit_message from 02-plan.json>" --body-file /tmp/pr-body.md
+[ -s <literal HANDOFF path>/pr-body.md ] || { echo "ERROR: pr-body.md missing or empty -- aborting PR creation"; exit 1; }
+```
+
+```bash
+gh pr create --draft --title "<commit_message from 02-plan.json>" --body-file <literal HANDOFF path>/pr-body.md
 ```
 
 Capture URL, write to `04-validation.json` as `pr_url`. On failure: write error to notes, no `pr_url`.
@@ -129,7 +126,7 @@ Write `<HANDOFF>/04-validation.json` via `edit_overwrite`, then present.
 `retry_instructions` must be populated on FAIL: one actionable bullet per failing check, specific enough for BUILD to act without reading source (e.g. "test_handler_timeout: timed_out=true not set on timeout arm -- fix the timeout select branch in exec_command handler").
 
 ```json
-{"session_id":"<SESSION_ID>","timestamp":"<ISO 8601>","branch":"<branch>","verdict":"PASS|FAIL|PASS WITH NOTES","pr_url":"<URL or null>","retry_instructions":["action"],"plan_requirements":["req1"],"checks":[{"name":"check","status":"PASS|FAIL","notes":""}],"constraints_verified":[{"constraint":"...","status":"PASS|FAIL","notes":""}],"security_summary":{"critical":0,"high":0,"medium":0,"low":0,"bun_audit":{"status":"found|skipped","critical":0,"high":0,"medium":0,"low":0},"pip_audit":{"status":"found|skipped","critical":0,"high":0,"medium":0,"low":0},"semgrep":{"status":"found|skipped","critical":0,"high":0,"medium":0,"low":0}},"security_findings":[{"severity":"Critical|High|Medium|Low","pattern_id":"...","description":"...","file_path":"...","line_number":0}],"line_count":{"code_lines":0,"test_lines":0,"total_lines":0,"budget_total_max":0,"test_ratio":0.0,"budget_test_ratio_max":0.0,"status":"within_budget|over_budget|no_budget"},"issues":[],"recommendations":[],"next_steps":"PR created (PASS) or fix issues (FAIL)"}
+{"session_id":"<SESSION_ID>","timestamp":"<ISO 8601>","branch":"<branch>","verdict":"PASS|FAIL|PASS WITH NOTES","pr_url":"<URL or null>","retry_instructions":["action"],"plan_requirements":["req1"],"checks":[{"name":"check","status":"PASS|FAIL","notes":""}],"constraints_verified":[{"constraint":"...","status":"PASS|FAIL","notes":""}],"security_summary":{"critical":0,"high":0,"medium":0,"low":0},"security_findings":[{"severity":"Critical|High|Medium|Low","pattern_id":"...","description":"...","file_path":"...","line_number":0}],"line_count":{"code_lines":0,"test_lines":0,"total_lines":0,"budget_total_max":0,"test_ratio":0.0,"budget_test_ratio_max":0.0,"status":"within_budget|over_budget|no_budget"},"issues":[],"notes":""}
 ```
 
 ## Reminder
