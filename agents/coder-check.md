@@ -133,4 +133,3 @@ Write `<HANDOFF>/04-validation.json` via `edit_overwrite`, then present.
 
 Use `edit_overwrite` or `edit_replace` for all file writes. READ-ONLY for validation; commit+PR allowed on PASS verdict only. Write output to `<HANDOFF>/04-validation.json` via `edit_overwrite` (use literal path from task instructions).
 
-
