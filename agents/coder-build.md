@@ -103,6 +103,6 @@ Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instruction
 
 Use `edit_overwrite` or `edit_replace` for all file writes. Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions).
 
-At turn 35, write `<HANDOFF>/03-build.json` with the full output schema, set `"status": "fail"`, record last known test output in `notes`, then stop immediately.
+At turn 70, write `<HANDOFF>/03-build.json` with the full output schema, set `"status": "fail"`, record last known test output in `notes`, then stop immediately.
 
 
