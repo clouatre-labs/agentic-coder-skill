@@ -130,8 +130,8 @@ instructions: |
   {
     "source": "coder-scout",
     "extensions": ["brave_search", "aptu-coder"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "gcp_vertex_ai",
+    "model": "claude-haiku-4-5@default",
     "temperature": 0.5
   }
   ```
@@ -298,8 +298,8 @@ instructions: |
   {
     "source": "coder-check",
     "extensions": ["aptu-coder"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "gcp_vertex_ai",
+    "model": "claude-haiku-4-5@default",
     "temperature": 0.1
   }
   ```
