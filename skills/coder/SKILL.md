@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.0.0"
+version: "3.1.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -11,6 +11,7 @@ compatibility:
 # Changelog:
 #   3.0.0 -- sync with goose-coder v5.9.0: drop Phase 2.5 ceremony; fix cargo test pipefail; add turn-35 failure write to coder-build; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678)
 #   2.9.0 -- sync with goose-coder v5.8.0: rename Phase 5 to PR REVIEW & READY; 
+#   3.1.0 -- sync with goose-coder v5.11.0: Phase 5 request_changes auto-retry BUILD+CHECK once before stopping
 #   2.8.0 -- sync with goose-coder v5.7.0: draft PR in CHECK, review gate + gh pr ready in orchestrator Phase 5; request_changes always ASK user
 #   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
 #   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
@@ -293,7 +294,7 @@ Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **A
 
 `pr_url` present: CHECK created draft PR. Run `aptu pr review <PR_URL> -o json`.
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
-- `request_changes`: STOP, **ASK** user.
+- `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD (one retry), then re-spawn CHECK. If second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 
 **Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
 

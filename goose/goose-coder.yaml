@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.10.0"
+version: "5.11.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.10.0 raise BUILD turn limit: tripwire 35->70, max_turns 40->80 (data: avg 53.8 turns post-cap, env var GOOSE_SUBAGENT_MAX_TURNS=150 overrides delegate cap); v5.9.0 drop Phase 2.5 ceremony; fix cargo test pipefail; turn-35 failure write; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678); v5.8.0 rename Phase 5 to PR REVIEW & READY, harden auto-proceed language; v5.7.0 draft PR in CHECK, review gate + gh pr ready in orchestrator (request_changes always ASK user); v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
+  Recent changes: v5.11.0 Phase 5 request_changes auto-retry: forward reviewer issues[] as retry_instructions, re-spawn BUILD+CHECK once before stopping; v5.10.0 raise BUILD turn limit: tripwire 35->70, max_turns 40->80 (data: avg 53.8 turns post-cap, env var GOOSE_SUBAGENT_MAX_TURNS=150 overrides delegate cap); v5.9.0 drop Phase 2.5 ceremony; fix cargo test pipefail; turn-35 failure write; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678); v5.8.0 rename Phase 5 to PR REVIEW & READY, harden auto-proceed language; v5.7.0 draft PR in CHECK, review gate + gh pr ready in orchestrator (request_changes always ASK user); v5.6.0 switch BUILD delegate to openrouter/deepseek-v4-flash (v4-pro reasoning tokens cost $30/48h; flash GUARD 6/6 clean; BUILD savings ~$3.50/48h); v5.5.0 switch BUILD delegate to openrouter/deepseek-v4-pro (9-run Flash GUARD track record supports OpenRouter reliability); v5.4.0 consolidate 02-plan.json test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only (#656); switch GUARD delegate to openrouter/deepseek-v4-flash (#655); v5.3.0 fix $HANDOFF in delegate template Output lines (passes verbatim; use <WORKTREE>/.handoff instead); v5.2.0 restore goose_provider/goose_model to recipe settings (env var path unreliable due to LLM field injection, see block/goose#9644); v5.1.0 remove hardcoded goose_provider/goose_model from recipe settings; v5.0.0 drop Phase 4.5 acceptance gate (REVIEW/QA/FIXER agents retired to archive); drop parallel BUILD shards; add PLAN source-read constraint; add retry_instructions to CHECK output; aptu pr review at PR creation is the sole acceptance signal.
 
 parameters:
   - key: issue_ref
@@ -320,7 +320,7 @@ instructions: |
 
   `pr_url` present: CHECK created draft PR. Run `aptu pr review <PR_URL> -o json`.
   - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
-  - `request_changes`: STOP, **ASK** user.
+  - `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD (one retry), then re-spawn CHECK. If second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 
   **Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
   Avoid `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
