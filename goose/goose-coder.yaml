@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
+  Recent changes: v5.14.0 SCOUT to aws_bedrock/sonnet-5 (near-Opus quality, negligible cost delta on compact JSON handoff); v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
 
 parameters:
   - key: issue_ref
@@ -131,7 +131,7 @@ instructions: |
     "source": "coder-scout",
     "extensions": ["brave_search", "aptu-coder"],
     "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "model": "global.anthropic.claude-sonnet-5",
     "temperature": 0.5
   }
   ```
