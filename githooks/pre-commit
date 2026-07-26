@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+# Block commits directly on protected branches
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+PROTECTED_BRANCHES="^(main|master|release/.*)$"
+if [[ "$CURRENT_BRANCH" =~ $PROTECTED_BRANCHES ]]; then
+    echo "BLOCKED: Cannot commit directly on '$CURRENT_BRANCH'"
+    echo "  Create a feature branch: git checkout -b feat/your-change"
+    exit 1
+fi
+
 AUTHOR_EMAIL=$(git config user.email || echo "")
 AUTHOR_KEY=$(git config user.signingkey || echo "")
 
