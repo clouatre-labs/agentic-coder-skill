@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.13.0"
+version: "5.15.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.14.0 SCOUT to aws_bedrock/sonnet-5 (near-Opus quality, negligible cost delta on compact JSON handoff); v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
+  Recent changes: v5.15.0 CHECK to openrouter/gpt-5.6-luna ($0.10/$0.60 per 1M, Coding Agent Index 75); v5.14.0 SCOUT to aws_bedrock/sonnet-5 (near-Opus quality, negligible cost delta on compact JSON handoff); v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
 
 parameters:
   - key: issue_ref
@@ -298,8 +298,8 @@ instructions: |
   {
     "source": "coder-check",
     "extensions": ["aptu-coder"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "provider": "openrouter",
+    "model": "openai/gpt-5.6-luna",
     "temperature": 0.1
   }
   ```
