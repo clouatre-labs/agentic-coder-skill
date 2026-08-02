@@ -72,4 +72,20 @@ if command -v gitleaks &>/dev/null; then
     fi
 fi
 
+# Lint staged markdown files
+if command -v bun &>/dev/null; then
+    STAGED_MD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' || true)
+    if [[ -n "$STAGED_MD" ]]; then
+        ARGS=()
+        while IFS= read -r f; do
+            ARGS+=(":$f")
+        done <<< "$STAGED_MD"
+        if ! bunx markdownlint-cli2 "${ARGS[@]}"; then
+            echo "BLOCKED: markdownlint-cli2 found issues in staged markdown files"
+            echo "Bypass with caution: git commit --no-verify"
+            exit 1
+        fi
+    fi
+fi
+
 exit 0
