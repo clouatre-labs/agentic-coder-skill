@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.15.0"
+version: "5.16.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.15.0 CHECK to openrouter/gpt-5.6-luna ($0.10/$0.60 per 1M, Coding Agent Index 75); v5.14.0 SCOUT to aws_bedrock/sonnet-5 (near-Opus quality, negligible cost delta on compact JSON handoff); v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
+  Recent changes: v5.16.0 SETUP: fix awk br-bleed (fire on blank separator), self-exclusion (-v sid, find ! -name), -B for idempotent worktree add; v5.15.0 CHECK to openrouter/gpt-5.6-luna ($0.10/$0.60 per 1M, Coding Agent Index 75); v5.14.0 SCOUT to aws_bedrock/sonnet-5 (near-Opus quality, negligible cost delta on compact JSON handoff); v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
 
 parameters:
   - key: issue_ref
@@ -86,17 +86,18 @@ instructions: |
   HANDOFF=$WORKTREE/.handoff
 
   # Cleanup stale worktrees: remove if older than 3 days OR branch is gone from remote
+  # Skip the current session's own worktree in all cleanup passes (self-exclusion via -v sid).
   git fetch -p 2>/dev/null || true
-  git worktree list --porcelain 2>/dev/null | awk '/^worktree /{wt=$2} /^branch /{br=substr($2,12)} /^HEAD /{if(wt!="" && wt!="."){print wt"\t"br}}' | while IFS=$'\t' read wt br; do
+  git worktree list --porcelain 2>/dev/null | awk -v sid="$SESSION_ID" '/^worktree / {wt=$2; br=""} /^branch / {br=substr($2,12)} /^$/ {if (wt!="" && wt!="." && index(wt,sid)==0) print wt"\t"br; wt=""}' | while IFS=$'\t' read wt br; do
     if [ -z "$br" ]; then
       git worktree remove --force "$wt" 2>/dev/null || true
     elif ! git show-ref --quiet "refs/remotes/origin/$br" 2>/dev/null; then
       git worktree remove --force "$wt" 2>/dev/null && git branch -D "$br" 2>/dev/null || true
     fi
   done
-  find .worktrees -maxdepth 1 -type d -mtime +3 -exec git worktree remove --force {} \; 2>/dev/null || true
+  find .worktrees -maxdepth 1 -type d -mtime +3 ! -name "$SESSION_ID" -exec git worktree remove --force {} \; 2>/dev/null || true
   git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
-  [ -f "$WORKTREE/.git" ] || git worktree add $WORKTREE origin/main
+  [ -f "$WORKTREE/.git" ] || git worktree add -B "feat/session-$SESSION_ID" "$WORKTREE" origin/main
   mkdir -p $HANDOFF
   echo "Session: $SESSION_ID | Worktree: $WORKTREE"
   ```
