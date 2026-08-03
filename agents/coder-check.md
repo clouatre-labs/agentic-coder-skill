@@ -94,16 +94,18 @@ Write `<HANDOFF>/pr-body.md` via `edit_overwrite` (use the literal handoff path 
 
 ```
 ## Summary
-<overview from 02-plan.json>
+<2-4 sentence prose summary of what changed and why, derived from 02-plan.json overview and steps. No hard line breaks inside sentences; let lines wrap naturally.>
 
 ## Changes
-<files_changed from 03-build.json, one per line>
+<Prose paragraph (at least 2 sentences) describing the logical changes: what was added, modified, or removed and the reason. Do NOT list file paths. Do NOT use a bullet list of filenames.>
 
 ## Test plan
 - [ ] Tests pass (see 03-build.json test_results)
 - [ ] Linter clean
 - [ ] Security scan clean (see 04-validation.json security_summary)
 ```
+
+Do not insert hard line breaks within prose; let lines wrap naturally.
 
 Verify the file was written before proceeding:
 
