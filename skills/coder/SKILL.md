@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.5.0"
+version: "3.6.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   3.6.0 -- sync with goose-coder v5.22.0: trim changelog, drop dead remote_file/remote_tree rule, WebMCP qualifier in Rule 3, --auto on gh pr merge
 #   3.5.0 -- sync with goose-coder v5.21.0: PLAN derives branch from commit_message; Phase 0 stable placeholder; BUILD reads branch from plan; CHECK verifies branch matches plan
 #   3.4.0 -- sync with goose-coder v5.20.0: branch field in 02-plan.json schema; coder-build.md + coder-check.md updated
 #   3.1.0 -- sync with goose-coder v5.11.0: Phase 5 request_changes auto-retry BUILD+CHECK once before stopping
@@ -55,7 +56,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
 1. No emojis in code, commits, PRs, docs, or responses
 2. Concise - lead with summary, use bullets, facts only
-3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch or REST API when endpoint already known; use brave_search only for sites with no structured access method. Pass this rule to every delegate.
+3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
 4. Minimal gates - stop for decisions, auto-proceed for execution
 5. Do not use aptu for issue reading - use `gh issue view`
 6. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
@@ -301,7 +302,7 @@ Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **A
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
 - `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD (one retry), then re-spawn CHECK. If second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 
-**Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
+**Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash --auto -A "$(git config user.email)"`.
 
 ---
 

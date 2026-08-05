@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.21.0"
+version: "5.22.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.21.0 PLAN derives branch from commit_message (slugify subject, prefix issue number); Phase 0 stable placeholder feat/session-$SESSION_ID; eliminates two-step shell block; SKILL.md v3.5.0; v5.20.0 branch in 02-plan.json; BUILD reads branch from plan; CHECK verifies branch matches plan; coder-build.md + coder-check.md updated; v5.17.0 GUARD+BUILD to openrouter/deepseek-v4-flash-0731 (0731 re-post-trained, coding/agent optimized, $0.09/$0.18 per 1M); v5.16.0 SETUP: fix awk br-bleed (fire on blank separator), self-exclusion (-v sid, find ! -name), -B for idempotent worktree add; v5.15.0 CHECK to openrouter/gpt-5.6-luna ($0.10/$0.60 per 1M, Coding Agent Index 75); v5.14.0 SCOUT to aws_bedrock/sonnet-5 (near-Opus quality, negligible cost delta on compact JSON handoff); v5.13.0 SCOUT+CHECK to aws_bedrock/haiku-4-5 (gemma-4 silent exit on handoff); GCP orchestrator-only; GUARD+BUILD stay openrouter/deepseek-v4-flash; v5.12.0 SCOUT to openrouter/gemma-4-26b; CHECK to gcp_vertex_ai/haiku-4-5; v5.11.0 Phase 5 request_changes auto-retry via retry_instructions; v5.10.0 BUILD turn limit 40->80; v5.9.0 drop Phase 2.5; fix cargo test pipefail; v5.0.0-v5.8.0 Scout/Guard architecture, delegate provider tuning, PR review gate, test_behaviors consolidation.
+  Recent changes: v5.22.0 trim Recent changes to last 3 versions; drop dead remote_file/remote_tree rule; add --auto to gh pr merge; SKILL.md v3.6.0; v5.21.0 PLAN derives branch from commit_message (slugify subject, prefix issue number); Phase 0 stable placeholder feat/session-$SESSION_ID; eliminates two-step shell block; SKILL.md v3.5.0; v5.20.0 branch in 02-plan.json; BUILD reads branch from plan; CHECK verifies branch matches plan; coder-build.md + coder-check.md updated.
 
 parameters:
   - key: issue_ref
@@ -57,8 +57,7 @@ instructions: |
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
   6. **Code analysis tools** - See Critical Constraint #6. Pass this constraint to every delegate you spawn.
-  7. **Never call `remote_file` or `remote_tree` on a local repository.**
-  8. **Never write file content via shell** - Use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
+  7. **Never write file content via shell** - Use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
 
   ## Handoff Files
 
@@ -325,7 +324,7 @@ instructions: |
   - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
   - `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD (one retry), then re-spawn CHECK. If second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 
-  **Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash -A "$(git config user.email)"`.
+  **Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash --auto -A "$(git config user.email)"`.
   Avoid `--delete-branch`; the worktree holds the local branch until Phase 0 cleanup.
 
   ---
