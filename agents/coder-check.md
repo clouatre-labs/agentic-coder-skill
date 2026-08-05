@@ -78,8 +78,10 @@ Checklist:
 ```bash
 cd <literal WORKTREE path>
 git fetch -p && git rebase origin/main
-git branch --show-current  # must not be main/master
+git branch --show-current  # must match branch from 02-plan.json; must not be main/master
 ```
+
+If the current branch does not match `branch` from `02-plan.json`, FAIL with "branch mismatch: on <current> expected <plan branch>".
 
 Validate `commit_message` from `02-plan.json` (`type(scope): subject`, max 100 chars). Missing or malformed: write error to notes, stop.
 

@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.1.0"
+version: "3.5.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,9 +9,11 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
-#   3.0.0 -- sync with goose-coder v5.9.0: drop Phase 2.5 ceremony; fix cargo test pipefail; add turn-35 failure write to coder-build; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678)
-#   2.9.0 -- sync with goose-coder v5.8.0: rename Phase 5 to PR REVIEW & READY; 
+#   3.5.0 -- sync with goose-coder v5.21.0: PLAN derives branch from commit_message; Phase 0 stable placeholder; BUILD reads branch from plan; CHECK verifies branch matches plan
+#   3.4.0 -- sync with goose-coder v5.20.0: branch field in 02-plan.json schema; coder-build.md + coder-check.md updated
 #   3.1.0 -- sync with goose-coder v5.11.0: Phase 5 request_changes auto-retry BUILD+CHECK once before stopping
+#   3.0.0 -- sync with goose-coder v5.9.0: drop Phase 2.5 ceremony; fix cargo test pipefail; add turn-35 failure write to coder-build; max_turns:40 on BUILD delegate; sharpen risk-promotion rule (#678)
+#   2.9.0 -- sync with goose-coder v5.8.0: rename Phase 5 to PR REVIEW & READY;
 #   2.8.0 -- sync with goose-coder v5.7.0: draft PR in CHECK, review gate + gh pr ready in orchestrator Phase 5; request_changes always ASK user
 #   2.6.0 -- sync with goose-coder (#656): consolidate test_strategy to test_behaviors+existing_coverage; trim implementation_constraints to imperative-only
 #   2.5.0 -- sync 02-plan.json schema: add existing_tests, fix guard_test_gaps to object array; fix $HANDOFF in delegate template Output lines
@@ -86,18 +88,19 @@ SESSION_ID=$(date +%s)
 WORKTREE=.worktrees/$SESSION_ID
 HANDOFF=$WORKTREE/.handoff
 
-# Cleanup stale worktrees
+# Cleanup stale worktrees: remove if older than 3 days OR branch is gone from remote.
+# Self-exclusion: skip current session's own worktree (index match on SESSION_ID).
 git fetch -p 2>/dev/null || true
-git worktree list --porcelain 2>/dev/null | awk '/^worktree /{wt=$2} /^branch /{br=substr($2,12)} /^HEAD /{if(wt!="" && wt!="."){print wt"\t"br}}' | while IFS=$'\t' read wt br; do
+git worktree list --porcelain 2>/dev/null | awk -v sid="$SESSION_ID" '/^worktree / {wt=$2; br=""} /^branch / {br=substr($2,12)} /^$/ {if (wt!="" && wt!="." && index(wt,sid)==0) print wt"\t"br; wt=""}' | while IFS=$'\t' read wt br; do
   if [ -z "$br" ]; then
     git worktree remove --force "$wt" 2>/dev/null || true
   elif ! git show-ref --quiet "refs/remotes/origin/$br" 2>/dev/null; then
     git worktree remove --force "$wt" 2>/dev/null && git branch -D "$br" 2>/dev/null || true
   fi
 done
-find .worktrees -maxdepth 1 -type d -mtime +3 -exec git worktree remove --force {} \; 2>/dev/null || true
+find .worktrees -maxdepth 1 -type d -mtime +3 ! -name "$SESSION_ID" -exec git worktree remove --force {} \; 2>/dev/null || true
 git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
-[ -f "$WORKTREE/.git" ] || git worktree add $WORKTREE origin/main
+[ -f "$WORKTREE/.git" ] || git worktree add -B "feat/session-$SESSION_ID" "$WORKTREE" origin/main
 mkdir -p $HANDOFF
 echo "Session: $SESSION_ID | Worktree: $WORKTREE"
 ```
@@ -193,6 +196,7 @@ Produce structured plan. No gate - auto-proceed to BUILD.
 - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop library primitive behavior gaps
 - If `existing_duplicates` from `01a-research-scout.json` is non-empty, do not add new tests that replicate the flagged duplicate patterns
 - If a risk item is phrased as a requirement (uses must/must not), move it to `implementation_constraints` and remove it from `risks` before writing 02-plan.json
+- Derive `branch` from `commit_message`: strip the `type(scope): ` prefix, slugify the subject to kebab-case (lowercase, replace non-alphanumeric runs with `-`, trim leading/trailing `-`). If the issue reference contains `#N`, prefix with `N-` and cap the slug so the total branch length is 50 chars (e.g. `482-fix-worktree-conflict`); without an issue number cap the slug at 50 chars. Trim any trailing `-` after truncation. Fallback: `feat/session-$SESSION_ID`.
 
 Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON. Compact: `| jq -c .`:
 
@@ -200,6 +204,7 @@ Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `ex
 {
   "session_id": "<SESSION_ID>",
   "worktree": "<WORKTREE>",
+  "branch": "<derived from commit_message subject; see Actions above>",
   "overview": "2-3 sentence summary",
   "files": [
     {"path": "path/to/file", "line_range": "45-67"}
