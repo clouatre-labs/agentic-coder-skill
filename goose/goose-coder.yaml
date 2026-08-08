@@ -130,8 +130,8 @@ instructions: |
   {
     "source": "coder-scout",
     "extensions": ["brave_search", "aptu-coder"],
-    "provider": "aws_bedrock",
-    "model": "global.anthropic.claude-sonnet-5",
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-v4-flash-0731",
     "temperature": 0.5
   }
   ```
