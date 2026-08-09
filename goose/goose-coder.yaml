@@ -95,6 +95,7 @@ instructions: |
     fi
   done
   find .worktrees -maxdepth 1 -type d -mtime +3 ! -name "$SESSION_ID" -exec git worktree remove --force {} \; 2>/dev/null || true
+  git worktree prune 2>/dev/null || true
   git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
   [ -f "$WORKTREE/.git" ] || git worktree add -B "feat/session-$SESSION_ID" "$WORKTREE" origin/main
   mkdir -p $HANDOFF
