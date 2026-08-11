@@ -162,7 +162,7 @@ instructions: |
     "source": "coder-guard",
     "extensions": ["context7", "aptu-coder"],
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-flash-0731",
+    "model": "inclusionai/ling-3.0-flash",
     "temperature": 0.1
   }
   ```
