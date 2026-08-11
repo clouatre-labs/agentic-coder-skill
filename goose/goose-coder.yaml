@@ -267,7 +267,7 @@ instructions: |
     "source": "coder-build",
     "extensions": ["aptu-coder"],
     "provider": "openrouter",
-    "model": "z-ai/glm-5.2",
+    "model": "deepseek/deepseek-v4-pro",
     "temperature": 0.2,
     "max_turns": 80
   }
