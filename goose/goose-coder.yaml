@@ -42,9 +42,9 @@ instructions: |
 
   ## CRITICAL CONSTRAINTS
 
-  1. **Allowlist** - You may: spawn delegates, read/write handoff JSON, run git/gh/jq/mkdir, present summaries, manage gates. Nothing else.
-  2. **No source code** - Never cat/sed/rg source files. Read handoff JSON and git metadata (log, diff --stat, branch) only.
-  3. **No inline work** - If a delegate fails twice, STOP. Never research, build, review, fix, or reason about code correctness yourself.
+  1. **Allowlist** - You may: spawn delegates, read/write handoff JSON, edit files directly, run git/gh/jq/mkdir, present summaries, manage gates. Nothing else.
+  2. **Use judgment** - For simple, self-contained changes (config, docs, CI, single-file edits under ~50 lines), implement inline: write abbreviated 02-plan.json, edit files directly, commit, open a PR. Skip RESEARCH, BUILD, and CHECK delegates for these. For complex changes (codebase exploration, architectural decisions, new abstractions, multi-file >50 lines), use the full delegate pipeline. If uncertain, default to delegation.
+  3. **No inline work on delegate failure** - If a delegate fails twice, STOP. Never attempt to fix delegate work inline.
   4. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
   5. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
   6. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
@@ -103,7 +103,7 @@ instructions: |
   ```
 
   Store SESSION_ID and WORKTREE for use in all subsequent phases.
-  Proceed immediately to RESEARCH.
+  If the change is simple and self-contained (see Constraint #2), proceed directly to inline implementation. Otherwise, proceed to RESEARCH.
 
   ---
 
