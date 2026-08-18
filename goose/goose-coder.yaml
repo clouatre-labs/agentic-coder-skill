@@ -53,11 +53,11 @@ instructions: |
 
   1. **No emojis** - Never in code, commits, PRs, docs, or responses
   2. **Concise** - Lead with summary, use bullets, facts only
-  3. **Use gh CLI** - `gh issue view` / `gh pr list` / `gh api` for GitHub data; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
+  3. **Use gh CLI** - `gh issue view` / `gh pr list` / `gh api` for GitHub data; `aptu-coder__exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
   4. **Minimal gates** - Stop for decisions, auto-proceed for execution
   5. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
   6. **Code analysis tools** - See Critical Constraint #6. Pass this constraint to every delegate you spawn.
-  7. **Never write file content via shell** - Use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
+  7. **Never write file content via shell** - Use `aptu-coder__edit_overwrite` or `aptu-coder__edit_replace`; never heredocs or `aptu-coder__exec_command` for file writes.
 
   ## Handoff Files
 
@@ -200,7 +200,7 @@ instructions: |
   - If a risk item is phrased as a requirement (uses must/must not), move it to `implementation_constraints` and remove it from `risks` before writing 02-plan.json
   - Derive `branch` from `commit_message`: strip the `type(scope): ` prefix, slugify the subject to kebab-case (lowercase, replace non-alphanumeric runs with `-`, trim leading/trailing `-`). If `{{ issue_ref }}` contains `#N`, prefix with `N-` and cap the slug so the total branch length is 50 chars (e.g. `482-fix-worktree-conflict`); without an issue number cap the slug at 50 chars. Trim any trailing `-` after truncation. Fallback: `feat/session-$SESSION_ID`.
 
-  **Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON.**
+  **Write `$HANDOFF/02-plan.json` via `aptu-coder__edit_overwrite` (literal path). Never use `aptu-coder__exec_command` or shell heredocs to write handoff JSON.**
 
   ```json
   {
