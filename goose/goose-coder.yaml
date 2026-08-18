@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.22.0"
+version: "5.23.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.22.0 trim Recent changes to last 3 versions; drop dead remote_file/remote_tree rule; add --auto to gh pr merge; SKILL.md v3.6.0; v5.21.0 PLAN derives branch from commit_message (slugify subject, prefix issue number); Phase 0 stable placeholder feat/session-$SESSION_ID; eliminates two-step shell block; SKILL.md v3.5.0; v5.20.0 branch in 02-plan.json; BUILD reads branch from plan; CHECK verifies branch matches plan; coder-build.md + coder-check.md updated.
+  Recent changes: v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths); v5.22.0 trim Recent changes to last 3 versions; drop dead remote_file/remote_tree rule; add --auto to gh pr merge; SKILL.md v3.6.0; v5.21.0 PLAN derives branch from commit_message (slugify subject, prefix issue number); Phase 0 stable placeholder feat/session-$SESSION_ID; eliminates two-step shell block; SKILL.md v3.5.0;
 
 parameters:
   - key: issue_ref
@@ -132,7 +132,7 @@ instructions: |
     "source": "coder-scout",
     "extensions": ["brave_search", "aptu-coder"],
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-flash-0731",
+    "model": "openai/gpt-5.6-luna",
     "temperature": 0.5
   }
   ```
