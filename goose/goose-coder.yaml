@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.23.0"
+version: "5.24.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths); v5.22.0 trim Recent changes to last 3 versions; drop dead remote_file/remote_tree rule; add --auto to gh pr merge; SKILL.md v3.6.0; v5.21.0 PLAN derives branch from commit_message (slugify subject, prefix issue number); Phase 0 stable placeholder feat/session-$SESSION_ID; eliminates two-step shell block; SKILL.md v3.5.0;
+  Recent changes: v5.24.0 GUARD uses xiaomi/mimo-v2.5 (replace laguna-s-2.1, empty-response pattern openclaw#88907); v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths); v5.22.0 trim Recent changes to last 3 versions; drop dead remote_file/remote_tree rule; add --auto to gh pr merge; SKILL.md v3.6.0;
 
 parameters:
   - key: issue_ref
@@ -162,7 +162,7 @@ instructions: |
     "source": "coder-guard",
     "extensions": ["context7", "aptu-coder"],
     "provider": "openrouter",
-    "model": "poolside/laguna-s-2.1",
+    "model": "xiaomi/mimo-v2.5",
     "temperature": 0.1
   }
   ```
