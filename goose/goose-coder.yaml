@@ -162,7 +162,7 @@ instructions: |
     "source": "coder-guard",
     "extensions": ["context7", "aptu-coder"],
     "provider": "openrouter",
-    "model": "inclusionai/ling-3.0-flash",
+    "model": "poolside/laguna-s-2.1",
     "temperature": 0.1
   }
   ```
@@ -267,7 +267,7 @@ instructions: |
     "source": "coder-build",
     "extensions": ["aptu-coder"],
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-pro",
+    "model": "deepseek/deepseek-v4-flash-0731",
     "temperature": 0.2,
     "max_turns": 80
   }
