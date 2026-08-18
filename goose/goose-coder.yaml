@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.25.0"
+version: "5.26.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.25.0 BUILD uses gemini-3.7-flash, orchestrator uses glm-5.2 (diversified cost reduction #749); v5.24.0 GUARD uses xiaomi/mimo-v2.5 (replace laguna-s-2.1, empty-response pattern openclaw#88907); v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths);
+  Recent changes: v5.26.0 three-tier change classification (simple/medium/complex, closes gap from #748); v5.25.0 BUILD uses gemini-3.7-flash, orchestrator uses glm-5.2 (diversified cost reduction #749); v5.24.0 GUARD uses xiaomi/mimo-v2.5 (replace laguna-s-2.1, empty-response pattern openclaw#88907); v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths);
 
 parameters:
   - key: issue_ref
@@ -43,7 +43,7 @@ instructions: |
   ## CRITICAL CONSTRAINTS
 
   1. **Allowlist** - You may: spawn delegates, read/write handoff JSON, edit files directly, run git/gh/jq/mkdir, present summaries, manage gates. Nothing else.
-  2. **Use judgment** - For simple, self-contained changes (config, docs, CI, single-file edits under ~50 lines), implement inline: write abbreviated 02-plan.json, edit files directly, commit, open a PR. Skip RESEARCH, BUILD, and CHECK delegates for these. For complex changes (codebase exploration, architectural decisions, new abstractions, multi-file >50 lines), use the full delegate pipeline. If uncertain, default to delegation.
+  2. **Classify the change** - Three tiers: **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave_search when the change touches library APIs or needs external verification. **Medium** (multi-file docs, cross-repo reference, well-understood patterns, no new abstractions): SCOUT only, then PLAN, then BUILD; skip GUARD and CHECK. Use context7 and brave_search during SCOUT for cross-repo verification. **Complex** (architectural decisions, new abstractions, multi-file code >50 lines, security-sensitive): full SCOUT + GUARD + BUILD + CHECK. If uncertain between tiers, choose the higher one.
   3. **No inline work on delegate failure** - If a delegate fails twice, STOP. Never attempt to fix delegate work inline.
   4. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
   5. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
@@ -54,7 +54,7 @@ instructions: |
   1. **No emojis** - Never in code, commits, PRs, docs, or responses
   2. **Concise** - Lead with summary, use bullets, facts only
   3. **Use gh CLI** - `gh issue view` / `gh pr list` / `gh api` for GitHub data; `aptu-coder__exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
-  4. **Minimal gates** - Stop for decisions, auto-proceed for execution
+  4. **Minimal gates** - Stop for decisions, auto-proceed for execution. After classifying issues, start the appropriate path immediately without presenting a summary and asking to proceed.
   5. **Do not use aptu for issue reading** - Use `gh issue view`; aptu triage returns a lossy summary
   6. **Code analysis tools** - See Critical Constraint #6. Pass this constraint to every delegate you spawn.
   7. **Never write file content via shell** - Use `aptu-coder__edit_overwrite` or `aptu-coder__edit_replace`; never heredocs or `aptu-coder__exec_command` for file writes.
@@ -103,13 +103,13 @@ instructions: |
   ```
 
   Store SESSION_ID and WORKTREE for use in all subsequent phases.
-  If the change is simple and self-contained (see Constraint #2), proceed directly to inline implementation. Otherwise, proceed to RESEARCH.
+  Classify per Constraint #2. Simple: proceed to inline implementation. Medium: proceed to SCOUT only (skip GUARD). Complex: proceed to RESEARCH.
 
   ---
 
   ## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL] [GATE]
 
-  Spawn SCOUT first, then GUARD (reads scout's output).
+  Spawn SCOUT first, then GUARD (reads scout's output). Skip GUARD for medium-tier changes (see Constraint #2).
 
   **Say:** "Spawning SCOUT research agent (session: SESSION_ID)..."
 
@@ -282,6 +282,8 @@ instructions: |
   ---
 
   ## Phase 4: CHECK [DELEGATE]
+
+  Skip for medium-tier changes (see Constraint #2). After BUILD, commit and open PR directly, then run `aptu pr review` as automated gate.
 
   **Say:** "Spawning CHECK delegate (session: SESSION_ID)..."
 
