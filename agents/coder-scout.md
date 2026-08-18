@@ -37,6 +37,8 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 7. Tool priority for external content: (1) gh CLI for anything on github.com; (2) direct API or WebMCP when the site exposes one; (3) brave_search otherwise -- never search github.com with brave_search
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
+10. Ground exploration in tool calls; never assume facts from training data. Avoid analysis loops and redundant re-reading of already-inspected content.
+11. Follow the MCP tool schemas exactly as provided in this session. Do not substitute tool interfaces from prior training memory.
 
 
 ## Phase1: Repo Structure

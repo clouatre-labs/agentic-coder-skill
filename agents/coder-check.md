@@ -36,6 +36,8 @@ Validate PLAN COMPLIANCE and SECURITY only. On PASS, run commit and PR sequence.
 - Concise: lead with summary, use bullets
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`
 - Non-code files (JSON, TOML, handoffs): `exec_command + jq/cat`
+- Action-oriented: validate quickly and report findings directly. Avoid circular re-checking of already-validated items.
+- Follow the MCP tool schemas exactly as provided in this session. Do not substitute tool interfaces from prior training memory.
 
 
 ## Phase 1: Read Handoffs
