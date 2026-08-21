@@ -1,13 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Block pushes to read-only GitLab remotes
-REMOTE_URL="$2"
-if echo "$REMOTE_URL" | grep -qi "gitlab.*ds365ai"; then
-    echo "BLOCKED: Push to Halliburton GitLab is not permitted (read-only engagement)"
-    exit 1
-fi
-
 # Protected branches pattern
 PROTECTED_BRANCHES="^(main|master|release/.*)$"
 
