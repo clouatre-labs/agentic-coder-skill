@@ -88,4 +88,21 @@ if command -v bun &>/dev/null; then
     fi
 fi
 
+# Lint staged DOCX files for table-width regressions
+STAGED_DOCX=$(git diff --cached --name-only --diff-filter=ACM | grep '\.docx$' || true)
+if [[ -n "$STAGED_DOCX" ]]; then
+    CHECKER="$(dirname "$0")/../pandoc/check_docx_tables.py"
+    if [[ -f "$CHECKER" ]]; then
+        ARGS=()
+        while IFS= read -r f; do
+            ARGS+=("$f")
+        done <<< "$STAGED_DOCX"
+        if ! python3 "$CHECKER" "${ARGS[@]}"; then
+            echo "BLOCKED: check_docx_tables.py found table-width issues in staged DOCX files"
+            echo "Bypass with caution: git commit --no-verify"
+            exit 1
+        fi
+    fi
+fi
+
 exit 0
