@@ -63,6 +63,43 @@ if [[ "$AUTHOR_KEY" != "$EXPECTED_KEY" ]]; then
     exit 1
 fi
 
+# Layer 3: a local/-c override must not shadow a valid global (includeIf)
+# identity. user.useConfigOnly blocks the case where nothing resolves at all;
+# it does nothing when a value resolves but came from the wrong place -- a
+# stray local override is correct just as easily as wrong, and layers 1-2
+# can't tell the difference since both identities share one signing key.
+# `--get-all` surfaces every scoped entry in the chain, not just the winner,
+# so a repo whose org has no includeIf match (only a local entry exists) is
+# left alone, while a repo where a global entry is present but shadowed by
+# local/command is blocked.
+EMAIL_SCOPE=$(git config --show-scope --get user.email 2>/dev/null | cut -f1)
+SHADOWED_GLOBAL=$(git config --get-all --show-scope user.email 2>/dev/null | awk -F'\t' '$1 == "global" { print $2; exit }')
+if [[ "$EMAIL_SCOPE" != "global" && -n "$SHADOWED_GLOBAL" ]]; then
+    echo "BLOCKED: a $EMAIL_SCOPE override shadows the global identity for this repo's remote"
+    echo "  Global (expected): $SHADOWED_GLOBAL"
+    echo "  Currently using:   $AUTHOR_EMAIL"
+    echo "  Check: git config --get-all --show-scope user.email"
+    exit 1
+fi
+
+AUTHOR_NAME=$(git config user.name || echo "")
+for _var in GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL; do
+    _val="${!_var:-}"
+    if [[ -n "$_val" && "$_val" != "$AUTHOR_EMAIL" ]]; then
+        echo "BLOCKED: $_var ($_val) overrides the resolved identity ($AUTHOR_EMAIL)"
+        echo "  unset $_var and retry, or fix why it's set to a different value"
+        exit 1
+    fi
+done
+for _var in GIT_AUTHOR_NAME GIT_COMMITTER_NAME; do
+    _val="${!_var:-}"
+    if [[ -n "$_val" && "$_val" != "$AUTHOR_NAME" ]]; then
+        echo "BLOCKED: $_var ($_val) overrides the resolved identity ($AUTHOR_NAME)"
+        echo "  unset $_var and retry, or fix why it's set to a different value"
+        exit 1
+    fi
+done
+
 # Scan staged changes for secrets
 if command -v gitleaks &>/dev/null; then
     if ! gitleaks git --staged --verbose; then
