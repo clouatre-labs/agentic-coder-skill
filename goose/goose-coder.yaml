@@ -1,5 +1,5 @@
 # Counterpart: ~/.claude/skills/coder/SKILL.md -- keep workflow phases in sync
-version: "5.26.0"
+version: "5.27.0"
 title: Goose Coder - Scout/Guard Architecture
 author:
   contact: "Hugues Clouatre"
@@ -10,7 +10,7 @@ description: |
 
   Usage: Point it at a GitHub issue (owner/repo#123) or describe a coding task. It researches, plans, builds, and opens a PR.
 
-  Recent changes: v5.26.0 three-tier change classification (simple/medium/complex, closes gap from #748); v5.25.0 BUILD uses gemini-3.7-flash, orchestrator uses glm-5.2 (diversified cost reduction #749); v5.24.0 GUARD uses xiaomi/mimo-v2.5 (replace laguna-s-2.1, empty-response pattern openclaw#88907); v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths);
+  Recent changes: v5.27.0 BUILD/CHECK gained absolute-path guidance (previously absent): files[].path is WORKTREE-relative, resolve via working_dir on edit_overwrite/edit_replace (matching exec_command), not manual concatenation (closes #783, mirrors dotfiles SKILL.md v3.7.0); v5.26.0 three-tier change classification (simple/medium/complex, closes gap from #748); v5.25.0 BUILD uses gemini-3.7-flash, orchestrator uses glm-5.2 (diversified cost reduction #749); v5.24.0 GUARD uses xiaomi/mimo-v2.5 (replace laguna-s-2.1, empty-response pattern openclaw#88907); v5.23.0 SCOUT uses gpt-5.6-luna (drop deepseek-v4-flash, confabulated CI paths);
 
 parameters:
   - key: issue_ref
@@ -192,7 +192,7 @@ instructions: |
   - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
   - Create detailed plan based on selected approach
   - Strip rationale from `implementation_constraints` -- keep imperative verb + target only
-  - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN.
+  - Identify specific files and approximate line ranges -- use line ranges from handoffs only; if a range is absent, write `"line_range": "see-scout"` and let BUILD locate it. Never cat/sed source files during PLAN. Write `files[].path` relative to `<WORKTREE>` (e.g. `"crates/foo/src/lib.rs"`, never an absolute path or one already prefixed with the worktree) -- BUILD passes it as-is to `edit_overwrite`/`edit_replace` with `working_dir` set to the literal `Worktree:` value.
   - Map out implementation steps (5-10 steps)
   - Identify risks and edge cases
   - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` from `01b-research-guard.json` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop any gap that describes library primitive behavior rather than a production call site
@@ -209,7 +209,7 @@ instructions: |
     "branch": "<derived from commit_message subject; see Actions above>",
     "overview": "2-3 sentence summary",
     "files": [
-      {"path": "path/to/file", "line_range": "45-67"}
+      {"path": "relative/to/worktree/path/to/file", "line_range": "45-67"}
     ],
     "steps": ["Step 1", "Step 2", "..."],
     "implementation_constraints": ["must do X", "must not do Y"],
@@ -260,6 +260,7 @@ instructions: |
   Output: write <WORKTREE>/.handoff/03-build.json (compact: jq -c .) then stop.
   Schema fields: session_id, files_changed, test_results, lint_result, notes.
   Constraint: Implement plan only. No git add, commit, or push.
+  Absolute paths: only the labeled fields above (Worktree:, Handoff dir:, Plan file:, Output:). 02-plan.json's files[].path is WORKTREE-relative -- set working_dir to Worktree: on every exec_command, edit_overwrite, and edit_replace call; pass relative paths in command/path.
   ```
 
   ```json
@@ -297,6 +298,7 @@ instructions: |
   Output: write <WORKTREE>/.handoff/04-validation.json (compact: jq -c .) then stop.
   Schema fields: session_id, verdict, pr_url, issues, security_summary, notes, retry_instructions.
   Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence and write pr_url to 04-validation.json.
+  Absolute paths: only the labeled fields above (Worktree:, Handoff dir:, Build handoff:, Plan file:, Output:). 02-plan.json's files[].path is WORKTREE-relative -- never pass it directly to a tool expecting an absolute path.
   ```
 
   ```json

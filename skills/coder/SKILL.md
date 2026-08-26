@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.6.0"
+version: "3.7.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   3.7.0 -- fix contradictory absolute-path claim in BUILD/CHECK/SCOUT delegates; document files[].path is WORKTREE-relative; BUILD uses working_dir on edit_overwrite/edit_replace (matching exec_command) instead of manual path concatenation; sync goose-coder v5.27.0 (fixes clouatre/dotfiles#779, #783)
 #   3.6.0 -- sync with goose-coder v5.22.0: trim changelog, drop dead remote_file/remote_tree rule, WebMCP qualifier in Rule 3, --auto on gh pr merge
 #   3.5.0 -- sync with goose-coder v5.21.0: PLAN derives branch from commit_message; Phase 0 stable placeholder; BUILD reads branch from plan; CHECK verifies branch matches plan
 #   3.4.0 -- sync with goose-coder v5.20.0: branch field in 02-plan.json schema; coder-build.md + coder-check.md updated
@@ -192,7 +193,7 @@ Produce structured plan. No gate - auto-proceed to BUILD.
 - Read `$HANDOFF/01a-research-scout.json` and `$HANDOFF/01b-research-guard.json`
 - Create detailed plan based on selected approach
 - Strip rationale from `implementation_constraints` -- keep imperative verb + target only
-- Identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`)
+- Identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`). Write `files[].path` relative to `<WORKTREE>` (e.g. `"crates/foo/src/lib.rs"`, never an absolute path or one already prefixed with the worktree) -- BUILD passes it as-is to `edit_overwrite`/`edit_replace` with `working_dir` set to the literal `Worktree:` value.
 - Map out implementation steps (5-10 steps)
 - Identify risks and edge cases
 - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]`; both already use `{function, predicate, tag}` schema -- copy directly; dedup by (function, predicate, tag) triple; drop any triple already described in `existing_coverage`; drop library primitive behavior gaps
@@ -209,7 +210,7 @@ Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `ex
   "branch": "<derived from commit_message subject; see Actions above>",
   "overview": "2-3 sentence summary",
   "files": [
-    {"path": "path/to/file", "line_range": "45-67"}
+    {"path": "relative/to/worktree/path/to/file", "line_range": "45-67"}
   ],
   "steps": ["Step 1", "Step 2"],
   "implementation_constraints": ["must do X", "must not do Y"],

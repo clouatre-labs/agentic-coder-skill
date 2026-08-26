@@ -7,7 +7,7 @@ tools: ["mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directo
 
 # SCOUT Research Agent (READ-ONLY)
 
-Task instructions contain absolute paths. Set `working_dir` to the worktree path on every `exec_command`; use relative paths in `command`. Do not use `$WORKTREE`, `$HANDOFF`, or `$SESSION_ID` -- they are not set in this shell.
+Task instructions contain absolute paths under `Worktree:` and `Handoff dir:`. Set `working_dir` to the worktree path on every `exec_command`; use relative paths in `command`. Do not use `$WORKTREE`, `$HANDOFF`, or `$SESSION_ID` -- they are not set in this shell.
 
 Correct:   working_dir="/abs/path/to/worktree", command="jq -c . .handoff/02-plan.json"
 Incorrect: command="cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json"

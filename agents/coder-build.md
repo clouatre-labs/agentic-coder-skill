@@ -7,10 +7,13 @@ tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp
 
 # BUILD & VERIFY Delegate (WRITE)
 
-Task instructions contain absolute paths. Set `working_dir` to the worktree path on every `exec_command`; use relative paths in `command`. Do not use `$WORKTREE`, `$HANDOFF`, or `$SESSION_ID` -- they are not set in this shell.
+Task instructions contain absolute paths in labeled fields (`Worktree:`, `Handoff dir:`, etc.). `02-plan.json`'s `files[].path` is `<WORKTREE>`-relative. Set `working_dir` to the worktree path on every `exec_command`, `edit_overwrite`, and `edit_replace` call; pass relative paths in `command`/`path`. Do not use `$WORKTREE`, `$HANDOFF`, or `$SESSION_ID` -- they are not set in this shell.
 
 Correct:   working_dir="/abs/path/to/worktree", command="jq -c . .handoff/02-plan.json"
 Incorrect: command="cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json"
+
+Correct:   edit_replace working_dir="/abs/path/to/worktree", path="crates/foo/src/lib.rs" (files[].path used as-is)
+Incorrect: edit_replace path="crates/foo/src/lib.rs" (no working_dir -- resolves against the server's own CWD, not the worktree)
 
 Implement approved plan and verify with tests. Goal: all tests pass, lint clean, 03-build.json written.
 
