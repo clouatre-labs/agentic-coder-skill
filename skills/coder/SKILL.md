@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.7.0"
+version: "3.8.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   3.8.0 -- sync with goose-coder v5.26.0: three-tier change classification as Critical Constraint #2; Phase 0 classify gate; skip GUARD/CHECK for medium tier; Rule 4 strengthened; fix stale Overview commit claim (syncs #748, #751)
 #   3.7.0 -- fix contradictory absolute-path claim in BUILD/CHECK/SCOUT delegates; document files[].path is WORKTREE-relative; BUILD uses working_dir on edit_overwrite/edit_replace (matching exec_command) instead of manual path concatenation; sync goose-coder v5.27.0 (fixes clouatre/dotfiles#779, #783)
 #   3.6.0 -- sync with goose-coder v5.22.0: trim changelog, drop dead remote_file/remote_tree rule, WebMCP qualifier in Rule 3, --auto on gh pr merge
 #   3.5.0 -- sync with goose-coder v5.21.0: PLAN derives branch from commit_message; Phase 0 stable placeholder; BUILD reads branch from plan; CHECK verifies branch matches plan
@@ -41,26 +42,27 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
                                                                          FAIL -> Back to BUILD (1x) FAIL -> Stop & Ask
 ```
 
-**You handle PLAN and COMMIT directly. Delegate SCOUT, GUARD, BUILD, and CHECK via the Task tool.**
+**You handle PLAN directly. Delegate SCOUT, GUARD, BUILD, and CHECK via the Task tool.**
 
 ## Critical Constraints
 
 1. **You do NOT write code** - Only BUILD modifies code
-2. **You do NOT review code** - Only CHECK validates
-3. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
-4. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
-5. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
-6. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
-7. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
+2. **Classify the change** - Three tiers: **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave_search when the change touches library APIs or needs external verification. **Medium** (multi-file docs, cross-repo reference, well-understood patterns, no new abstractions): SCOUT only, then PLAN, then BUILD; skip GUARD and CHECK. Use context7 and brave_search during SCOUT for cross-repo verification. **Complex** (architectural decisions, new abstractions, multi-file code >50 lines, security-sensitive): full SCOUT + GUARD + BUILD + CHECK. If uncertain between tiers, choose the higher one.
+3. **You do NOT review code** - Only CHECK validates
+4. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
+5. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
+6. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
+7. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
+8. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
 
 ## Rules (All Phases)
 
 1. No emojis in code, commits, PRs, docs, or responses
 2. Concise - lead with summary, use bullets, facts only
 3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
-4. Minimal gates - stop for decisions, auto-proceed for execution
+4. Minimal gates - stop for decisions, auto-proceed for execution. After classifying issues, start the appropriate path immediately without presenting a summary and asking to proceed.
 5. Do not use aptu for issue reading - use `gh issue view`
-6. Code analysis tools - see Critical Constraint #7. Pass this constraint to every delegate you spawn.
+6. Code analysis tools - see Critical Constraint #8. Pass this constraint to every delegate you spawn.
 7. Never write file content via shell - use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
 
 ## Handoff Protocol
@@ -108,13 +110,13 @@ mkdir -p $HANDOFF
 echo "Session: $SESSION_ID | Worktree: $WORKTREE"
 ```
 
-Store SESSION_ID and WORKTREE for all subsequent phases. Proceed immediately to RESEARCH.
+Store SESSION_ID and WORKTREE for all subsequent phases. Classify per Constraint #2. Simple: proceed to inline implementation (run test/lint/format before commit, see Tooling Reference). Medium: proceed to SCOUT only (skip GUARD). Complex: proceed to RESEARCH.
 
 ---
 
 ## Phase 1: RESEARCH [SCOUT then GUARD, SEQUENTIAL] [GATE]
 
-Spawn SCOUT first, then GUARD (reads scout's output).
+Spawn SCOUT first, then GUARD (reads scout's output). Skip GUARD for medium-tier changes (see Constraint #2).
 
 **Say:** "Spawning SCOUT research agent (session: $SESSION_ID)..."
 
@@ -271,6 +273,8 @@ After BUILD completes:
 ---
 
 ## Phase 4: CHECK [AGENT]
+
+Skip for medium-tier changes (see Constraint #2). For medium-tier changes, after BUILD, commit and open PR directly, then run `aptu pr review` as automated gate.
 
 **Say:** "Spawning CHECK agent (session: $SESSION_ID)..."
 
