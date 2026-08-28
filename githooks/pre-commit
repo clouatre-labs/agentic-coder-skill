@@ -117,7 +117,8 @@ if command -v bun &>/dev/null; then
         while IFS= read -r f; do
             ARGS+=(":$f")
         done <<< "$STAGED_MD"
-        if ! bunx markdownlint-cli2 "${ARGS[@]}"; then
+        MDLINT_FALLBACK="$(dirname "$0")/markdownlint.default.jsonc"
+        if ! bunx markdownlint-cli2@0.23.2 --config "$MDLINT_FALLBACK" "${ARGS[@]}"; then
             echo "BLOCKED: markdownlint-cli2 found issues in staged markdown files"
             echo "Bypass with caution: git commit --no-verify"
             exit 1
