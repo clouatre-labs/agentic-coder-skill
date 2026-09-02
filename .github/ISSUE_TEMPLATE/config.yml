@@ -1,12 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  # TODO: replace YOUR-ORG/YOUR-REPO with the derived repository when adopting this template.
   - name: Contributing Guidelines
-    url: https://github.com/YOUR-ORG/YOUR-REPO/blob/main/CONTRIBUTING.md
+    url: https://github.com/clouatre-labs/agentic-coder-skill/blob/main/CONTRIBUTING.md
     about: Please read our contributing guidelines before opening an issue.
   - name: Discussions
-    url: https://github.com/YOUR-ORG/YOUR-REPO/discussions
+    url: https://github.com/clouatre-labs/agentic-coder-skill/discussions
     about: Ask questions and discuss ideas in GitHub Discussions.
   - name: Security vulnerability
-    url: https://github.com/YOUR-ORG/YOUR-REPO/security/advisories/new
+    url: https://github.com/clouatre-labs/agentic-coder-skill/security/advisories/new
     about: Report a security vulnerability via GitHub private advisory
