@@ -1,0 +1,13 @@
+# CODEOWNERS for template-repo
+#
+# This file protects security-sensitive paths. When using this template:
+# 1. Replace @clouatre with your own GitHub account or team.
+# 2. Ensure that team has at least Write access to the derived repo.
+#    GitHub silently ignores code owners that lack write access,
+#    which would leave .github/ unprotected.
+# 3. Update docs/REPO-STANDARDS.md to reflect your team name.
+#
+# See docs/REPO-STANDARDS.md for full context and the gh API calls
+# to set up the matching branch ruleset.
+
+.github/ @clouatre
