@@ -1,0 +1,146 @@
+#!/bin/bash
+set -euo pipefail
+
+# Block commits directly on protected branches
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+PROTECTED_BRANCHES="^(main|master|release/.*)$"
+if [[ "$CURRENT_BRANCH" =~ $PROTECTED_BRANCHES ]]; then
+    echo "BLOCKED: Cannot commit directly on '$CURRENT_BRANCH'"
+    echo "  Create a feature branch: git checkout -b feat/your-change"
+    exit 1
+fi
+
+AUTHOR_EMAIL=$(git config user.email || echo "")
+AUTHOR_KEY=$(git config user.signingkey || echo "")
+
+if [[ -z "$AUTHOR_EMAIL" ]]; then
+    echo "BLOCKED: No user.email configured"
+    exit 1
+fi
+
+if [[ -z "$AUTHOR_KEY" ]]; then
+    echo "BLOCKED: No user.signingkey configured for $AUTHOR_EMAIL"
+    exit 1
+fi
+
+# Build email->key map and allowlist from ~/.gitconfig-* identity files at runtime.
+# Each file that contains an email= line is one identity; signingkey= is paired with it.
+ALLOWED_EMAILS=()
+EXPECTED_KEY=""
+
+for cfg in "$HOME"/.gitconfig*; do
+    [[ -f "$cfg" ]] || continue
+    _email=$(grep -E '^\s*email\s*=' "$cfg" 2>/dev/null | head -1 | sed 's/^[^=]*=\s*//' | tr -d ' \t') || true
+    [[ -z "$_email" ]] && continue
+    ALLOWED_EMAILS+=("$_email")
+    if [[ "$_email" == "$AUTHOR_EMAIL" ]]; then
+        _key=$(grep -E '^\s*signingkey\s*=' "$cfg" 2>/dev/null | head -1 | sed 's/^[^=]*=\s*//' | tr -d ' \t') || true
+        [[ -n "$_key" ]] && EXPECTED_KEY="$_key"
+    fi
+done
+
+# Layer 1: email must be in allowlist
+EMAIL_OK=0
+for _e in "${ALLOWED_EMAILS[@]}"; do
+    [[ "$_e" == "$AUTHOR_EMAIL" ]] && EMAIL_OK=1 && break
+done
+if [[ $EMAIL_OK -eq 0 ]]; then
+    echo "BLOCKED: Email not in allowlist: $AUTHOR_EMAIL"
+    printf "  Allowed: %s\n" "${ALLOWED_EMAILS[@]}"
+    exit 1
+fi
+
+# Layer 2: signing key must match the key declared for this email in its identity file
+if [[ -z "$EXPECTED_KEY" ]]; then
+    echo "BLOCKED: No signingkey found in identity file for $AUTHOR_EMAIL"
+    exit 1
+fi
+if [[ "$AUTHOR_KEY" != "$EXPECTED_KEY" ]]; then
+    echo "BLOCKED: Signing key mismatch for $AUTHOR_EMAIL"
+    echo "  Expected: $EXPECTED_KEY"
+    echo "  Got:      $AUTHOR_KEY"
+    echo "Do not override user.signingkey via -c or local git config."
+    exit 1
+fi
+
+# Layer 3: a local/-c override must not shadow a valid global (includeIf)
+# identity. user.useConfigOnly blocks the case where nothing resolves at all;
+# it does nothing when a value resolves but came from the wrong place -- a
+# stray local override is correct just as easily as wrong, and layers 1-2
+# can't tell the difference since both identities share one signing key.
+# `--get-all` surfaces every scoped entry in the chain, not just the winner,
+# so a repo whose org has no includeIf match (only a local entry exists) is
+# left alone, while a repo where a global entry is present but shadowed by
+# local/command is blocked.
+EMAIL_SCOPE=$(git config --show-scope --get user.email 2>/dev/null | cut -f1)
+SHADOWED_GLOBAL=$(git config --get-all --show-scope user.email 2>/dev/null | awk -F'\t' '$1 == "global" { print $2; exit }')
+if [[ "$EMAIL_SCOPE" != "global" && -n "$SHADOWED_GLOBAL" ]]; then
+    echo "BLOCKED: a $EMAIL_SCOPE override shadows the global identity for this repo's remote"
+    echo "  Global (expected): $SHADOWED_GLOBAL"
+    echo "  Currently using:   $AUTHOR_EMAIL"
+    echo "  Check: git config --get-all --show-scope user.email"
+    exit 1
+fi
+
+AUTHOR_NAME=$(git config user.name || echo "")
+for _var in GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL; do
+    _val="${!_var:-}"
+    if [[ -n "$_val" && "$_val" != "$AUTHOR_EMAIL" ]]; then
+        echo "BLOCKED: $_var ($_val) overrides the resolved identity ($AUTHOR_EMAIL)"
+        echo "  unset $_var and retry, or fix why it's set to a different value"
+        exit 1
+    fi
+done
+for _var in GIT_AUTHOR_NAME GIT_COMMITTER_NAME; do
+    _val="${!_var:-}"
+    if [[ -n "$_val" && "$_val" != "$AUTHOR_NAME" ]]; then
+        echo "BLOCKED: $_var ($_val) overrides the resolved identity ($AUTHOR_NAME)"
+        echo "  unset $_var and retry, or fix why it's set to a different value"
+        exit 1
+    fi
+done
+
+# Scan staged changes for secrets
+if command -v gitleaks &>/dev/null; then
+    if ! gitleaks git --staged --verbose; then
+        echo "BLOCKED: gitleaks detected secrets in staged changes"
+        echo "Bypass with caution: git commit --no-verify"
+        exit 1
+    fi
+fi
+
+# Lint staged markdown files
+if command -v bun &>/dev/null; then
+    STAGED_MD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' || true)
+    if [[ -n "$STAGED_MD" ]]; then
+        ARGS=()
+        while IFS= read -r f; do
+            ARGS+=(":$f")
+        done <<< "$STAGED_MD"
+        MDLINT_FALLBACK="$(dirname "$0")/markdownlint.default.jsonc"
+        if ! bunx markdownlint-cli2@0.23.2 --config "$MDLINT_FALLBACK" "${ARGS[@]}"; then
+            echo "BLOCKED: markdownlint-cli2 found issues in staged markdown files"
+            echo "Bypass with caution: git commit --no-verify"
+            exit 1
+        fi
+    fi
+fi
+
+# Lint staged DOCX files for table-width regressions
+STAGED_DOCX=$(git diff --cached --name-only --diff-filter=ACM | grep '\.docx$' || true)
+if [[ -n "$STAGED_DOCX" ]]; then
+    CHECKER="$(dirname "$0")/../pandoc/check_docx_tables.py"
+    if [[ -f "$CHECKER" ]]; then
+        ARGS=()
+        while IFS= read -r f; do
+            ARGS+=("$f")
+        done <<< "$STAGED_DOCX"
+        if ! python3 "$CHECKER" "${ARGS[@]}"; then
+            echo "BLOCKED: check_docx_tables.py found table-width issues in staged DOCX files"
+            echo "Bypass with caution: git commit --no-verify"
+            exit 1
+        fi
+    fi
+fi
+
+exit 0

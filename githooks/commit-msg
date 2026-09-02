@@ -1,0 +1,102 @@
+#!/bin/bash
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# ASCII only (Cloudflare Pages rejects non-ASCII), excluding Signed-off-by
+if grep -v "^Signed-off-by:" "$COMMIT_MSG_FILE" | LC_ALL=C grep -q '[^[:print:][:space:]]'; then
+    echo "BLOCKED: Non-ASCII in commit message"
+    exit 1
+fi
+
+# Total header (first line) must not exceed 100 chars (parity with commitlint header-max-length)
+if [ ${#COMMIT_MSG} -gt 100 ]; then
+    echo "BLOCKED: Commit header exceeds 100 characters (current: ${#COMMIT_MSG})"
+    exit 1
+fi
+
+# Conventional commit format: type(scope)?: description
+CONVENTIONAL_REGEX='^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([a-z0-9_-]+\))?(!)?: .+$'
+
+if ! echo "$COMMIT_MSG" | grep -qE "$CONVENTIONAL_REGEX"; then
+    echo "BLOCKED: Commit message must follow conventional format"
+    echo "  Format: type(scope): description"
+    echo "  Types: feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert"
+    echo "  Example: fix(auth): handle token expiry"
+    exit 1
+fi
+
+# Subject must not end with a period (conventional commits spec rule 7)
+if echo "$COMMIT_MSG" | grep -qE '\.$'; then
+    echo "BLOCKED: Commit subject must not end with a period"
+    exit 1
+fi
+
+# BREAKING CHANGE footer must use correct token format (spec rules 12-16)
+# Token must be uppercase; BREAKING-CHANGE is an accepted alias.
+# Valid separators: ': ' (colon-space) or ' #' (space-hash).
+if grep -iE "^breaking[ -]change" "$COMMIT_MSG_FILE" | grep -qvE "^BREAKING[ -]CHANGE(: | #)"; then
+    echo "BLOCKED: BREAKING CHANGE footer token must be uppercase with correct separator"
+    echo "  Valid forms: 'BREAKING CHANGE: <description>' or 'BREAKING CHANGE #<value>'"
+    exit 1
+fi
+
+# Check for Co-authored-by trailers
+if grep -iE "Co-authored-by:" "$COMMIT_MSG_FILE" > /dev/null 2>&1; then
+    echo "BLOCKED: Co-authored-by trailers not allowed"
+    exit 1
+fi
+
+# Check for DCO (Signed-off-by)
+if ! grep -q "^Signed-off-by:" "$COMMIT_MSG_FILE"; then
+    echo "BLOCKED: Missing DCO (Signed-off-by)"
+    echo "Use: git commit --signoff"
+    exit 1
+fi
+
+# Verify Signed-off-by name and email match git user.name and user.email
+EXPECTED_NAME=$(git config user.name)
+EXPECTED_EMAIL=$(git config user.email)
+if ! grep -q "^Signed-off-by: ${EXPECTED_NAME} <${EXPECTED_EMAIL}>$" "$COMMIT_MSG_FILE"; then
+    echo "BLOCKED: Signed-off-by must match git identity: ${EXPECTED_NAME} <${EXPECTED_EMAIL}>"
+    echo "Use: git commit --signoff (do not hardcode the trailer)"
+    exit 1
+fi
+
+# Body/footer structure and line-length checks via pure bash state machine.
+# Read all lines into indexed array (bash 3.2 compatible).
+declare -a lines
+while IFS= read -r line; do
+    lines[${#lines[@]}]="$line"
+done < "$COMMIT_MSG_FILE"
+
+total=${#lines[@]}
+
+# body-leading-blank: if total line count > 1 and lines[1] is not empty, block
+if [ $total -gt 1 ] && [ -n "${lines[1]}" ]; then
+    echo "BLOCKED: Body must be separated from subject by a blank line"
+    exit 1
+fi
+
+# Footer line-length checks (parity with commitlint footer-max-line-length: 100).
+# body-max-line-length and footer-leading-blank are disabled in CI; local hook matches.
+found_footer=0
+for ((i = 1; i < total; i++)); do
+    line="${lines[$i]}"
+
+    # Detect first footer token to start footer section
+    if [ $found_footer -eq 0 ]; then
+        if echo "$line" | grep -qE '^[A-Za-z][A-Za-z0-9-]*: |^[A-Za-z][A-Za-z0-9-]* #|^BREAKING CHANGE(: | #)'; then
+            found_footer=1
+        fi
+    fi
+
+    # Check footer line length only (body lines unchecked, matching CI body-max-line-length: [0]).
+    # Lines containing URLs are exempt, matching commitlint's maxLineLength ensure function.
+    if [ $found_footer -eq 1 ] && [ ${#line} -gt 100 ] && ! echo "$line" | grep -qE 'https?://'; then
+        echo "BLOCKED: Footer line $((i + 1)) exceeds 100 characters"
+        exit 1
+    fi
+done
+
+exit 0

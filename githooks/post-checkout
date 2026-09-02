@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+
+# Prune gone branches on checkout to main/master
+# $3 = 1 for branch checkout, 0 for file checkout
+if [ "$3" = "1" ]; then
+    branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+    if [[ "$branch" =~ ^(main|master)$ ]]; then
+        git fetch -p 2>/dev/null || true
+        git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
+    fi
+fi
+
+exit 0
