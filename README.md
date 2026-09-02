@@ -18,14 +18,30 @@ Background: [Orchestrating AI Agents: A Subagent
 Architecture](https://clouatre.ca/posts/orchestrating-ai-agents-subagent-architecture)
 and [The AI SDLC Governance
 Stack](https://clouatre.ca/posts/ai-sdlc-governance-stack) on clouatre.ca.
+Model-selection methodology behind SCOUT/GUARD's swaps over time is documented in
+[llm-agent-experiments](https://github.com/clouatre-labs/llm-agent-experiments) (its own
+README predates the pins in `goose/goose-coder.yaml` below); the predecessor study of
+this Scout/Guard architecture is
+[prompt-repetition-experiments](https://github.com/clouatre-labs/prompt-repetition-experiments).
 
 ## Pipeline
 
+```mermaid
+graph TD
+    Setup[Setup] --> Scout[Scout]
+    subgraph Research
+        Scout --> Guard[Guard]
+    end
+    Guard -->|Gate| Plan[Plan]
+    Plan --> Build[Build]
+    Build -->|Fail: retry once| Build
+    Build -->|Pass| Check[Check]
+    Check -->|Fail| Stop[Stop & Ask]
+    Check -->|Pass| Review[PR Review]
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, draft PR on PASS] -> PR REVIEW & READY
-                                                                    |                    |
-                                                               FAIL -> Back to BUILD (1x) FAIL -> Stop & Ask
-```
+
+*Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
+medium tiers skip delegates or skip GUARD/CHECK entirely (see below).*
 
 The orchestrator classifies every change into one of three tiers (simple, medium,
 complex) and scales the pipeline accordingly — a one-line config change skips every
