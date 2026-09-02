@@ -1,3 +1,0 @@
-reference-doc: tools/pandoc/reference.docx
-filters:
-  - tools/pandoc/docx-table.lua
