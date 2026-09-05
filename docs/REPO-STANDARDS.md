@@ -15,9 +15,9 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.github/ISSUE_TEMPLATE/` | Structured issue templates | repo |
 | `.github/instructions/` | VS Code / Copilot scoped instruction files (applyTo pattern) | repo |
 | `.github/PULL_REQUEST_TEMPLATE.md` | PR template | repo |
-| `.github/workflows/ci.yml` | Commit message linting (commitlint) and rebase enforcement; aggregate CI Result gate | repo |
+| `.github/workflows/ci.yml` | Commit message linting (commitlint); single required `Lint Commits` check | repo |
 | `.github/workflows/markdown-lint.yml` | Lints all Markdown on pull requests and pushes to `main` with markdownlint-cli2; runs with narrowed `contents: read` permissions | repo |
-| `.github/workflows/security.yml` | Two security jobs (trufflehog, zizmor) with aggregate `Security Result` gate | repo |
+| `.github/workflows/security.yml` | Sequential trufflehog and zizmor steps in a single required `Security Result` job | repo |
 | `.github/workflows/scheduled-security-audit.yml` | Weekly scheduled zizmor security audit | repo |
 | `.commitlintrc.yml` | Conventional Commits ruleset for commitlint | repo |
 | `.github/workflows/scorecard.yml` | Weekly OpenSSF Scorecard analysis; publishes SARIF to code scanning | repo |
@@ -45,11 +45,9 @@ name: Security
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
   push:
-    branches:
-      - main
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -58,60 +56,36 @@ concurrency:
 permissions: {}
 
 jobs:
-  secrets:
-    name: Secret scan
+  security-result:
+    name: Security Result
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
     permissions:
       contents: read
+      security-events: write # needed for SARIF upload on public repos
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
+      # TruffleHog is used instead of gitleaks/gitleaks-action because gitleaks-action
+      # requires a GITLEAKS_LICENSE org secret for GitHub Organisation repos (free tier
+      # available but requires registration). TruffleHog has no per-org licensing gate.
       - name: Scan for committed secrets
-        uses: trufflesecurity/trufflehog@bcfcf73aaf4759d4dadc2783177c245a02792318 # v3.97.0
+        uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b # v3.97.1
         with:
           extra_args: --only-verified
-
-  zizmor:
-    name: Workflow SHA pinning
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: Lint GitHub Actions workflows
-        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+        if: always()
+        uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3
         with:
           min-severity: medium
-          advanced-security: false
+          advanced-security: ${{ github.event.repository.visibility == 'public' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           config: .github/zizmor.yml
-
-  security-result:
-    name: Security Result
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 2
-    permissions: {}
-    needs: [secrets, zizmor]
-    if: always()
-    steps:
-      - name: Check all security jobs passed
-        run: |
-          for result in "${{ needs.secrets.result }}" "${{ needs.zizmor.result }}"; do
-            if [[ "$result" != "success" ]]; then
-              echo "Security check failed or cancelled: $result"
-              exit 1
-            fi
-          done
-          echo "All security checks passed"
 ```
 
-*Code Snippet 1: `.github/workflows/security.yml` (full file).*
+*Code Snippet 1: `.github/workflows/security.yml` (full file). trufflehog and zizmor run as sequential steps in one job; the zizmor step is marked `if: always()` so it still runs and reports independently even if the trufflehog step fails.*
 
 ```
 .github/ @clouatre
@@ -151,7 +125,9 @@ rules:
 
 ## Non-obvious Decisions
 
-**Aggregate `Security Result` job.** The main branch ruleset requires a single status check named `Security Result` rather than requiring all security jobs individually. The `security-result` job uses `needs: [secrets, zizmor]` with `if: always()` so it runs regardless of whether any upstream job fails, is skipped, or is cancelled; it then fails explicitly if any result is not `success`. This pattern keeps the ruleset stable: adding or removing a security tool requires only a change to the `security.yml` fan-in, not a ruleset edit. Ruleset edits require admin access and are not tracked in git, so minimizing them reduces operational risk.
+**Single `Security Result` job.** The main branch ruleset requires one status check named `Security Result`; both security controls (trufflehog, zizmor) run as sequential steps inside this one job rather than as separate jobs feeding an aggregator. The zizmor step is marked `if: always()` so it still runs and reports independently even if the trufflehog step fails; GitHub computes the job's overall pass/fail natively from step results, so no separate shell-based result-check step is needed. This keeps the ruleset stable the same way the earlier two-jobs-plus-aggregator design did: adding or removing a security tool requires only a change within `security.yml`, not an admin-only ruleset edit. Ruleset edits require admin access and are not tracked in git, so minimizing them reduces operational risk.
+
+**Job-count consolidation (`ci.yml`, `security.yml`).** On a small repo, real per-check compute is seconds, but each GitHub Actions job pays a fixed VM-boot-and-checkout cost regardless of how little work it does. The original design used 7 jobs per PR (`commitlint` → `check-base` → `ci-result`; `secrets` + `zizmor` → `security-result`; `lint`) to satisfy 3 required status checks. `check-base` (a full-history checkout solely to run `git merge-base` and fail the check if the branch was behind main) was redundant with the branch ruleset's own `strict_required_status_checks_policy: true`, which already enforces branch currency natively at zero Actions cost, so it was deleted outright. `commitlint` was folded directly into the `Lint Commits` job (renamed from `CI Result`, since with `check-base` gone the job no longer aggregates anything and the old name no longer described its single purpose), and `secrets`/`zizmor` were folded into sequential steps of the `Security Result` job. Net effect: 7 billed jobs per PR down to 3, identical protections (DCO sign-off, commit-message linting, secret scanning, workflow SHA-pin linting, branch-currency enforcement), and no ruleset edits beyond the one required-check rename. Trade-off: the GitHub PR Checks tab now shows only `Lint Commits` and `Security Result` rather than a separate entry per underlying tool — diagnosing which step failed means opening the job log instead of scanning the checks list. `check-base`'s custom out-of-date-branch error message is also gone, replaced by GitHub's native "Update branch" UI enforcement (same protection, different UX).
 
 **trufflehog `--only-verified` flag.** TruffleHog's detector set matches a broad set of patterns and generates false positives on test fixtures, redacted excerpts, and example strings embedded in documentation, which are common in an engagement repo that quotes API responses and config examples. `--only-verified` instructs TruffleHog to attempt live verification against the issuing service before reporting a finding; only credentials confirmed active are surfaced. This keeps the signal-to-noise ratio high enough that the job does not become routine noise to bypass.
 
@@ -226,10 +202,10 @@ These steps replicate all controls to any new engagement repo under `github.com/
 
    *Code Snippet 7: Set the selected-actions allowlist. Add entries for any additional third-party actions the new repo uses.*
 
-5. Copy `.commitlintrc.yml` and add the commitlint and check-base jobs to `ci.yml`. Set `CI Result` as a required status check in the branch ruleset alongside `Security Result` and `Lint markdown`.
+5. Copy `.commitlintrc.yml` and add the `lint-commits` job to `ci.yml`. Set `Lint Commits` as a required status check in the branch ruleset alongside `Security Result` and `Lint markdown`. Do not add a separate branch-currency ("check-base") job — the ruleset's `strict_required_status_checks_policy: true` (Code Snippet 10) already enforces that the branch is up to date with main before merge, at zero Actions cost; a dedicated job to re-check it is redundant.
 
    ```yaml
-   commitlint:
+   lint-commits:
      name: Lint Commits
      runs-on: ubuntu-24.04-arm
      timeout-minutes: 5
@@ -261,48 +237,9 @@ These steps replicate all controls to any new engagement repo under `github.com/
              --from ${{ github.event.pull_request.base.sha }} \
              --to ${{ github.event.pull_request.head.sha }} \
              --verbose
-
-   check-base:
-     name: Check Branch Base
-     runs-on: ubuntu-24.04-arm
-     timeout-minutes: 5
-     permissions:
-       contents: read
-     steps:
-       - name: Checkout
-         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-         with:
-           fetch-depth: 0
-       - name: Verify branch is up-to-date with main
-         run: |
-           git fetch origin main
-           base_commit=$(git merge-base origin/main HEAD)
-           main_head=$(git rev-parse origin/main)
-           if [ "$base_commit" != "$main_head" ]; then
-             behind=$(git rev-list --count "$base_commit".."$main_head")
-             echo "::error::Branch is $behind commit(s) behind main. Please update your branch with the latest main."
-             echo "Run: git fetch origin && git rebase origin/main  # or merge: git fetch origin && git merge origin/main"
-             exit 1
-           fi
-
-   ci-result:
-     name: CI Result
-     runs-on: ubuntu-24.04-arm
-     needs: [commitlint, check-base]
-     if: always()
-     steps:
-       - name: Check all CI jobs passed
-         run: |
-           for result in "${{ needs.commitlint.result }}" "${{ needs.check-base.result }}"; do
-             if [[ "$result" != "success" ]]; then
-               echo "CI check failed or cancelled: $result"
-               exit 1
-             fi
-           done
-           echo "All CI checks passed"
    ```
 
-   *Code Snippet 8: commitlint, check-base, and ci-result jobs for `ci.yml`.*
+   *Code Snippet 8: `lint-commits` job for `ci.yml`.*
 
 6. Find the existing main branch ruleset ID and apply the full ruleset body. The `PUT` call replaces all rules atomically.
 
@@ -351,7 +288,7 @@ These steps replicate all controls to any new engagement repo under `github.com/
          "parameters": {
            "required_status_checks": [
              { "context": "Security Result", "integration_id": null },
-             { "context": "CI Result", "integration_id": null },
+             { "context": "Lint Commits", "integration_id": null },
              { "context": "Lint markdown", "integration_id": null }
            ],
            "strict_required_status_checks_policy": true
@@ -395,7 +332,7 @@ These steps replicate all controls to any new engagement repo under `github.com/
 
    *Code Snippet 12: Copilot code review ruleset rule.*
 
-8. Open a PR with the copied files and merge it. Verify that the `Security Result` and `CI Result` checks appear and pass on the next PR. If the allowlist is incomplete, the security workflow will fail at job queue time with an action-not-allowed error before any code runs.
+8. Open a PR with the copied files and merge it. Verify that the `Security Result` and `Lint Commits` checks appear and pass on the next PR. If the allowlist is incomplete, the security workflow will fail at job queue time with an action-not-allowed error before any code runs.
 
 9. Enable `allow_auto_merge` so `dependabot-automerge.yml`'s `gh pr merge --auto` can queue merges once required checks pass. This is a repo setting, not tracked in git.
 
@@ -412,19 +349,18 @@ These steps replicate all controls to any new engagement repo under `github.com/
 
 ## Security Hardening
 
-Two layers of defense protect the repo against the attack patterns most relevant to a GitHub-hosted engagement repo: secret exfiltration from commit history and supply chain compromise via mutable action references. The two security jobs run in parallel on every PR and push to main, then fan into a single required status check.
+Two layers of defense protect the repo against the attack patterns most relevant to a GitHub-hosted engagement repo: secret exfiltration from commit history and supply chain compromise via mutable action references. Both controls run as sequential steps inside a single job on every PR and push to main, reporting as one required status check.
 
 ```mermaid
 graph TD
-    TRIGGER[PR / push trigger] --> SECRETS[secrets: trufflehog]
-    TRIGGER --> ZIZMOR[zizmor: SHA-pin audit]
-    SECRETS --> GATE[Security Result]
-    ZIZMOR --> GATE
-    GATE --> RULESET[Main branch ruleset required check]
-    GATE -.->|defined in| LABEL[security.yml]
+    TRIGGER[PR / push trigger] --> JOB[Security Result job]
+    JOB --> SECRETS[Step: trufflehog secret scan]
+    SECRETS --> ZIZMOR["Step: zizmor SHA-pin audit (if: always)"]
+    ZIZMOR --> RULESET[Main branch ruleset required check]
+    JOB -.->|defined in| LABEL[security.yml]
 ```
 
-*Figure 1: Security workflow fan-in. Two parallel jobs feed a single aggregate gate that is the sole required status check on the main branch.*
+*Figure 1: Security workflow steps. Two sequential steps inside a single job report as the sole required status check on the main branch; the zizmor step runs with `if: always()` so it still executes and reports independently even if the trufflehog step fails.*
 
 ### Control 1: Secret Scanning (trufflehog)
 
@@ -478,28 +414,38 @@ rules:
 
 *Code Snippet 14: zizmor step from `security.yml` (top) and `.github/zizmor.yml` suppression config (bottom). `min-severity: medium` suppresses informational noise. `advanced-security: false` uses GitHub annotations (no Code Scanning dependency); findings appear as PR annotations and fail the job. To enable persistent SARIF uploads via Code Scanning, set `advanced-security: true` and add `security-events: write` and `actions: read` permissions, but note that Code Security must be enabled at the repo or org level. The `dependabot-cooldown` suppression is scoped to `dependabot.yml` only.*
 
-### Control 3: Aggregate Security Result Gate
+### Control 3: Single Security Result Job
 
-**Rationale:** If each of the two security jobs were required individually in the branch ruleset, adding a third tool or renaming a job would require an admin-only ruleset edit that is not tracked in git. A single aggregate job named `Security Result` is the only required check. The `needs` list combined with `if: always()` ensures the gate runs even when upstream jobs fail or are skipped; explicit result checks in the `run:` step mean any non-success upstream job is treated as a failure, preventing the gate from passing vacuously.
+**Rationale:** If each security control were required individually in the branch ruleset, adding, removing, or renaming a tool would require an admin-only ruleset edit that is not tracked in git. Instead, both controls run as sequential steps inside one job named `Security Result`, which is the only required check. The zizmor step is marked `if: always()` so it still runs and reports independently even if the trufflehog step fails; GitHub computes the job's overall pass/fail natively from step results, so there is no separate shell-based result-check step to maintain. Adding a third security tool later means adding another step to this job, not a new required check.
 
 ```yaml
 security-result:
   name: Security Result
   runs-on: ubuntu-24.04-arm
-  needs: [secrets, zizmor]
-  if: always()
+  timeout-minutes: 10
+  permissions:
+    contents: read
+    security-events: write
   steps:
-    - name: Check all security jobs passed
-      run: |
-        if [[ "${{ needs.secrets.result }}" != "success" || \
-              "${{ needs.zizmor.result }}" != "success" ]]; then
-          echo "One or more security checks failed"
-          exit 1
-        fi
-        echo "All security checks passed"
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        fetch-depth: 0
+    - name: Scan for committed secrets
+      uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b # v3.97.1
+      with:
+        extra_args: --only-verified
+    - name: Lint GitHub Actions workflows
+      if: always()
+      uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3
+      with:
+        min-severity: medium
+        advanced-security: ${{ github.event.repository.visibility == 'public' }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        config: .github/zizmor.yml
 ```
 
-*Code Snippet 15: Aggregate `Security Result` job from `security.yml`.*
+*Code Snippet 15: `security-result` job body from `security.yml`, showing the sequential trufflehog and zizmor steps.*
 
 ### Control 4: Read-Only Default Workflow Permissions
 
@@ -581,7 +527,7 @@ The following controls cannot be applied at the repo level. They require org adm
 
 | # | Control | Attack or Risk Blocked | Enforcement Path |
 |---|---------|----------------------|-----------------|
-| 1 | Secret scanning (trufflehog) | Committed credential exfiltration; secrets pushed to history then scraped (Codecov breach pattern) | `security.yml` secrets job; required via Security Result status check on main branch ruleset |
-| 2 | SHA-pin audit (zizmor) | Mutable action tag substitution; attacker moves tag to malicious code (tj-actions/changed-files pattern) | `security.yml` zizmor job; required via Security Result status check on main branch ruleset |
+| 1 | Secret scanning (trufflehog) | Committed credential exfiltration; secrets pushed to history then scraped (Codecov breach pattern) | `security.yml` trufflehog step (job `security-result`); required via Security Result status check on main branch ruleset |
+| 2 | SHA-pin audit (zizmor) | Mutable action tag substitution; attacker moves tag to malicious code (tj-actions/changed-files pattern) | `security.yml` zizmor step (job `security-result`); required via Security Result status check on main branch ruleset |
 
 *Table 3: Security hardening summary.*
