@@ -11,7 +11,7 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `AGENTS.md` | AI agent project context scaffold | repo |
 | `.github/CODEOWNERS` | Requires `@clouatre` review for changes to `.github/`; replace with your own account or team when adopting this template | repo |
 | `.github/copilot-instructions.md` | Copilot-specific agent instructions and PR review checklist | repo |
-| `.github/dependabot.yml` | Weekly grouped PRs to keep action SHA pins current | repo |
+| `.github/renovate.json` | Automated dependency updates via Renovate | repo |
 | `.github/ISSUE_TEMPLATE/` | Structured issue templates | repo |
 | `.github/instructions/` | VS Code / Copilot scoped instruction files (applyTo pattern) | repo |
 | `.github/PULL_REQUEST_TEMPLATE.md` | PR template | repo |
@@ -22,7 +22,6 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.commitlintrc.yml` | Conventional Commits ruleset for commitlint | repo |
 | `.github/workflows/scorecard.yml` | Weekly OpenSSF Scorecard analysis; publishes SARIF to code scanning | repo |
 | `.github/workflows/scorecard-publish.yml` | Monthly scorecard.dev publishing via amd64 exception | repo |
-| `.github/zizmor.yml` | Suppresses the `dependabot-cooldown` false positive in zizmor | repo |
 | `CONTRIBUTING.md` | Contribution guidelines | repo |
 | `SECURITY.md` | Vulnerability disclosure policy | repo |
 
@@ -38,7 +37,7 @@ The artifacts in the map above form a layered context stack for AI coding agents
 
 Together, the three layers implement what is sometimes called context engineering: structuring the information agents consume so outputs are correct and reviewable by default.
 
-The four files directly involved in security controls are reproduced below for reference when applying these standards to a new repo.
+The three files directly involved in security controls are reproduced below for reference when applying these standards to a new repo.
 
 ```yaml
 name: Security
@@ -82,7 +81,6 @@ jobs:
           min-severity: medium
           advanced-security: ${{ github.event.repository.visibility == 'public' }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          config: .github/zizmor.yml
 ```
 
 *Code Snippet 1: `.github/workflows/security.yml` (full file). trufflehog and zizmor run as sequential steps in one job; the zizmor step is marked `if: always()` so it still runs and reports independently even if the trufflehog step fails.*
@@ -94,34 +92,33 @@ jobs:
 
 *Code Snippet 2: `.github/CODEOWNERS`. Replace `@clouatre` with your own account or team when adopting this template.*
 
-```yaml
-version: 2
-updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: "UTC"
-    commit-message:
-      prefix: "chore(deps): "
-    groups:
-      actions:
-        patterns:
-          - "*"
+```json
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "3 days",
+  "platformAutomerge": true,
+  "dependencyDashboard": false,
+  "schedule": ["before 6am on monday"],
+  "timezone": "UTC",
+  "packageRules": [
+    {
+      "groupName": "non-major",
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "lockFileMaintenance"],
+      "automerge": true
+    },
+    {
+      "groupName": "github-actions",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major", "minor", "patch", "digest", "pin", "lockFileMaintenance"],
+      "automerge": true
+    }
+  ]
+}
 ```
 
-*Code Snippet 3: `.github/dependabot.yml`.*
-
-```yaml
-rules:
-  dependabot-cooldown:
-    ignore:
-      - dependabot.yml
-```
-
-*Code Snippet 4: `.github/zizmor.yml`.*
+*Code Snippet 3: `.github/renovate.json`.*
 
 ## Non-obvious Decisions
 
@@ -135,17 +132,15 @@ rules:
 
 **`fetch-depth: 0` for trufflehog.** GitHub Actions clones repos with `--depth 1` by default, exposing only the tip commit. A developer who commits a credential and then removes it in a subsequent commit leaves the secret accessible in the git object store but invisible in a shallow clone. TruffleHog requires the complete commit graph to scan all reachable commits. The zizmor job uses a shallow clone because it only needs the current state of `.github/workflows/`, so no `fetch-depth` override is applied there.
 
-**zizmor `dependabot-cooldown` suppression.** zizmor's `dependabot-cooldown` rule flags workflows whose action pins were updated very recently, as a heuristic for detecting pins that bypassed code review. In this repo, Dependabot manages all SHA pins automatically on a weekly cadence and the resulting PRs go through normal review. Every Dependabot update correctly triggers the `dependabot-cooldown` warning, making it a permanent false positive. The suppression in `.github/zizmor.yml` is scoped to `dependabot.yml` only; all other zizmor rules remain active across all workflow files.
-
 **Read-only default workflow permissions.** GitHub's historical default for new repos grants workflows `contents: write` implicitly via `GITHUB_TOKEN`. Any workflow step running attacker-controlled code (via script injection or a compromised action) can use that token to push commits, create releases, or approve PRs without any additional credential. Setting the default to `read` at the repo level means every workflow that needs elevated access must declare it explicitly in the workflow file, making the privilege visible in code review. Any workflow requiring write operations (e.g. a release workflow with `contents: write`, `id-token: write`, and `attestations: write`) must declare those permissions explicitly at the job level.
 
 **Action allowlist.** Setting the repo to `selected` actions mode means only `actions/*`, `github/*`, and the named third-party patterns can be used in any workflow. A contributor who wants to add a new third-party action must update both the workflow file and the allowlist in the same PR, creating two review gates. Without the allowlist, adding an unreviewed action requires only a single workflow edit. `github_owned_actions: true` covers all `actions/*` and `github/*` namespaces without listing them individually.
 
-**CODEOWNERS scope: `.github/`.** Requiring `@clouatre` review for all files under `.github/` prevents a contributor from modifying workflow files, CODEOWNERS itself, or the dependabot config without owner review. All files under `.github/` (including `.github/zizmor.yml`) are covered by a single CODEOWNERS entry.
+**CODEOWNERS scope: `.github/`.** Requiring `@clouatre` review for all files under `.github/` prevents a contributor from modifying workflow files, CODEOWNERS itself, or the renovate config without owner review. All files under `.github/` (including `.github/renovate.json`) are covered by a single CODEOWNERS entry.
 
 **`subject-case`, `body-max-line-length`, and `footer-leading-blank` disabled in `.commitlintrc.yml`.** `@commitlint/config-conventional` enforces lowercase commit subjects, a 100-character body line limit, and a blank line before the footer, but none of these rules are part of the Conventional Commits spec; all are opinions layered on top by the preset. Every automated tool in the ecosystem (Dependabot, Renovate, release-please, GitHub Copilot) generates sentence-case subjects (e.g. "Bump the actions group with 2 updates") and embeds full changelogs in commit bodies that routinely exceed 100 characters. `footer-leading-blank` is cosmetic and not in the spec. These three rules are disabled at severity 0 so bot-generated commits pass CI without whitelisting individual actors. All structural rules remain enforced: `type-enum`, `type-case`, `scope-case`, `header-max-length`, `body-leading-blank`, and `subject-full-stop`.
 
-**Runner pinning to ubuntu-24.04-arm.** `ubuntu-latest` is a moving alias; GitHub advances it to the next LTS image with short notice. Pinning to a specific image (`ubuntu-24.04-arm`) makes toolchain changes explicit and reviewable rather than silent. The `-arm` suffix selects GitHub's ARM64 runner fleet, which provides equivalent performance to x86 at lower cost and avoids contention on the oversubscribed x86 pool. Dependabot keeps the pin current via automated PRs.
+**Runner pinning to ubuntu-24.04-arm.** `ubuntu-latest` is a moving alias; GitHub advances it to the next LTS image with short notice. Pinning to a specific image (`ubuntu-24.04-arm`) makes toolchain changes explicit and reviewable rather than silent. The `-arm` suffix selects GitHub's ARM64 runner fleet, which provides equivalent performance to x86 at lower cost and avoids contention on the oversubscribed x86 pool. Renovate keeps the pin current via automated PRs.
 
 **Permissions-first sequencing.** The org default GITHUB_TOKEN permission was flipped to `read` on 2026-03-25. New repos work without per-workflow blocks, but explicit blocks are still required as defence in depth and should be placed before the first `jobs:` key by convention for readability. Per-workflow pattern for CI: `contents: read` / `pull-requests: read`. Minimum required permissions set per job; jobs using `actions/checkout` need at least `contents: read`.
 
@@ -153,7 +148,7 @@ rules:
 
 These steps replicate all controls to any new engagement repo under `github.com/clouatre-labs`. Complete them in order; later steps depend on earlier ones being in effect.
 
-1. Copy `.github/CODEOWNERS`, `.github/dependabot.yml`, `.github/zizmor.yml`, `.github/workflows/security.yml`, `.github/workflows/scheduled-security-audit.yml`, `.github/workflows/scorecard.yml`, and `.github/workflows/scorecard-publish.yml` into the new repo. Add any additional third-party action patterns the new repo uses to the allowlist in step 4.
+1. Copy `.github/CODEOWNERS`, `.github/renovate.json`, `.github/workflows/security.yml`, `.github/workflows/scheduled-security-audit.yml`, `.github/workflows/scorecard.yml`, and `.github/workflows/scorecard-publish.yml` into the new repo. Add any additional third-party action patterns the new repo uses to the allowlist in step 4.
 
 2. Update the owner in `CODEOWNERS`. Replace `@clouatre` with your own GitHub account or team. **Critical:** Ensure that account or team has at least `Write` access to the derived repo. GitHub silently ignores code owners that lack write access, which would leave `.github/` unprotected. Update the absolute contact URLs in `.github/ISSUE_TEMPLATE/config.yml` to point to the derived repo. See `.github/CODEOWNERS` for the full comment block.
 
@@ -196,7 +191,6 @@ These steps replicate all controls to any new engagement repo under `github.com/
      --field 'patterns_allowed[]=DavidAnson/markdownlint-cli2-action@*' \
      --field 'patterns_allowed[]=trufflesecurity/trufflehog@*' \
      --field 'patterns_allowed[]=zizmorcore/zizmor-action@*' \
-     --field 'patterns_allowed[]=dependabot/fetch-metadata@*' \
      --field 'patterns_allowed[]=ossf/scorecard-action@*'
    ```
 
@@ -334,7 +328,7 @@ These steps replicate all controls to any new engagement repo under `github.com/
 
 8. Open a PR with the copied files and merge it. Verify that the `Security Result` and `Lint Commits` checks appear and pass on the next PR. If the allowlist is incomplete, the security workflow will fail at job queue time with an action-not-allowed error before any code runs.
 
-9. Enable `allow_auto_merge` so `dependabot-automerge.yml`'s `gh pr merge --auto` can queue merges once required checks pass. This is a repo setting, not tracked in git.
+9. Enable `allow_auto_merge` so Renovate's `platformAutomerge` setting (Code Snippet 3) can merge qualifying PRs via GitHub's native auto-merge once required checks pass. This is a repo setting, not tracked in git.
 
    ```bash
    gh api \
@@ -402,17 +396,9 @@ graph TD
   with:
     min-severity: medium
     advanced-security: false
-    config: .github/zizmor.yml
 ```
 
-```yaml
-rules:
-  dependabot-cooldown:
-    ignore:
-      - dependabot.yml
-```
-
-*Code Snippet 14: zizmor step from `security.yml` (top) and `.github/zizmor.yml` suppression config (bottom). `min-severity: medium` suppresses informational noise. `advanced-security: false` uses GitHub annotations (no Code Scanning dependency); findings appear as PR annotations and fail the job. To enable persistent SARIF uploads via Code Scanning, set `advanced-security: true` and add `security-events: write` and `actions: read` permissions, but note that Code Security must be enabled at the repo or org level. The `dependabot-cooldown` suppression is scoped to `dependabot.yml` only.*
+*Code Snippet 14: zizmor step from `security.yml`. `min-severity: medium` suppresses informational noise. `advanced-security: false` uses GitHub annotations (no Code Scanning dependency); findings appear as PR annotations and fail the job. To enable persistent SARIF uploads via Code Scanning, set `advanced-security: true` and add `security-events: write` and `actions: read` permissions, but note that Code Security must be enabled at the repo or org level. The zizmor steps in `security.yml` and `scheduled-security-audit.yml` no longer pass a `config:` input and run with zizmor's default rule set; the `dependabot-cooldown` rule had nothing left to suppress once Dependabot was replaced by Renovate.*
 
 ### Control 3: Single Security Result Job
 
@@ -442,7 +428,6 @@ security-result:
         min-severity: medium
         advanced-security: ${{ github.event.repository.visibility == 'public' }}
         token: ${{ secrets.GITHUB_TOKEN }}
-        config: .github/zizmor.yml
 ```
 
 *Code Snippet 15: `security-result` job body from `security.yml`, showing the sequential trufflehog and zizmor steps.*
@@ -469,7 +454,7 @@ The API call to apply the repo-level setting is in Code Snippet 5.
 
 ### Control 6: Code Owner Review
 
-**Attack mitigated:** Unauthorized workflow modification. An attacker or compromised contributor with write access to the repo could edit `.github/workflows/` to add a secret exfiltration step, modify CODEOWNERS to remove the review requirement, or suppress zizmor rules to allow tag-pinned actions through. The CODEOWNERS file (Code Snippet 2) requires `@clouatre` approval for all changes under `.github/`, which now includes `.github/zizmor.yml`.  The admin bypass actor uses `bypass_mode: pull_request` so every merge goes through a PR and is logged in the audit trail.
+**Attack mitigated:** Unauthorized workflow modification. An attacker or compromised contributor with write access to the repo could edit `.github/workflows/` to add a secret exfiltration step, modify CODEOWNERS to remove the review requirement, or weaken zizmor's severity threshold to allow tag-pinned actions through. The CODEOWNERS file (Code Snippet 2) requires `@clouatre` approval for all changes under `.github/`, which now includes `.github/renovate.json`.  The admin bypass actor uses `bypass_mode: pull_request` so every merge goes through a PR and is logged in the audit trail.
 
 **Solo-maintainer note.** When `require_code_owner_review: true` and `required_approving_review_count: 0` are both set, GitHub requires the code owner's approval but does not count a self-approval from the PR author. On a single-owner repo, this means the owner cannot merge their own `.github/` PRs without invoking the Admin bypass. That is the intended escape hatch: the bypass is logged in the audit trail, making the exception visible. Adopters who have a team should set `required_approving_review_count: 1` in addition to `require_code_owner_review: true` to enforce a full second-eye review.
 
@@ -491,21 +476,21 @@ Prefer CODEOWNERS for primary review policy. CODEOWNERS is a committed file: cha
 
 *Code Snippet 18: `required_reviewers` inside the `pull_request` rule parameters. Replace `12345` with the team numeric `id` (not `node_id`) from `gh api /orgs/{org}/teams/{slug}`. The field is GA as of 2026-02-17.*
 
-### Control 7: SHA-Pin Maintenance (Dependabot)
+### Control 7: SHA-Pin Maintenance (Renovate)
 
-**Attack mitigated:** Stale SHA pin pointing to a version that predates a supply chain fix or contains a known CVE. A SHA pin is only as safe as the commit it references; if that commit predates a security patch, the pin perpetuates the vulnerability. Dependabot creates weekly PRs grouping all action pin updates into a single reviewable diff (Code Snippet 3). The grouped cadence prevents update fatigue from individual per-action PRs. Dependabot PRs that touch `.github/dependabot.yml` are subject to CODEOWNERS review, maintaining the team-approval requirement for all security-adjacent config changes.
+**Attack mitigated:** Stale SHA pin pointing to a version that predates a supply chain fix or contains a known CVE. A SHA pin is only as safe as the commit it references; if that commit predates a security patch, the pin perpetuates the vulnerability. Renovate creates weekly PRs grouping all action pin updates into a single reviewable diff (Code Snippet 3). The grouped cadence prevents update fatigue from individual per-action PRs. Renovate PRs that touch `.github/renovate.json` are subject to CODEOWNERS review, maintaining the team-approval requirement for all security-adjacent config changes.
 
 #### Auto-merge for GitHub Actions updates
 
-The repository enables auto-merge for Dependabot PRs that update GitHub Actions pins only. Two components work together to implement this.
+The repository enables auto-merge for qualifying Renovate PRs via Renovate's own configuration; no custom workflow is involved.
 
-**Workflow (`dependabot-automerge.yml`).** The workflow triggers on `pull_request`, and its auto-merge job runs only when the actor is `dependabot[bot]`. For qualifying PRs it uses `dependabot/fetch-metadata` to read the PR ecosystem and calls `gh pr merge --auto --squash` only when `package-ecosystem == 'github_actions'`. Dependency ecosystem updates (npm, cargo, pip, etc.) do not match this condition and proceed through the normal review flow. The workflow uses `secrets.GITHUB_TOKEN`; no PAT is required.
+**`platformAutomerge` + `packageRules` (`renovate.json`, Code Snippet 3).** `platformAutomerge: true` tells the Renovate GitHub App to merge qualifying PRs through GitHub's native auto-merge API rather than merging them itself. The `packageRules` array marks which updates qualify: the `non-major` group covers patch/minor/digest/pin/lockFileMaintenance updates across every manager, and the `github-actions` group additionally allows major updates for the `github-actions` manager specifically — since this repo's only manager is `github-actions`, every update Renovate opens here is eligible for automerge. No workflow file or `GITHUB_TOKEN` step is involved; the Renovate GitHub App opens, labels, and — once required checks pass — merges the PR directly.
 
-**Bypass actor in the ruleset.** The bootstrap snippet grants the built-in Admin repository role (`actor_id: 5`) a `pull_request` bypass. If Dependabot auto-merge is enabled, configure any Dependabot bypass explicitly and document that exception. A bypass actor can merge without satisfying rules such as `require_code_owner_review`, required status checks, DCO sign-off (`commit_message_pattern: Signed-off-by:`), GPG signatures (`required_signatures`), and the `non_fast_forward` and `deletion` protections on `main`. Other protections that are not implemented via this ruleset continue to apply as configured.
+**Bypass actor in the ruleset.** The bootstrap snippet grants the built-in Admin repository role (`actor_id: 5`) a `pull_request` bypass. Renovate's automerge does not rely on this bypass: `platformAutomerge` merges through GitHub's standard auto-merge queue, which still requires every configured status check (`Security Result`, `Lint Commits`, `Lint markdown`) and DCO sign-off to pass first. The bypass actor exists only for the repo Admin role and is unrelated to Renovate. A bypass actor can merge without satisfying rules such as `require_code_owner_review`, required status checks, DCO sign-off (`commit_message_pattern: Signed-off-by:`), GPG signatures (`required_signatures`), and the `non_fast_forward` and `deletion` protections on `main`. Other protections that are not implemented via this ruleset continue to apply as configured.
 
-Dependabot is a first-party GitHub service, not a third-party contributor. Its PRs contain only automated SHA pin bumps generated from the current upstream tag and are not intended as a vector for script injection or credential exfiltration. Risk is reduced by scoping auto-merge at the workflow level to `github_actions` ecosystem updates only; Dependabot PRs for other ecosystems (`npm`, `cargo`, `pip`, etc.) are not auto-merged and proceed through the normal review and approval flow. If Dependabot is configured as a ruleset bypass actor, that exception must be reviewed separately.
+Renovate is operated as a first-party GitHub App (by Mend), not a third-party contributor with repo write access. Its PRs contain only automated SHA pin bumps generated from the current upstream tag and are not intended as a vector for script injection or credential exfiltration. Risk is reduced by scoping automerge, via `packageRules`, to non-major updates plus GitHub Actions updates specifically; any other update type is still opened as a PR but proceeds through the normal review and approval flow rather than merging automatically.
 
-The `allow_auto_merge` repository setting is enabled to permit `gh pr merge --auto` to queue the merge after all required checks pass (Code Snippet 19). Auto-merge does not bypass status checks; it simply queues the merge operation to execute once the checks succeed.
+The `allow_auto_merge` repository setting is enabled to permit GitHub's native auto-merge, queued by Renovate via `platformAutomerge`, to complete the merge once all required checks pass (Code Snippet 19). Auto-merge does not bypass status checks; it simply queues the merge operation to execute once the checks succeed.
 
 ## Controls Not Covered (Require Org Admin)
 

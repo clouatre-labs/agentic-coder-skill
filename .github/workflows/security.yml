@@ -39,4 +39,3 @@ jobs:
           min-severity: medium
           advanced-security: ${{ github.event.repository.visibility == 'public' }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          config: .github/zizmor.yml
