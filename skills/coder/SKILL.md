@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.8.0"
+version: "3.9.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -9,6 +9,7 @@ compatibility:
   - goose
 # Counterpart: ~/.config/goose/recipes/goose-coder.yaml -- keep workflow phases in sync
 # Changelog:
+#   3.9.0 -- sync with goose-coder v5.29.0: relocate handoff JSON out of the worktree-local handoff dir to $(git rev-parse --git-common-dir)/coder-handoffs/$SESSION_ID so handoff data survives git worktree remove; session-list glob reads coder-handoffs/*/02-plan.json; add GC step for orphaned handoff dirs; add jq empty write-time validation (closes clouatre/dotfiles#799, supersedes #797, #798; v5.28.0 BUILD model bump is goose-only, N/A here)
 #   3.8.0 -- sync with goose-coder v5.26.0: three-tier change classification as Critical Constraint #2; Phase 0 classify gate; skip GUARD/CHECK for medium tier; Rule 4 strengthened; fix stale Overview commit claim (syncs #748, #751)
 #   3.7.0 -- fix contradictory absolute-path claim in BUILD/CHECK/SCOUT delegates; document files[].path is WORKTREE-relative; BUILD uses working_dir on edit_overwrite/edit_replace (matching exec_command) instead of manual path concatenation; sync goose-coder v5.27.0 (fixes clouatre/dotfiles#779, #783)
 #   3.6.0 -- sync with goose-coder v5.22.0: trim changelog, drop dead remote_file/remote_tree rule, WebMCP qualifier in Rule 3, --auto on gh pr merge
@@ -67,7 +68,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
 ## Handoff Protocol
 
-All phases communicate via `$WORKTREE/.handoff/`:
+All phases communicate via `$(git rev-parse --git-common-dir)/coder-handoffs/$SESSION_ID/`. This lives under the shared `.git` dir, not the worktree, so handoff data survives `git worktree remove`:
 
 | File | Written By | Read By |
 |------|-----------|---------|
@@ -83,14 +84,15 @@ Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent con
 
 ## Phase 0: SETUP
 
-If user asks to list or resume sessions, show each `.worktrees/*/` with its `02-plan.json` overview field.
+If user asks to list or resume sessions, run `find $(git rev-parse --git-common-dir)/coder-handoffs -mindepth 1 -maxdepth 1 -type d` and for each dir show its `02-plan.json` overview field via `jq -r .overview`, regardless of whether a matching `.worktrees/<sid>` still exists.
 
 Generate session ID, clean up stale worktrees, create isolated worktree:
 
 ```bash
 SESSION_ID=$(date +%s)
 WORKTREE=.worktrees/$SESSION_ID
-HANDOFF=$WORKTREE/.handoff
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir)
+HANDOFF=$GIT_COMMON_DIR/coder-handoffs/$SESSION_ID
 
 # Cleanup stale worktrees: remove if older than 3 days OR branch is gone from remote.
 # Self-exclusion: skip current session's own worktree (index match on SESSION_ID).
@@ -105,6 +107,14 @@ done
 find .worktrees -maxdepth 1 -type d -mtime +3 ! -name "$SESSION_ID" -exec git worktree remove --force {} \; 2>/dev/null || true
 git worktree prune 2>/dev/null || true
 git branch -vv | grep ': gone]' | awk '{print $1}' | xargs git branch -D 2>/dev/null || true
+
+# GC orphaned handoff dirs: remove coder-handoffs/<sid> older than 3 days when no matching
+# .worktrees/<sid> exists. Always skip the current SESSION_ID.
+find "$GIT_COMMON_DIR/coder-handoffs" -mindepth 1 -maxdepth 1 -type d -mtime +3 ! -name "$SESSION_ID" 2>/dev/null | while read -r old; do
+  old_sid=$(basename "$old")
+  [ -d ".worktrees/$old_sid" ] || rm -rf "$old"
+done
+
 [ -f "$WORKTREE/.git" ] || git worktree add -B "feat/session-$SESSION_ID" "$WORKTREE" origin/main
 mkdir -p $HANDOFF
 echo "Session: $SESSION_ID | Worktree: $WORKTREE"
@@ -126,10 +136,10 @@ Set the task prompt using this template -- fill in the bracketed values:
 
 ```
 Worktree: <WORKTREE>
-Handoff dir: <WORKTREE>/.handoff
+Handoff dir: <HANDOFF>
 Issue: <ISSUE_URL>
 Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
-Output: write <WORKTREE>/.handoff/01a-research-scout.json (compact: jq -c .) then stop.
+Output: write <HANDOFF>/01a-research-scout.json (compact: jq -c .), then run `jq empty <HANDOFF>/01a-research-scout.json`; non-zero exit means fix and rewrite before stopping.
 Schema fields: session_id, file_structure_summary, lens, relevant_files, conventions, patterns, approaches, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
@@ -152,10 +162,10 @@ Set the task prompt using this template -- fill in the bracketed values:
 
 ```
 Worktree: <WORKTREE>
-Handoff dir: <WORKTREE>/.handoff
-Scout handoff: <WORKTREE>/.handoff/01a-research-scout.json
+Handoff dir: <HANDOFF>
+Scout handoff: <HANDOFF>/01a-research-scout.json
 Verification targets: <2-3 specific checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
-Output: write <WORKTREE>/.handoff/01b-research-guard.json (compact: jq -c .) then stop.
+Output: write <HANDOFF>/01b-research-guard.json (compact: jq -c .), then run `jq empty <HANDOFF>/01b-research-guard.json`; non-zero exit means fix and rewrite before stopping.
 Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
@@ -203,7 +213,7 @@ Produce structured plan. No gate - auto-proceed to BUILD.
 - If a risk item is phrased as a requirement (uses must/must not), move it to `implementation_constraints` and remove it from `risks` before writing 02-plan.json
 - Derive `branch` from `commit_message`: strip the `type(scope): ` prefix, slugify the subject to kebab-case (lowercase, replace non-alphanumeric runs with `-`, trim leading/trailing `-`). If the issue reference contains `#N`, prefix with `N-` and cap the slug so the total branch length is 50 chars (e.g. `482-fix-worktree-conflict`); without an issue number cap the slug at 50 chars. Trim any trailing `-` after truncation. Fallback: `feat/session-$SESSION_ID`.
 
-Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON. Compact: `| jq -c .`:
+Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON. Compact: `| jq -c .`. After writing, run `jq empty $HANDOFF/02-plan.json`; non-zero exit means fix and rewrite before proceeding:
 
 ```json
 {
@@ -256,9 +266,9 @@ Set the task prompt:
 
 ```
 Worktree: <WORKTREE>
-Handoff dir: <WORKTREE>/.handoff
-Plan file: <WORKTREE>/.handoff/02-plan.json
-Output: write <WORKTREE>/.handoff/03-build.json (compact: jq -c .) then stop.
+Handoff dir: <HANDOFF>
+Plan file: <HANDOFF>/02-plan.json
+Output: write <HANDOFF>/03-build.json (compact: jq -c .), then run `jq empty <HANDOFF>/03-build.json`; non-zero exit means fix and rewrite before stopping.
 Schema fields: session_id, files_changed, test_results, lint_result, notes.
 Constraint: Implement plan only. No git add, commit, or push.
 ```
@@ -282,10 +292,10 @@ Set the task prompt:
 
 ```
 Worktree: <WORKTREE>
-Handoff dir: <WORKTREE>/.handoff
-Build handoff: <WORKTREE>/.handoff/03-build.json
-Plan file: <WORKTREE>/.handoff/02-plan.json
-Output: write <WORKTREE>/.handoff/04-validation.json (compact: jq -c .) then stop.
+Handoff dir: <HANDOFF>
+Build handoff: <HANDOFF>/03-build.json
+Plan file: <HANDOFF>/02-plan.json
+Output: write <HANDOFF>/04-validation.json (compact: jq -c .), then run `jq empty <HANDOFF>/04-validation.json`; non-zero exit means fix and rewrite before stopping.
 Schema fields: session_id, verdict, pr_url, issues, security_summary, notes, retry_instructions.
 Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence and write pr_url to 04-validation.json.
 ```
