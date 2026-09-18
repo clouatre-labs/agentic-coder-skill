@@ -50,32 +50,33 @@ phase-by-phase detail, including the constraints each delegate operates under, l
 [`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec and the
 changelog, not just an entry point.
 
-| Tier | Typical change | Pipeline |
+| Tier | Typical change (SKILL.md Constraint #2) | Pipeline |
 |---|---|---|
-| Simple | Config, docs, CI, single-file < 50 lines | Inline, no delegates; test/lint/format before commit |
-| Medium | Multi-file docs, cross-repo reference, well-understood patterns | SCOUT → PLAN → BUILD |
-| Complex | Architectural decisions, new abstractions, > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
+| Simple | Config, docs, CI, single-file < 50 lines, no cross-repo research | Inline, no delegates; test/lint/format before commit |
+| Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions | SCOUT → PLAN → BUILD (no GUARD, no CHECK) |
+| Complex | Architectural decisions, new abstractions, multi-file code > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
 
 *Table 1: Tier classification. If uncertain between tiers, the higher tier is
 chosen; classification is typesafe-judge-assisted (see below).*
 
 ![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
 
-*Figure 2: Phase execution per tier (data: SKILL.md Constraint #2). Delegates are
-skipped — never inlined — for lower tiers; the regenerate script is
-[`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
+*Figure 2: Phase execution per tier (data: SKILL.md Constraint #2). For the Simple
+tier, implementation and PR are inline — no delegate runs; the regenerate script
+is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
 
-| Phase | Subagent | pi model | Claude Code model | Role |
-|---|---|---|---|---|
-| SCOUT | `coder-scout` | `zai/glm-5.3-flash` | `haiku` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
-| GUARD | `coder-guard` | `zai/glm-5.3-flash` | `haiku` | Read-only adversarial review of Scout's findings: risk, blast radius, safety ranking |
-| PLAN | orchestrator | — | — | Implementation plan synthesizing Scout + Guard |
-| BUILD | `coder-build` | `zai/glm-5.3-flash` | `sonnet` | Implements the plan, runs tests/lint/format |
-| CHECK | `coder-check` | `zai/glm-5.3-flash` | `haiku` | Validates the diff against the plan; on PASS, commits and opens a draft PR |
+| Phase | Delegate | Model (pi / Claude Code) | Responsibility |
+|---|---|---|---|
+| SCOUT | `coder-scout` | `zai/glm-5.3-flash` / `haiku` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
+| GUARD | `coder-guard` | `zai/glm-5.3-flash` / `haiku` | Adversarial review of Scout's output: risk, blast radius, safety ranking |
+| PLAN | orchestrator | session model (not pinned here) | Implementation plan synthesizing Scout + Guard |
+| BUILD | `coder-build` | `zai/glm-5.3-flash` / `sonnet` | Implements the plan, runs test/lint/format |
+| CHECK | `coder-check` | `zai/glm-5.3-flash` / `haiku` | Validates the diff against the plan; on PASS, commits and opens a draft PR |
 
 *Table 2: Pipeline phases, the four subagents, and their model pins (sources:
 `tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored directly by the
-orchestrator.*
+orchestrator, whose model is whatever the host session runs — this repo pins
+only the four delegates.*
 
 ## What's here
 
@@ -157,7 +158,7 @@ Since v3.13.0 the pipeline uses TypeSafe System One judgments
 (the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
 on any API failure — the pipeline never blocks on the judge:
 
-- **Tier classification** (Table 2): the orchestrator issues one judgment per tier
+- **Tier classification** (Table 1): the orchestrator issues one judgment per tier
   over the issue text + diff stat and picks the highest tier with confidence ≥ 0.6;
   below that, the tier is escalated by one.
 - **Handoff degeneracy gate (HYBRID)**: free-text fields in the five JSON handoff
@@ -184,8 +185,8 @@ writes its own:
 | `01a-research-scout.json` | SCOUT | GUARD, orchestrator |
 | `01b-research-guard.json` | GUARD | orchestrator |
 | `02-plan.json` | orchestrator (PLAN) | BUILD |
-| `03-build.json` | BUILD | CHECK |
-| `04-validation.json` | CHECK | orchestrator |
+| `03-build.json` | BUILD | CHECK, orchestrator |
+| `04-validation.json` | CHECK | BUILD (on retry), orchestrator |
 
 *Table 4: The five handoff files. A missing handoff is fatal: the orchestrator stops
 and reports — it never works inline as a fallback.*
@@ -271,12 +272,12 @@ These are the same conventions `coder-check`'s commit/PR step assumes are in pla
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
-| bun + markdownlint-cli2 | repo CI | Markdown lint (`bunx markdownlint-cli2 "**/*.md"`) |
-| shellcheck | repo CI | githooks lint |
+| markdownlint-cli2 | repo CI + local | CI via the markdownlint-cli2 GitHub Action on PRs; locally via `bunx markdownlint-cli2 "**/*.md"` |
+| shellcheck | local | githooks lint (recommended, not enforced in CI) |
 
 *Table 5: Tooling requirements. Pipeline rows are runtime dependencies of a coder
 session; BUILD rows run only when the change touches that language; repo CI rows
-run on every push. Figures are regenerated with matplotlib via
+run on pull requests to `main`. Figures are regenerated with matplotlib via
 `figures/fig-tier-pipeline.py`.*
 
 ## License
