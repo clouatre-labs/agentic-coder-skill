@@ -30,6 +30,13 @@ shell hooks, not compiled code.
   CI fails on drift (`--check`)
 - Bump the version and changelog in `skills/coder/SKILL.md` for any behavioral change
   to the pipeline
+- typesafe-ai is an external dependency of the skill: tier classification and the
+  handoff degeneracy gate call `api.typesafe.ai` via `scripts/typesafe-judge` with
+  `TYPESAFE_AI_TOKEN` from the shell env (never committed, never written to files or
+  handoffs). Every judge path must keep its deterministic inline fallback
+- `scripts/typesafe-judge` itself lives in `clouatre/dotfiles`, not here; this repo
+  only documents its contract (see `skills/coder/SKILL.md`, Constraints #9–#10 and
+  Handoff Validation)
 
 ## Testing
 

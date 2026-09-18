@@ -43,38 +43,55 @@ graph TD
 *Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
 medium tiers skip delegates or skip GUARD/CHECK entirely (see below).*
 
-The orchestrator classifies every change into one of three tiers (simple, medium,
-complex) and scales the pipeline accordingly — a one-line config change skips every
-delegate, while an architectural change runs the full SCOUT + GUARD + BUILD + CHECK
-chain. Full phase-by-phase detail, including the constraints each delegate operates
-under, lives in [`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec
-and the changelog, not just an entry point.
+The orchestrator classifies every change into one of three tiers and scales the
+pipeline accordingly — a one-line config change skips every delegate, while an
+architectural change runs the full SCOUT + GUARD + BUILD + CHECK chain. Full
+phase-by-phase detail, including the constraints each delegate operates under, lives in
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec and the
+changelog, not just an entry point.
 
-| Phase | Role |
-|---|---|
-| SCOUT | Read-only research: relevant files, conventions, candidate approaches |
-| GUARD | Read-only adversarial review of Scout's findings: risk, blast radius, safety ranking |
-| PLAN | Orchestrator-authored implementation plan, synthesizing Scout + Guard |
-| BUILD | Implements the plan, runs tests/lint/format |
-| CHECK | Validates the diff against the plan; on PASS, commits and opens a draft PR |
+| Tier | Typical change | Pipeline |
+|---|---|---|
+| Simple | Config, docs, CI, single-file < 50 lines | Inline, no delegates; test/lint/format before commit |
+| Medium | Multi-file docs, cross-repo reference, well-understood patterns | SCOUT → PLAN → BUILD |
+| Complex | Architectural decisions, new abstractions, > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
+
+*Table 2: Tier classification. If uncertain between tiers, the higher tier is
+chosen; classification is typesafe-judge-assisted (see below).*
+
+| Phase | Subagent | pi model | Claude Code model | Role |
+|---|---|---|---|---|
+| SCOUT | `coder-scout` | `zai/glm-5.3-flash` | `haiku` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
+| GUARD | `coder-guard` | `zai/glm-5.3-flash` | `haiku` | Read-only adversarial review of Scout's findings: risk, blast radius, safety ranking |
+| PLAN | orchestrator | — | — | Implementation plan synthesizing Scout + Guard |
+| BUILD | `coder-build` | `zai/glm-5.3-flash` | `sonnet` | Implements the plan, runs tests/lint/format |
+| CHECK | `coder-check` | `zai/glm-5.3-flash` | `haiku` | Validates the diff against the plan; on PASS, commits and opens a draft PR |
+
+*Table 3: Pipeline phases, the four subagents, and their model pins (sources:
+`tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored directly by the
+orchestrator.*
 
 ## What's here
 
 | Path | Description |
 |---|---|
 | `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
-| `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
 | `agents-shared/coder-*.md` | Shared agent bodies (harness-agnostic), the edit source |
-| `tools/agents/{pi,claude}-coder-*.yaml` | Per-harness frontmatter: model, tools, effort |
+| `tools/agents/{pi,claude}-coder-*.yaml` | Per-harness frontmatter templates: model, tools, effort |
 | `agents/{pi,claude}/coder-*.md` | Generated agent files (frontmatter + body) — do not hand-edit |
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
-## One pipeline, three harnesses
+*Table 1: Repository layout — edit the sources, never the generated files.*
 
-`skills/coder/SKILL.md` is the single pipeline definition, consumed by pi, Claude
-Code, and Goose (skill/workflow format); Codex is compatible. The four coder
-subagents are defined once and rendered per harness:
+## One pipeline, four harnesses
+
+`skills/coder/SKILL.md` is the single pipeline definition. Its frontmatter declares
+compatibility with four harnesses: **pi**, **Claude Code**, **Codex**, and **Goose**
+(Goose consumes `SKILL.md` directly as a workflow; the dedicated recipe format was
+retired in v3.13.0).
+
+The four coder subagents are defined once and rendered per harness:
 
 1. **Edit the sources**: `tools/agents/{pi,claude}-coder-<role>.yaml` holds the
    harness frontmatter (model, tools, thinking, max_turns); `agents-shared/coder-<role>.md`
@@ -84,7 +101,36 @@ subagents are defined once and rendered per harness:
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-Goose recipes are retired: Goose consumes `SKILL.md` directly as a workflow.
+```text
+tools/agents/pi-coder-<role>.yaml     ─┐
+tools/agents/claude-coder-<role>.yaml ─┼─► scripts/generate-coder-agents.sh ──► agents/pi/coder-<role>.md
+agents-shared/coder-<role>.md         ─┘                                     └► agents/claude/coder-<role>.md
+```
+
+*Figure 2: One shared body, two frontmatter templates, two generated agent files per
+role — 4 roles × 2 harnesses = 8 generated files, never hand-edited.*
+
+## typesafe-ai integration
+
+Since v3.13.0 the pipeline uses TypeSafe System One judgments
+(the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
+on any API failure — the pipeline never blocks on the judge:
+
+- **Tier classification** (Table 2): the orchestrator issues one judgment per tier
+  over the issue text + diff stat and picks the highest tier with confidence ≥ 0.6;
+  below that, the tier is escalated by one.
+- **Handoff degeneracy gate (HYBRID)**: free-text fields in the five JSON handoff
+  files are checked with a gzip compression-ratio test; only ambiguous gray-zone
+  ratios (0.10–0.25) are referred to the judge, and a "padded" verdict acts only at
+  p ≥ 0.8.
+
+All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_AI_TOKEN`
+environment variable is inherited via the shell and is never written to files or
+handoffs. Design rationale and the adversarial prevalidation audit behind the HYBRID
+gate are documented in
+[clouatre/dotfiles](https://github.com/clouatre/dotfiles)
+(`docs/2026-09-17-typesafe-jev-prevalidation-audit.md`,
+`docs/2026-09-18-typesafe-judge.md`).
 
 ## Githooks
 
