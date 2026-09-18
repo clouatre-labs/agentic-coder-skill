@@ -13,8 +13,8 @@ compatibility:
 # Changelog
 
 <!--
-  3.13.1 -- resync with clouatre/dotfiles#890: PR creation is CHECK-only (Rule 8, the orchestrator never runs `gh pr create`); coder-check constraint forbids body-supplying flags on `gh pr create` (`--body`, `--fill`, `--fill-first`, `--fill-verbose`) and requires `--body-file` so repo PR templates are never bypassed.
-  3.13.0 -- resync with clouatre/dotfiles#886 canonical skill: add pi to compatibility; add typesafe-judge tier classification (Constraint #10) and third-party-transit constraint (#9); add Handoff Validation section (gzip degeneracy gate + HYBRID judge); absolute git-common-dir paths; concurrency-safe Phase 0. Goose recipe retired (dotfiles #888): goose now consumes this SKILL.md directly; agents are generated from tools/agents/*.yaml + agents-shared/ bodies via scripts/generate-coder-agents.sh.
+  3.13.1 -- PR creation is CHECK-only (Rule 8, the orchestrator never runs `gh pr create`); coder-check constraint forbids body-supplying flags on `gh pr create` (`--body`, `--fill`, `--fill-first`, `--fill-verbose`) and requires `--body-file` so repo PR templates are never bypassed.
+  3.13.0 -- add pi to compatibility; add typesafe-judge tier classification (Constraint #10) and third-party-transit constraint (#9); add Handoff Validation section (gzip degeneracy gate + HYBRID judge); absolute git-common-dir paths; concurrency-safe Phase 0. Goose recipe retired: goose now consumes this SKILL.md directly as a workflow; agents are generated from tools/agents/*.yaml + agents-shared/ bodies via scripts/generate-coder-agents.sh.
 -->
 
 # Goose Coder - Scout/Guard Architecture

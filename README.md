@@ -168,11 +168,9 @@ on any API failure — the pipeline never blocks on the judge:
 
 All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_AI_TOKEN`
 environment variable is inherited via the shell and is never written to files or
-handoffs. Design rationale and the adversarial prevalidation audit behind the HYBRID
-gate are documented in
-[clouatre/dotfiles](https://github.com/clouatre/dotfiles)
-(`docs/2026-09-17-typesafe-jev-prevalidation-audit.md`,
-`docs/2026-09-18-typesafe-judge.md`).
+handoffs. The `typesafe-judge` helper script itself is external to this repo — this
+repo documents only its contract (see [`skills/coder/SKILL.md`](skills/coder/SKILL.md),
+Constraints #9–#10 and Handoff Validation).
 
 ## Handoff protocol
 
@@ -268,7 +266,7 @@ These are the same conventions `coder-check`'s commit/PR step assumes are in pla
 | jq | pipeline | all handoff read/write (`jq -c .` compact form) |
 | gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
 | `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is CHECK-only) |
-| `typesafe-judge` | pipeline | judge-assisted tiers + HYBRID gate; lives in `clouatre/dotfiles`, contract in SKILL.md |
+| `typesafe-judge` | pipeline | judge-assisted tiers + HYBRID gate; external script, contract in SKILL.md |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
