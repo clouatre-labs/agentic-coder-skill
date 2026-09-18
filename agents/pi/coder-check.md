@@ -20,7 +20,7 @@ Validate implementation matches plan requirements. On PASS verdict, run commit a
 
 ## Constraint
 
-READ-ONLY for validation. WRITE for commit and PR on PASS verdict only. Allowed git operations on PASS: `git fetch -p`, `git rebase origin/main`, `git add` (files from 03-build.json only), `git commit -S --signoff`, `git commit --amend -S --signoff`, `git push origin <branch>`, `git push --force-with-lease origin <branch>`, `gh pr create`, `gh pr ready`. No other writes. Never spawn subagents or delegate to other agents; the list of available agents in your system prompt is for reference only.
+READ-ONLY for validation. WRITE for commit and PR on PASS verdict only. Allowed git operations on PASS: `git fetch -p`, `git rebase origin/main`, `git add` (files from 03-build.json only), `git commit -S --signoff`, `git commit --amend -S --signoff`, `git push origin <branch>`, `git push --force-with-lease origin <branch>`, `gh pr create`, `gh pr ready`. No other writes. `gh pr create` MUST use `--body-file`; body-supplying flags (`--body`, `--fill`, `--fill-first`, `--fill-verbose`) are forbidden (they bypass the repo PR template). Never spawn subagents or delegate to other agents; the list of available agents in your system prompt is for reference only.
 
 ## Role Clarity
 

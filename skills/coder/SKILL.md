@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.13.0"
+version: "3.13.1"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -13,6 +13,7 @@ compatibility:
 # Changelog
 
 <!--
+  3.13.1 -- resync with clouatre/dotfiles#890: PR creation is CHECK-only (Rule 8, the orchestrator never runs `gh pr create`); coder-check constraint forbids body-supplying flags on `gh pr create` (`--body`, `--fill`, `--fill-first`, `--fill-verbose`) and requires `--body-file` so repo PR templates are never bypassed.
   3.13.0 -- resync with clouatre/dotfiles#886 canonical skill: add pi to compatibility; add typesafe-judge tier classification (Constraint #10) and third-party-transit constraint (#9); add Handoff Validation section (gzip degeneracy gate + HYBRID judge); absolute git-common-dir paths; concurrency-safe Phase 0. Goose recipe retired (dotfiles #888): goose now consumes this SKILL.md directly; agents are generated from tools/agents/*.yaml + agents-shared/ bodies via scripts/generate-coder-agents.sh.
 -->
 
@@ -52,6 +53,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 5. Do not use aptu for issue reading - use `gh issue view`
 6. Code analysis tools - see Constraint #8. Pass this constraint to every delegate you spawn.
 7. Never write file content via shell - use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
+8. PR creation is CHECK-only - the orchestrator never runs `gh pr create`.
 
 ## Handoff Protocol
 
