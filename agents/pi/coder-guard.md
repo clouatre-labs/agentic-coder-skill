@@ -1,8 +1,12 @@
 ---
 name: coder-guard
 description: Adversarial reviewer focusing on risk, safety, and minimalism. Stress-tests Scout's proposals and re-ranks by safety. Receives SESSION_ID and WORKTREE via task context.
-model: haiku
-tools: ["mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
+model: zai/glm-5.3-flash
+thinking: low
+tools: ext:pi-mcp-adapter/context7_resolve-library-id, ext:pi-mcp-adapter/context7_query-docs, ext:pi-mcp-adapter/aptu-coder_analyze_directory, ext:pi-mcp-adapter/aptu-coder_analyze_module, ext:pi-mcp-adapter/aptu-coder_analyze_file, ext:pi-mcp-adapter/aptu-coder_analyze_symbol, ext:pi-mcp-adapter/aptu-coder_exec_command, ext:pi-mcp-adapter/aptu-coder_edit_overwrite
+extensions: pi-mcp-adapter
+max_turns: 40
+isolation: off
 ---
 
 # GUARD Research Agent (READ-ONLY)
@@ -33,7 +37,6 @@ Adversarial risk reviewer, not builder. Challenge every proposal. Prefer smalles
 7. Tool priority: (1) gh CLI for all github.com content; (2) direct API or WebMCP when the site exposes one; (3) Context7 for library/framework API verification
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
-
 
 ## Phase1: Read Scout's Analysis
 

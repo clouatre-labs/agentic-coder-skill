@@ -1,0 +1,8 @@
+name: coder-build
+description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Receives SESSION_ID and WORKTREE via task context.
+model: zai/glm-5.3-flash
+thinking: low
+tools: ext:pi-mcp-adapter/aptu-coder_analyze_module, ext:pi-mcp-adapter/aptu-coder_analyze_file, ext:pi-mcp-adapter/aptu-coder_analyze_symbol, ext:pi-mcp-adapter/aptu-coder_edit_overwrite, ext:pi-mcp-adapter/aptu-coder_edit_replace, ext:pi-mcp-adapter/aptu-coder_exec_command
+extensions: pi-mcp-adapter
+max_turns: 80
+isolation: off
