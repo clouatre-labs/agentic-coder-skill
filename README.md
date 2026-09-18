@@ -43,38 +43,86 @@ graph TD
 *Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
 medium tiers skip delegates or skip GUARD/CHECK entirely (see below).*
 
-The orchestrator classifies every change into one of three tiers (simple, medium,
-complex) and scales the pipeline accordingly — a one-line config change skips every
-delegate, while an architectural change runs the full SCOUT + GUARD + BUILD + CHECK
-chain. Full phase-by-phase detail, including the constraints each delegate operates
-under, lives in [`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec
-and the changelog, not just an entry point.
+The orchestrator classifies every change into one of three tiers and scales the
+pipeline accordingly — a one-line config change skips every delegate, while an
+architectural change runs the full SCOUT + GUARD + BUILD + CHECK chain. Full
+phase-by-phase detail, including the constraints each delegate operates under, lives in
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec and the
+changelog, not just an entry point.
 
-| Phase | Role |
-|---|---|
-| SCOUT | Read-only research: relevant files, conventions, candidate approaches |
-| GUARD | Read-only adversarial review of Scout's findings: risk, blast radius, safety ranking |
-| PLAN | Orchestrator-authored implementation plan, synthesizing Scout + Guard |
-| BUILD | Implements the plan, runs tests/lint/format |
-| CHECK | Validates the diff against the plan; on PASS, commits and opens a draft PR |
+| Tier | Typical change (SKILL.md Constraint #2) | Pipeline |
+|---|---|---|
+| Simple | Config, docs, CI, single-file < 50 lines, no cross-repo research | Inline, no delegates; test/lint/format before commit |
+| Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions | SCOUT → PLAN → BUILD (no GUARD, no CHECK) |
+| Complex | Architectural decisions, new abstractions, multi-file code > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
+
+*Table 1: Tier classification. If uncertain between tiers, the higher tier is
+chosen; classification is typesafe-judge-assisted (see below).*
+
+![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
+
+*Figure 2: Phase execution per tier (data: SKILL.md Constraint #2). For the Simple
+tier, implementation and PR are inline — no delegate runs; the regenerate script
+is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
+
+| Phase | Delegate | Model (pi / Claude Code) | Responsibility |
+|---|---|---|---|
+| SCOUT | `coder-scout` | `zai/glm-5.3-flash` / `haiku` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
+| GUARD | `coder-guard` | `zai/glm-5.3-flash` / `haiku` | Adversarial review of Scout's output: risk, blast radius, safety ranking |
+| PLAN | orchestrator | session model (not pinned here) | Implementation plan synthesizing Scout + Guard |
+| BUILD | `coder-build` | `zai/glm-5.3-flash` / `sonnet` | Implements the plan, runs test/lint/format |
+| CHECK | `coder-check` | `zai/glm-5.3-flash` / `haiku` | Validates the diff against the plan; on PASS, commits and opens a draft PR |
+
+*Table 2: Pipeline phases, the four subagents, and their model pins (sources:
+`tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored directly by the
+orchestrator, whose model is whatever the host session runs — this repo pins
+only the four delegates.*
 
 ## What's here
 
 | Path | Description |
 |---|---|
 | `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
-| `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
 | `agents-shared/coder-*.md` | Shared agent bodies (harness-agnostic), the edit source |
-| `tools/agents/{pi,claude}-coder-*.yaml` | Per-harness frontmatter: model, tools, effort |
+| `tools/agents/{pi,claude}-coder-*.yaml` | Per-harness frontmatter templates: model, tools, effort |
 | `agents/{pi,claude}/coder-*.md` | Generated agent files (frontmatter + body) — do not hand-edit |
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
-## One pipeline, three harnesses
+*Table 3: Repository layout — edit the sources, never the generated files.*
 
-`skills/coder/SKILL.md` is the single pipeline definition, consumed by pi, Claude
-Code, and Goose (skill/workflow format); Codex is compatible. The four coder
-subagents are defined once and rendered per harness:
+```mermaid
+flowchart TD
+    SKILL["skills/coder/SKILL.md\npipeline spec + versioned changelog"]
+    subgraph src[Edit sources]
+        SHARED["agents-shared/coder-&lt;role&gt;.md\nharness-agnostic bodies"]
+        TMPL["tools/agents/{pi,claude}-coder-&lt;role&gt;.yaml\nfrontmatter templates"]
+        GENSCRIPT["scripts/generate-coder-agents.sh"]
+    end
+    subgraph out[Generated — never hand-edit]
+        API["agents/pi/coder-&lt;role&gt;.md"]
+        ACL["agents/claude/coder-&lt;role&gt;.md"]
+    end
+    HOOKS["githooks/\ncommit-msg · pre-commit · pre-push · post-checkout"]
+    DOCS["docs/ · figures/\nsetup, standards, figure sources"]
+    SHARED -->|rendered by| GENSCRIPT
+    TMPL -->|rendered by| GENSCRIPT
+    GENSCRIPT --> API
+    GENSCRIPT --> ACL
+    SKILL --- src
+```
+
+*Figure 3: Project structure. Edit sources (top) are rendered into the generated
+agent files (bottom); the generation mechanics are detailed in Figure 4.*
+
+## One pipeline, four harnesses
+
+`skills/coder/SKILL.md` is the single pipeline definition. Its frontmatter declares
+compatibility with four harnesses: **pi**, **Claude Code**, **Codex**, and **Goose**
+(Goose consumes `SKILL.md` directly as a workflow; the dedicated recipe format was
+retired in v3.13.0).
+
+The four coder subagents are defined once and rendered per harness:
 
 1. **Edit the sources**: `tools/agents/{pi,claude}-coder-<role>.yaml` holds the
    harness frontmatter (model, tools, thinking, max_turns); `agents-shared/coder-<role>.md`
@@ -84,7 +132,112 @@ subagents are defined once and rendered per harness:
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-Goose recipes are retired: Goose consumes `SKILL.md` directly as a workflow.
+```mermaid
+flowchart LR
+    subgraph sources[Edit sources]
+        PI["tools/agents/pi-coder-&lt;role&gt;.yaml"]
+        CL["tools/agents/claude-coder-&lt;role&gt;.yaml"]
+        SH["agents-shared/coder-&lt;role&gt;.md"]
+    end
+    GEN["scripts/generate-coder-agents.sh\n--write / --check"]
+    PI --> GEN
+    CL --> GEN
+    SH --> GEN
+    GEN --> OUTP["agents/pi/coder-&lt;role&gt;.md"]
+    GEN --> OUTC["agents/claude/coder-&lt;role&gt;.md"]
+    GEN -. "CI: --check on every PR" .-> DRIFT["drift = fail"]
+```
+
+*Figure 4: Agent generation — one shared body, two frontmatter templates, two
+generated agent files per role; 4 roles × 2 harnesses = 8 generated files, never
+hand-edited.*
+
+## typesafe-ai integration
+
+Since v3.13.0 the pipeline uses TypeSafe System One judgments
+(the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
+on any API failure — the pipeline never blocks on the judge:
+
+- **Tier classification** (Table 1): the orchestrator issues one judgment per tier
+  over the issue text + diff stat and picks the highest tier with confidence ≥ 0.6;
+  below that, the tier is escalated by one.
+- **Handoff degeneracy gate (HYBRID)**: free-text fields in the five JSON handoff
+  files are checked with a gzip compression-ratio test; only ambiguous gray-zone
+  ratios (0.10–0.25) are referred to the judge, and a "padded" verdict acts only at
+  p ≥ 0.8.
+
+All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_AI_TOKEN`
+environment variable is inherited via the shell and is never written to files or
+handoffs. The `typesafe-judge` helper script itself is external to this repo — this
+repo documents only its contract (see [`skills/coder/SKILL.md`](skills/coder/SKILL.md),
+Constraints #9–#10 and Handoff Validation).
+
+## Handoff protocol
+
+Every phase boundary is a JSON file on disk — no context is passed through chat
+memory. The orchestrator writes, each delegate reads its predecessor's file and
+writes its own:
+
+| Handoff | Written by | Read by |
+|---|---|---|
+| `01a-research-scout.json` | SCOUT | GUARD, orchestrator |
+| `01b-research-guard.json` | GUARD | orchestrator |
+| `02-plan.json` | orchestrator (PLAN) | BUILD |
+| `03-build.json` | BUILD | CHECK, orchestrator |
+| `04-validation.json` | CHECK | BUILD (on retry), orchestrator |
+
+*Table 4: The five handoff files. A missing handoff is fatal: the orchestrator stops
+and reports — it never works inline as a fallback.*
+
+All files are written compact (`jq -c .`) and stored under
+`<git-common-dir>/coder-handoffs/<session-id>/`, outside the session worktree so
+worktree teardown cannot destroy them. Every free-text field is validated on read
+with a gzip compression-ratio degeneracy check (see typesafe-ai integration above).
+
+```bash
+# A reader never trusts a handoff blindly: structure, then degeneracy
+f="$HANDOFF/01a-research-scout.json"
+jq empty "$f"                                        # structural validity
+raw=$(jq -r .recommendation "$f" | wc -c)            # extract a free-text field
+gz=$(jq -r .recommendation "$f" | gzip -9 | wc -c)
+awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
+# ratio < 0.10 trips the gate; 0.10-0.25 is the judge-consulted gray zone
+```
+
+*Code Snippet 1: Handoff validation as performed between phases (see
+`skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
+retry-once rules, HYBRID judge path).*
+
+```mermaid
+flowchart LR
+    S["SCOUT\n01a-research-scout.json"] --> G["GUARD\n01b-research-guard.json"]
+    G -->|gate| P["PLAN (orchestrator)\n02-plan.json"]
+    P --> B["BUILD\n03-build.json"]
+    B -->|fail: retry once| B
+    B --> C["CHECK\n04-validation.json"]
+    C -->|pass| PR["draft PR"]
+```
+
+*Figure 5: Handoff data flow across a complex-tier session — each arrow is a JSON
+file consumed by the next role, validated on read.*
+
+## Inspecting a session
+
+```bash
+# List sessions and peek at each plan's overview
+for d in "$(git rev-parse --path-format=absolute --git-common-dir)"/coder-handoffs/*/; do
+  printf '%s: ' "$(basename "$d")"; jq -r .overview "$d/02-plan.json"
+done
+
+# Verify generated agents match their sources (what CI runs)
+scripts/generate-coder-agents.sh --check
+
+# Current skill version
+grep '^version:' skills/coder/SKILL.md
+```
+
+*Code Snippet 2: Common inspection commands. Handoffs live outside the worktree, so
+they survive worktree teardown and are visible from any checkout.*
 
 ## Githooks
 
@@ -104,6 +257,26 @@ git config core.hooksPath githooks
   checkout to `main`/`master`
 
 These are the same conventions `coder-check`'s commit/PR step assumes are in place.
+
+## Tooling
+
+| Tool | Scope | Used for |
+|---|---|---|
+| git 2.40+ | pipeline | worktrees, githooks, handoff storage under the common git dir |
+| jq | pipeline | all handoff read/write (`jq -c .` compact form) |
+| gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
+| `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is CHECK-only) |
+| `typesafe-judge` | pipeline | judge-assisted tiers + HYBRID gate; external script, contract in SKILL.md |
+| uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
+| bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
+| cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
+| markdownlint-cli2 | repo CI + local | CI via the markdownlint-cli2 GitHub Action on PRs; locally via `bunx markdownlint-cli2 "**/*.md"` |
+| shellcheck | local | githooks lint (recommended, not enforced in CI) |
+
+*Table 5: Tooling requirements. Pipeline rows are runtime dependencies of a coder
+session; BUILD rows run only when the change touches that language; repo CI rows
+run on pull requests to `main`. Figures are regenerated with matplotlib via
+`figures/fig-tier-pipeline.py`.*
 
 ## License
 
