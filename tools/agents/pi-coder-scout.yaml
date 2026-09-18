@@ -1,0 +1,8 @@
+name: coder-scout
+description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Receives SESSION_ID and WORKTREE via task context.
+model: zai/glm-5.3-flash
+thinking: low
+tools: ext:pi-mcp-adapter/brave_search_brave_web_search, ext:pi-mcp-adapter/aptu-coder_analyze_directory, ext:pi-mcp-adapter/aptu-coder_analyze_module, ext:pi-mcp-adapter/aptu-coder_analyze_file, ext:pi-mcp-adapter/aptu-coder_analyze_symbol, ext:pi-mcp-adapter/aptu-coder_exec_command, ext:pi-mcp-adapter/aptu-coder_edit_overwrite
+extensions: pi-mcp-adapter
+max_turns: 40
+isolation: off

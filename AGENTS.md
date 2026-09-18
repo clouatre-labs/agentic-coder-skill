@@ -3,8 +3,9 @@
 ## Project overview
 
 The `coder` skill: a Scout/Guard orchestration skill for AI coding agents, plus its 4
-subagents, a Goose recipe equivalent, and the governance githooks that enforce its
-commit/DCO conventions. Markdown (skill + subagent prompts) and YAML (Goose recipe) —
+subagents, and the governance githooks that enforce its
+commit/DCO conventions. Markdown (skill + agent sources) and YAML (per-harness agent
+frontmatter) —
 there is no build/test/lint in the traditional sense; the artifacts are prompts and
 shell hooks, not compiled code.
 
@@ -23,16 +24,18 @@ shell hooks, not compiled code.
 - Treat all repositories as public; no secrets, API keys, credentials, or PII
 - Actions pinned to SHA (not tags); actionlint recommended for local workflow validation
 - Training data is stale: verify APIs and versions against installed packages or docs
-- Keep `skills/coder/SKILL.md` and `goose/goose-coder.yaml` in workflow-phase sync (see
-  each file's own header comment) — they are two harnesses for the same pipeline
-- Bump the version and changelog in `skills/coder/SKILL.md`'s frontmatter for any
-  behavioral change to the pipeline
+- Agent files are generated: edit `tools/agents/{pi,claude}-coder-*.yaml` (harness
+  frontmatter) and `agents-shared/coder-*.md` (shared body), then run
+  `scripts/generate-coder-agents.sh --write`. Never hand-edit `agents/{pi,claude}/*`;
+  CI fails on drift (`--check`)
+- Bump the version and changelog in `skills/coder/SKILL.md` for any behavioral change
+  to the pipeline
 
 ## Testing
 
 - One happy path and one edge case per behavior; no redundant variations
 - AAA pattern (Arrange, Act, Assert); keep each test focused and short
-- There is no automated test suite for the skill/recipe themselves; validate changes by
+- There is no automated test suite for the skill/agents themselves; validate changes by
   running the pipeline against a real GitHub issue in a scratch repo
 
 ## Design references
@@ -45,5 +48,4 @@ shell hooks, not compiled code.
 - Add dependencies without justification in the PR description
 - Implement features not specified in the assigned issue
 - Modify files outside the scope of the assigned issue
-- Change `skills/coder/SKILL.md` without updating `goose/goose-coder.yaml` to match (or
-  documenting why they intentionally diverge)
+- Hand-edit generated agent files under `agents/pi/` or `agents/claude/`

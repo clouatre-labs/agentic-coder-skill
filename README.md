@@ -20,7 +20,7 @@ and [The AI SDLC Governance
 Stack](https://clouatre.ca/posts/ai-sdlc-governance-stack) on clouatre.ca.
 Model-selection methodology behind SCOUT/GUARD's swaps over time is documented in
 [llm-agent-experiments](https://github.com/clouatre-labs/llm-agent-experiments) (its own
-README predates the pins in `goose/goose-coder.yaml` below); the predecessor study of
+README predates the model pins in `tools/agents/*.yaml`); the predecessor study of
 this Scout/Guard architecture is
 [prompt-repetition-experiments](https://github.com/clouatre-labs/prompt-repetition-experiments).
 
@@ -63,23 +63,28 @@ and the changelog, not just an entry point.
 | Path | Description |
 |---|---|
 | `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
-| `agents/coder-scout.md` | SCOUT subagent |
-| `agents/coder-guard.md` | GUARD subagent |
-| `agents/coder-build.md` | BUILD subagent |
-| `agents/coder-check.md` | CHECK subagent |
-| `goose/goose-coder.yaml` | The same pipeline as a [Goose](https://github.com/aaif-goose/goose) recipe |
+| `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
+| `agents-shared/coder-*.md` | Shared agent bodies (harness-agnostic), the edit source |
+| `tools/agents/{pi,claude}-coder-*.yaml` | Per-harness frontmatter: model, tools, effort |
+| `agents/{pi,claude}/coder-*.md` | Generated agent files (frontmatter + body) — do not hand-edit |
+| `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
-## Two harnesses, one pipeline
+## One pipeline, three harnesses
 
-`skills/coder/SKILL.md` (Claude Code, Codex) and `goose/goose-coder.yaml` (Goose) both
-implement the same SETUP -> SCOUT/GUARD -> PLAN -> BUILD -> CHECK -> PR pipeline for
-their respective harnesses; each file's header comment points at its counterpart and
-both are kept in phase-for-phase sync. This is not a migration from one to the other —
-both are maintained in parallel today, because the skill format isn't universally
-supported yet. The skill format is the direction this is heading: it is markdown, not a
-harness-specific YAML schema, so it is the more portable of the two, and new pipeline
-changes land there first.
+`skills/coder/SKILL.md` is the single pipeline definition, consumed by pi, Claude
+Code, and Goose (skill/workflow format); Codex is compatible. The four coder
+subagents are defined once and rendered per harness:
+
+1. **Edit the sources**: `tools/agents/{pi,claude}-coder-<role>.yaml` holds the
+   harness frontmatter (model, tools, thinking, max_turns); `agents-shared/coder-<role>.md`
+   holds the harness-agnostic body.
+2. **Regenerate**: `scripts/generate-coder-agents.sh --write` concatenates
+   frontmatter + body into `agents/pi/coder-<role>.md` and `agents/claude/coder-<role>.md`.
+3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
+   it on every PR.
+
+Goose recipes are retired: Goose consumes `SKILL.md` directly as a workflow.
 
 ## Githooks
 
