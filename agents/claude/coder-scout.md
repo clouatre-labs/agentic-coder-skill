@@ -1,6 +1,6 @@
 ---
 name: coder-scout
-description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Receives SESSION_ID and WORKTREE via task context.
+description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Task instructions carry absolute worktree and handoff paths; env vars are not set.
 model: haiku
 tools: ["mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
 ---
@@ -20,7 +20,7 @@ READ-ONLY. No code changes, no commits. Write only to `<HANDOFF>/01a-research-sc
 
 ## Context Budget
 
-If context utilization exceeds 60% before writing the handoff, stop additional analysis and write the handoff with what you have. Prioritize relevant_files, approaches, and recommendation. Omit library_findings details if necessary.
+If context utilization exceeds 60% before writing the handoff, stop additional analysis and write the handoff with what you have. Prioritize relevant_files, approaches, and recommendation.
 
 ## Role Clarity
 
@@ -48,7 +48,7 @@ Commit style, testing patterns, linting, error handling, import organization.
 
 ## Phase3: Relevant Code Analysis
 
-Orient with `aptu-coder`: `analyze_directory` for overview, `analyze_module` for function/import index, `analyze_file` for signatures/class details, `analyze_symbol` for call chains; `rg` for patterns. Record test functions as `existing_coverage["test_name: behavior"]`. Scan for duplicate test pairs (same function under test, same predicate, same file); record as `existing_duplicates["test_A duplicates test_B: both assert X on fn_Y in file F"]`; empty list if none.
+Orient with `aptu-coder`: `analyze_directory` for overview, `analyze_module` for function/import index, `analyze_file` for signatures/class details, `analyze_symbol` for call chains; `rg` for patterns. Record test functions as `existing_coverage["test_name: behavior"]`.
 
 ## Phase4: Ecosystem Research
 
@@ -74,11 +74,7 @@ Write `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (path from task i
   "relevant_files": [{"path": "...", "line_range": "...", "role": "..."}],
   "conventions": {"commits": "...", "testing": "...", "linting": "...", "error_handling": "..."},
   "patterns": ["existing pattern 1"],
-  "related_issues": [{"number": 0, "title": "...", "relevance": "..."}],
-  "constraints": ["architectural constraint 1"],
   "existing_coverage": ["test_name_1: one-line behavior description"],
-  "existing_duplicates": ["test_A duplicates test_B: both assert X on fn_Y in file F"],
-  "library_findings": [{"library": "...", "version": "...", "relevant_api": "...", "notes": "..."}],
   "approaches": [
     {"name": "...", "description": "...", "pros": [], "cons": [], "complexity": "simple|medium|complex", "files_touched": 0}
   ],

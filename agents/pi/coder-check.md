@@ -1,6 +1,6 @@
 ---
 name: coder-check
-description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
+description: Validates implementation matches plan requirements. Security gate and compliance checker. Task instructions carry absolute worktree and handoff paths; env vars are not set.
 model: zai/glm-5.3-flash
 thinking: low
 tools: ext:pi-mcp-adapter/aptu-coder_analyze_module, ext:pi-mcp-adapter/aptu-coder_analyze_file, ext:pi-mcp-adapter/aptu-coder_exec_command, ext:pi-mcp-adapter/aptu-coder_edit_overwrite
