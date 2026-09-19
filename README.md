@@ -50,26 +50,29 @@ phase-by-phase detail, including the constraints each delegate operates under, l
 [`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec and the
 changelog, not just an entry point.
 
+*Table 1: Tier classification. Uncertainty resolves to the higher tier. Each
+change is classified by ONE `typesafe-judge` Choice question (the judge is
+required on PATH — its absence is a STOP, never an inline fallback), with two
+deterministic pre-filters for trivially Simple changes (explicit issue label +
+single file + small self-declared diff; `issue_text` viability guard). Every
+classification appends a JSONL log line — no log line, no session.*
+
 | Tier | Typical change (SKILL.md Constraint #2) | Pipeline |
 |---|---|---|
 | Simple | Config, docs, CI, single-file < 50 lines, no cross-repo research | Inline, no delegates; test/lint/format before commit |
 | Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions | SCOUT → PLAN → BUILD (no GUARD, no CHECK) |
 | Complex | Architectural decisions, new abstractions, multi-file code > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
 
-*Table 1: Tier classification. If uncertain between tiers, the higher tier is
-chosen. Classification asks `typesafe-judge` ONE Choice question over the tiers
-(criteria mirror Constraint #2 verbatim); the judge is required on PATH — its
-absence is a STOP, never an inline fallback. Two deterministic pre-filters skip
-the judge for trivially Simple changes: an explicit issue label + single file +
-self-declared small diff (cheap-first), and an `issue_text` viability guard
-(< 20 chars / < 5 words). Every classification appends a JSONL log line (tier,
-fallback, confidence, model, tokens) — no log line, no session (see below).*
-
 ![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
 
 *Figure 2: Phase execution per tier (data: SKILL.md Constraint #2). For the Simple
 tier, implementation and PR are inline — no delegate runs; the regenerate script
 is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
+
+*Table 2: Pipeline phases, the four subagents, and their model pins (sources:
+`tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored by the orchestrator,
+whose model is whatever the host session runs — this repo pins only the four
+delegates.*
 
 | Phase | Delegate | Model (pi / Claude Code) | Responsibility |
 |---|---|---|---|
@@ -79,12 +82,9 @@ is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
 | BUILD | `coder-build` | `zai/glm-5.3-flash` / `sonnet` | Implements the plan, runs test/lint/format. Large plans shard deterministically into parallel worktree-isolated shards, each gated on shard-scoped test/lint (never the judge); only passing shards merge, and CHECK then validates the merged diff once |
 | CHECK | `coder-check` | `zai/glm-5.3-flash` / `haiku` | Validates the diff against the plan; on PASS, commits and opens a draft PR |
 
-*Table 2: Pipeline phases, the four subagents, and their model pins (sources:
-`tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored directly by the
-orchestrator, whose model is whatever the host session runs — this repo pins
-only the four delegates.*
-
 ## What's here
+
+*Table 3: Repository layout — edit the sources, never the generated files.*
 
 | Path | Description |
 |---|---|
@@ -94,8 +94,6 @@ only the four delegates.*
 | `agents/{pi,claude}/coder-*.md` | Generated agent files (frontmatter + body) — do not hand-edit |
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
-
-*Table 3: Repository layout — edit the sources, never the generated files.*
 
 ```mermaid
 flowchart TD
@@ -188,6 +186,9 @@ Every phase boundary is a JSON file on disk — no context is passed through cha
 memory. The orchestrator writes, each delegate reads its predecessor's file and
 writes its own:
 
+*Table 4: The five handoff files. A missing handoff is fatal: the orchestrator
+stops and reports — it never works inline as a fallback.*
+
 | Handoff | Written by | Read by |
 |---|---|---|
 | `01a-research-scout.json` | SCOUT | GUARD, orchestrator |
@@ -195,9 +196,6 @@ writes its own:
 | `02-plan.json` | orchestrator (PLAN) | BUILD |
 | `03-build.json` | BUILD | CHECK, orchestrator |
 | `04-validation.json` | CHECK | BUILD (on retry), orchestrator |
-
-*Table 4: The five handoff files. A missing handoff is fatal: the orchestrator stops
-and reports — it never works inline as a fallback.*
 
 All files are written compact (`jq -c .`) and stored under
 `<git-common-dir>/coder-handoffs/<session-id>/`, outside the session worktree so
@@ -270,6 +268,11 @@ These are the same conventions `coder-check`'s commit/PR step assumes are in pla
 
 ## Tooling
 
+*Table 5: Tooling requirements. Pipeline rows are runtime dependencies of a
+coder session; BUILD rows run only when the change touches that language; repo
+CI rows run on pull requests to `main`. Figures are regenerated with matplotlib
+via `figures/fig-tier-pipeline.py`.*
+
 | Tool | Scope | Used for |
 |---|---|---|
 | git 2.40+ | pipeline | worktrees, githooks, handoff storage under the common git dir |
@@ -282,11 +285,6 @@ These are the same conventions `coder-check`'s commit/PR step assumes are in pla
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
 | markdownlint-cli2 | repo CI + local | CI via the markdownlint-cli2 GitHub Action on PRs; locally via `bunx markdownlint-cli2 "**/*.md"` |
 | shellcheck | local | githooks lint (recommended, not enforced in CI) |
-
-*Table 5: Tooling requirements. Pipeline rows are runtime dependencies of a coder
-session; BUILD rows run only when the change touches that language; repo CI rows
-run on pull requests to `main`. Figures are regenerated with matplotlib via
-`figures/fig-tier-pipeline.py`.*
 
 ## License
 
