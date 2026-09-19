@@ -44,6 +44,11 @@ shell hooks, not compiled code.
 - There is no automated test suite for the skill/agents themselves; validate changes by
   running the pipeline against a real GitHub issue in a scratch repo
 
+## Visual Aids
+- Tables and code snippets: caption above (`*Table N: Description*` / `*Code Snippet N: Description*`)
+- Figures (images and Mermaid diagrams): caption below (`*Figure N: Description*`)
+- Captions: clear, well written, concise; numbered continuously across the document
+
 ## Design references
 
 - [README.md](README.md) — pipeline overview and phase diagram
