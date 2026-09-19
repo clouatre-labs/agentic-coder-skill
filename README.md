@@ -57,7 +57,13 @@ changelog, not just an entry point.
 | Complex | Architectural decisions, new abstractions, multi-file code > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
 
 *Table 1: Tier classification. If uncertain between tiers, the higher tier is
-chosen; classification is typesafe-judge-assisted (see below).*
+chosen. Classification asks `typesafe-judge` ONE Choice question over the tiers
+(criteria mirror Constraint #2 verbatim); the judge is required on PATH — its
+absence is a STOP, never an inline fallback. Two deterministic pre-filters skip
+the judge for trivially Simple changes: an explicit issue label + single file +
+self-declared small diff (cheap-first), and an `issue_text` viability guard
+(< 20 chars / < 5 words). Every classification appends a JSONL log line (tier,
+fallback, confidence, model, tokens) — no log line, no session (see below).*
 
 ![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
 
@@ -70,7 +76,7 @@ is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
 | SCOUT | `coder-scout` | `zai/glm-5.3-flash` / `haiku` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
 | GUARD | `coder-guard` | `zai/glm-5.3-flash` / `haiku` | Adversarial review of Scout's output: risk, blast radius, safety ranking |
 | PLAN | orchestrator | session model (not pinned here) | Implementation plan synthesizing Scout + Guard |
-| BUILD | `coder-build` | `zai/glm-5.3-flash` / `sonnet` | Implements the plan, runs test/lint/format |
+| BUILD | `coder-build` | `zai/glm-5.3-flash` / `sonnet` | Implements the plan, runs test/lint/format. Large plans shard deterministically into parallel worktree-isolated shards, each gated on shard-scoped test/lint (never the judge); only passing shards merge, and CHECK then validates the merged diff once |
 | CHECK | `coder-check` | `zai/glm-5.3-flash` / `haiku` | Validates the diff against the plan; on PASS, commits and opens a draft PR |
 
 *Table 2: Pipeline phases, the four subagents, and their model pins (sources:
@@ -158,13 +164,17 @@ Since v3.13.0 the pipeline uses TypeSafe System One judgments
 (the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
 on any API failure — the pipeline never blocks on the judge:
 
-- **Tier classification** (Table 1): the orchestrator issues one judgment per tier
-  over the issue text + diff stat and picks the highest tier with confidence ≥ 0.6;
-  below that, the tier is escalated by one.
-- **Handoff degeneracy gate (HYBRID)**: free-text fields in the five JSON handoff
-  files are checked with a gzip compression-ratio test; only ambiguous gray-zone
-  ratios (0.10–0.25) are referred to the judge, and a "padded" verdict acts only at
-  p ≥ 0.8.
+- **Tier classification** (Table 1): ONE Choice question over the three tiers — a
+  bounded enum decision, not per-tier prose judgment. The selected option is the
+  tier; confidence < 0.6 escalates one tier. Verdicts are logged as one JSONL line
+  per session at `${DOTFILES:-$HOME/.local/state}/var/coder-log/<host>.jsonl`.
+- **Handoff degeneracy gate**: free-text fields in the five JSON handoff files are
+  checked with a gzip compression-ratio test; ambiguous gray-zone ratios
+  (0.10–0.25) get ONE score question ("how padded/repetitive?"), batched into a
+  single `--manifest` call per handoff (≤ 8 in-flight); a "padded" verdict acts
+  only at p ≥ 0.8. Each validation also logs one JSONL line (`status`, `ratio`).
+  Both judgment types are small, bounded, threshold-gated decisions composed by
+  deterministic code — cheap in tokens and verifiable after the fact.
 
 All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_AI_TOKEN`
 environment variable is inherited via the shell and is never written to files or
@@ -206,7 +216,7 @@ awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
 
 *Code Snippet 1: Handoff validation as performed between phases (see
 `skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
-retry-once rules, HYBRID judge path).*
+Retry Policy, score-mode judge gray zone, per-handoff log line).*
 
 ```mermaid
 flowchart LR
@@ -266,7 +276,7 @@ These are the same conventions `coder-check`'s commit/PR step assumes are in pla
 | jq | pipeline | all handoff read/write (`jq -c .` compact form) |
 | gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
 | `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is CHECK-only) |
-| `typesafe-judge` | pipeline | judge-assisted tiers + HYBRID gate; external script, contract in SKILL.md |
+| `typesafe-judge` | pipeline | tier classification + degeneracy gate (Choice/score questions); external script, contract in SKILL.md |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
