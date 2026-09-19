@@ -1,6 +1,6 @@
 ---
 name: coder-check
-description: Validates implementation matches plan requirements. Security gate and compliance checker. Receives SESSION_ID and WORKTREE via task context.
+description: Validates implementation matches plan requirements. Security gate and compliance checker. Task instructions carry absolute worktree and handoff paths; env vars are not set.
 model: haiku
 tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
 ---

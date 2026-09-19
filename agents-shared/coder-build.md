@@ -52,7 +52,7 @@ If 04-validation.json has FAIL verdict, address those issues first.
 - Follow plan checklist exactly; match project style and patterns
 - Write tests using AAA pattern; keep it simple (KISS)
 - Honor all `implementation_constraints`
-- Stay within `line_budget.total_max` and `line_budget.test_ratio_max`; document deviations in 03-build.json
+- Stay within `line_budget.total_max` and `line_budget.test_ratio_max`
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`; for JSON/TOML use `exec_command + jq`
 - Prefer machine-readable output flags to reduce token volume (e.g. `--message-format=json-diagnostic-short`)
 
@@ -76,6 +76,10 @@ uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run 
 bun run biome format . && bun run biome check . && bun test
 ```
 
+### Per-shard gate
+
+When invoked for a shard of a larger plan, run the plan's `tooling.test_command` and linter scoped to the shard's own files only and report shard-scoped results in `03-build.json`. Do not run tests or lint for files outside the shard.
+
 ## Output
 
 Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instructions), then present:
@@ -83,23 +87,13 @@ Write `<HANDOFF>/03-build.json` via `edit_overwrite` (path from task instruction
 ```json
 {
   "session_id": "<SESSION_ID from task instructions>",
-  "phase": "build",
-  "branch": "<branch-name>",
   "files_changed": ["path/to/file"],
   "summary": "brief description",
-  "deviations": [],
-  "constraints_honored": ["constraint 1: how honored"],
   "test_results": {"passed": 0, "failed": 0, "skipped": 0},
-  "lint_status": "clean|issues",
-  "deny_status": "clean|issues|n/a",
-  "type_check_status": "clean|issues|n/a"
+  "lint_status": "clean|issues"
 }
 ```
-
-`deny_status` advisory only (CI is hard gate). Do not fail phase for deny issues alone.
 
 ## Reminder
 
 Use `edit_overwrite` or `edit_replace` for all file writes. Do NOT run: git add, git commit, git push, gh pr create. Leave changes uncommitted. Write output to `<HANDOFF>/03-build.json` via `edit_overwrite` (use literal path from task instructions).
-
-At turn 70, write `<HANDOFF>/03-build.json` with the full output schema, set `"status": "fail"`, record last known test output in `notes`, then stop immediately.
