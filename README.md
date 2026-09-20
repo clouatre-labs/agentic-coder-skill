@@ -247,6 +247,10 @@ grep '^version:' skills/coder/SKILL.md
 *Code Snippet 2: Common inspection commands. Handoffs live outside the worktree, so
 they survive worktree teardown and are visible from any checkout.*
 
+For a real end-to-end run — five issues, five parallel sessions, five merged PRs,
+three human interventions — see
+[docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md),
+
 ## Githooks
 
 Install with:
