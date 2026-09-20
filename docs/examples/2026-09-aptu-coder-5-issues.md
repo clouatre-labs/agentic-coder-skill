@@ -56,7 +56,8 @@ Twenty-two subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 12
 *Figure 1: Timeline of the 22 agent spawns (scout/guard/build/check, with retries and
 fixes) across the five parallel sessions, plotted in minutes from kickoff. Green
 diamonds mark each PR merge; dashed markers show the three human steering
-interventions; shaded bands mark the review/CI wait and the merge window.*
+interventions; shaded bands mark the review/CI wait and the merge window, where
+PRs merged in dependency order (#1588 rebased onto main after #1587 landed).
 
 ## What went right
 

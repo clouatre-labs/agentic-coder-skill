@@ -65,7 +65,8 @@ COLOR = {
 
 # Actual merge times per lane (from GitHub), minutes from kickoff:
 # row order: #1578, #1579, #1580, #1581, #1582
-MERGES = {0: "16:22:08", 1: "16:51:43", 2: "16:44:27", 3: "16:15:58", 4: "16:32:19"}
+MERGES = {0: ("16:22:08", "#1586"), 1: ("16:51:43", "#1588"),
+          2: ("16:44:27", "#1587"), 3: ("16:15:58", "#1584"), 4: ("16:32:19", "#1585")}
 
 # Quiet stretch: review-gate retries + CI + waiting on the human go-ahead.
 WAIT0, WAIT1 = t("15:39:09"), t("16:13:48")
@@ -87,8 +88,9 @@ ax.invert_yaxis()
 
 # Merge window band
 ax.axvspan(MERGE0, MERGE1, color="#4caf50", alpha=0.10, zorder=0)
-ax.text((MERGE0 + MERGE1) / 2, -0.05, "merge window", ha="center", va="bottom",
-        fontsize=8, color="#2e7d32", style="italic")
+ax.text(MERGE0 + 1, -0.05,
+        "ordered merges (CI-gated)",
+        ha="left", va="bottom", fontsize=8, color="#2e7d32", style="italic")
 
 # Lane labels (outside, left)
 for row, lane in enumerate(LANES):
@@ -103,10 +105,13 @@ ax.text(t("15:48:00"), -0.05, "review gate + CI",
         ha="left", va="bottom", fontsize=8, color="#616161", style="italic")
 
 # Merge markers per lane
-for row, ts in MERGES.items():
+for row, (ts, pr) in MERGES.items():
     x = t(ts)
     ax.plot(x, row + 0.5, marker="D", markersize=7, color="#2e7d32",
             markeredgecolor="#1b5e20", zorder=4)
+    ax.annotate(pr, (x, row + 0.5), xytext=(0, 9), textcoords="offset points",
+                ha="center", fontsize=7.5, color="#1b5e20", fontweight="bold",
+                zorder=5)
 
 BAR_H = 0.56
 for start, end, kind, row in BARS:
