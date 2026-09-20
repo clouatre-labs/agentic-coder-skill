@@ -37,10 +37,10 @@ session.
 
 | Issue | Tier | Phases | Outcome |
 |-------|------|--------|---------|
-| 1578 | medium | SCOUT -> PLAN -> BUILD -> CHECK+PR | PR #1586, merged (duplicate field dropped) |
+| 1578 | medium | SCOUT -> PLAN -> BUILD -> CHECK | PR #1586, merged (duplicate field dropped) |
 | 1579 | medium | SCOUT -> PLAN -> BUILD -> CHECK (fail -> retry) | PR #1588, merged (-99/+3 LOC) |
 | 1580 | medium | SCOUT -> PLAN -> BUILD -> CHECK (fail -> retry) | PR #1587, merged (+0.35.0 bump) |
-| 1581 | medium | SCOUT -> PLAN -> BUILD -> CHECK+PR | PR #1584, merged (legacy metrics dir deleted) |
+| 1581 | medium | SCOUT -> PLAN -> BUILD -> CHECK | PR #1584, merged (legacy metrics dir deleted) |
 | 1582 | complex | SCOUT -> GUARD -> PLAN -> BUILD -> CHECK | PR #1585, merged (shared telemetry preamble) |
 
 Medium tier per the skill's Constraint #2: SCOUT research, orchestrator-authored PLAN,
