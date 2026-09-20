@@ -54,9 +54,9 @@ Twenty-two subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 12
 ![Timeline of the 22 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
 
 *Figure 1: Timeline of the 22 agent spawns (scout/guard/build/check, with retries and
-fixes) across the five parallel sessions, plotted in minutes from kickoff. Dashed
-markers show the three human steering interventions; the shaded band is the merge
-window.*
+fixes) across the five parallel sessions, plotted in minutes from kickoff. Green
+diamonds mark each PR merge; dashed markers show the three human steering
+interventions; shaded bands mark the review/CI wait and the merge window.*
 
 ## What went right
 

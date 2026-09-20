@@ -63,6 +63,13 @@ COLOR = {
     "FIX": "#d62728",
 }
 
+# Actual merge times per lane (from GitHub), minutes from kickoff:
+# row order: #1578, #1579, #1580, #1581, #1582
+MERGES = {0: "16:22:08", 1: "16:51:43", 2: "16:44:27", 3: "16:15:58", 4: "16:32:19"}
+
+# Quiet stretch: review-gate retries + CI + waiting on the human go-ahead.
+WAIT0, WAIT1 = t("15:39:09"), t("16:13:48")
+
 # Three human steering interventions (dashed vertical markers).
 INTERVENTIONS = [
     ("15:14:28", "approve parallel plan"),
@@ -90,6 +97,17 @@ for row, lane in enumerate(LANES):
     if row:
         ax.axhline(row, color="#e0e0e0", linewidth=0.6, zorder=0)
 
+# Waiting band (review gate + CI + human review)
+ax.axvspan(WAIT0, WAIT1, color="#9e9e9e", alpha=0.10, zorder=0)
+ax.text(t("15:48:00"), -0.05, "review gate + CI",
+        ha="left", va="bottom", fontsize=8, color="#616161", style="italic")
+
+# Merge markers per lane
+for row, ts in MERGES.items():
+    x = t(ts)
+    ax.plot(x, row + 0.5, marker="D", markersize=7, color="#2e7d32",
+            markeredgecolor="#1b5e20", zorder=4)
+
 BAR_H = 0.56
 for start, end, kind, row in BARS:
     x0, x1 = t(start), t(end)
@@ -113,7 +131,8 @@ for i, (ts, label) in enumerate(INTERVENTIONS, 1):
             bbox=dict(boxstyle="circle,pad=0.15", fc="white", ec="#555555", lw=0.7))
 
 ax.set_xticks(range(0, 111, 15))
-ax.set_xticklabels([f"{m} min" if m else "0" for m in range(0, 111, 15)], fontsize=9)
+ax.set_xticklabels(str(m) for m in range(0, 111, 15))
+ax.set_xlabel("minutes from kickoff", fontsize=9)
 ax.set_yticks([])
 for spine in ("top", "right", "left"):
     ax.spines[spine].set_visible(False)
@@ -124,7 +143,10 @@ handles.append(Patch(facecolor="white", edgecolor="#b71c1c", linestyle="--",
                      label="Check fail"))
 handles.append(plt.Line2D([0], [0], color="#555555", linestyle=":", marker="v",
                           label="Human intervention"))
-ax.legend(handles=handles, loc="lower right", fontsize=8, ncol=4, frameon=False)
+handles.append(plt.Line2D([0], [0], color="#2e7d32", linestyle="none", marker="D",
+                          label="Merged"))
+ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.14),
+          fontsize=8, ncol=4, frameon=False)
 
 ax.set_title("Five issues, five parallel sessions, five merged PRs "
              "(minutes from kickoff)", fontsize=11)
