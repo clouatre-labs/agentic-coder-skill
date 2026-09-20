@@ -24,6 +24,52 @@ README predates the model pins in `tools/agents/*.yaml`); the predecessor study 
 this Scout/Guard architecture is
 [prompt-repetition-experiments](https://github.com/clouatre-labs/prompt-repetition-experiments).
 
+## Quick start
+
+Feed the skill a GitHub issue reference — that is the whole interface:
+
+```text
+Fix issue 123 in this repo.
+```
+
+*Code Snippet 1: Minimal invocation. The orchestrator classifies the change, runs
+the pipeline at the matching tier, and opens a draft PR (see Table 1).*
+
+**Parallel streams** — for a batch of independent issues, ask for one coder
+stream per issue. Each stream gets its own worktree and handoff directory and
+produces one independently reviewable PR:
+
+```text
+Fix issues 1578-1582 in a single session, using parallel streams of coder
+skill. Work from the latest code. Ensure CI is green, fix and resolve inline
+review comments once PRs are pushed, then merge in dependency order, rebasing
+as needed.
+```
+
+*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in
+about 1h42m with three human interventions (see the case study below).*
+
+**Larger batches** — for wide issue ranges, let the session triage first, and
+split the work across sessions rather than one mega-run:
+
+```text
+Can we fix issues 1639-1651 in a single session, or a subset? Using
+parallel coder skill streams?
+```
+
+*Code Snippet 3: Triage-first invocation for a wide range.*
+
+Observed split point: sessions of about five issues merged 5/5 and 5/5 of
+their PRs, while a single 13-issue range merged 2/13. Advise accordingly —
+for example, half the issues in this session, half in the next.
+
+For a full annotated run — five issues, five parallel sessions, five merged
+PRs — see
+[docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md).
+
+The mechanics behind these invocations — tier classification, handoffs,
+constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+
 ## Pipeline
 
 ```mermaid
@@ -212,7 +258,7 @@ awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
 # ratio < 0.10 trips the gate; 0.10-0.25 is the judge-consulted gray zone
 ```
 
-*Code Snippet 1: Handoff validation as performed between phases (see
+*Code Snippet 4: Handoff validation as performed between phases (see
 `skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
 Retry Policy, score-mode judge gray zone, per-handoff log line).*
 
@@ -244,12 +290,8 @@ scripts/generate-coder-agents.sh --check
 grep '^version:' skills/coder/SKILL.md
 ```
 
-*Code Snippet 2: Common inspection commands. Handoffs live outside the worktree, so
+*Code Snippet 5: Common inspection commands. Handoffs live outside the worktree, so
 they survive worktree teardown and are visible from any checkout.*
-
-For a real end-to-end run — five issues, five parallel sessions, five merged PRs,
-three human interventions — see
-[docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md),
 
 ## Githooks
 
