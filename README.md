@@ -250,7 +250,6 @@ they survive worktree teardown and are visible from any checkout.*
 For a real end-to-end run — five issues, five parallel sessions, five merged PRs,
 three human interventions — see
 [docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md),
-with an animated highlights replay in `docs/examples/session-highlights.gif`.
 
 ## Githooks
 

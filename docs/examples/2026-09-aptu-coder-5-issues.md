@@ -37,24 +37,25 @@ session.
 
 | Issue | Tier | Phases | Outcome |
 |-------|------|--------|---------|
-| 1578 | medium | SCOUT -> PLAN -> BUILD (CHECK for PR only) | PR #1584, merged |
-| 1579 | medium | SCOUT -> PLAN -> BUILD (CHECK for PR only) | PR #1585, merged |
-| 1580 | medium | SCOUT -> PLAN -> BUILD (CHECK for PR only) | PR #1586, merged |
-| 1581 | medium | SCOUT -> PLAN -> BUILD (CHECK for PR only) | PR #1587, merged (-99/+3 LOC) |
-| 1582 | complex | SCOUT -> GUARD -> PLAN -> BUILD -> CHECK | PR #1588, merged |
+| 1578 | medium | SCOUT -> PLAN -> BUILD -> CHECK+PR | PR #1586, merged (duplicate field dropped) |
+| 1579 | medium | SCOUT -> PLAN -> BUILD -> CHECK (fail -> retry) | PR #1588, merged (-99/+3 LOC) |
+| 1580 | medium | SCOUT -> PLAN -> BUILD -> CHECK (fail -> retry) | PR #1587, merged (+0.35.0 bump) |
+| 1581 | medium | SCOUT -> PLAN -> BUILD -> CHECK+PR | PR #1584, merged (legacy metrics dir deleted) |
+| 1582 | complex | SCOUT -> GUARD -> PLAN -> BUILD -> CHECK | PR #1585, merged (shared telemetry preamble) |
 
 Medium tier per the skill's Constraint #2: SCOUT research, orchestrator-authored PLAN,
 BUILD delegation, with CHECK run at PR time. Issue 1582 was classified **complex**
 (new abstraction: shared telemetry preamble extraction), so it got the full pipeline
 including GUARD.
 
-Sixteen subagent spawns in total, all `coder-scout` / `coder-guard` / `coder-build` /
-`coder-check`, most running in parallel in the background across the five sessions.
+Twenty-two subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 12
+`coder-build`, 4 `coder-check` — most running in parallel in the background across the five sessions.
 
-![Timeline of the 16 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
+![Timeline of the 22 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
 
-*Figure 1: Timeline of the 16 agent spawns (scout/guard/build/check) across the five
-parallel sessions, 15:12–16:55 UTC.*
+*Figure 1: Timeline of the 22 agent spawns (scout/guard/build/check, with retries and fixes)
+ across the five parallel sessions, 15:13–16:55 UTC. Dashed markers show the three
+ human steering interventions; the shaded band is the merge window.*
 
 ## What went right
 
@@ -66,7 +67,7 @@ parallel sessions, 15:12–16:55 UTC.*
 - **Isolation paid off.** Five worktrees and five handoff dirs meant one session's
   CHECK failure never blocked the other four. #1580 could fail and be repaired while
   #1584, #1585, #1587, #1588 moved forward.
-- **Net negative LOC.** #1581 finished at −99/+3. The pipeline removed code rather
+- **Net negative LOC.** #1579 (PR #1588) finished at −99/+3. The pipeline removed code rather
   than adding it, which is what a refactoring run should do.
 
 ## What went wrong (and self-healed)
@@ -108,19 +109,14 @@ retries — ran without human touch.
 
 ## Artifacts
 
-![Animated highlights of the run](session-highlights.gif)
-
-*Figure 2: Animated session highlights (spawns, gates, failures and recoveries).*
-
 Source artifacts: the raw session transcript (retained locally in the pi session
-store), `scripts/render-session-highlights.py` (deterministic, re-runnable GIF
-pipeline reading curated line ranges from the transcript), and
-`figures/fig-session-timeline.py` (regenerates Figure 1).
+store) and `figures/fig-session-timeline.py` (regenerates Figure 1).
 
 ## Takeaway
 
 The pipeline's value in this run was not that nothing failed — two CHECK FAILs, a rate
-limit, two semver breaks, and a rebase all happened. It was that every failure was
+limit, a flaky CI test, two semver breaks, and a rebase that initially dropped its
+commit all happened. It was that every failure was
 detected by a gate (CHECK, GUARD, CI, review gate), attributed honestly, and either
 repaired by the Retry Policy or escalated as a precise question to the human. Three
 approvals bought five merged, reviewable, revertible refactoring PRs in under two hours.
