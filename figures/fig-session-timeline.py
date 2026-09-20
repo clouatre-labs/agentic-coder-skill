@@ -12,8 +12,11 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 def t(hhmmss):
+    """Minutes since session start (15:13:00), the figure's t=0."""
     h, m, s = map(int, hhmmss.split(":"))
-    return h * 3600 + m * 60 + s
+    return (h * 3600 + m * 60 + s - t.ZERO) / 60.0
+
+t.ZERO = 15 * 3600 + 13 * 60
 
 # (start, end, kind, row) -- rows: 0..4 = lanes for #1578 #1579 #1580 #1581 #1582.
 # Kinds: SCOUT, GUARD, BUILD, CHECK; suffix "_FAIL" draws a hatched red overlay.
@@ -67,8 +70,8 @@ INTERVENTIONS = [
     ("16:15:29", "authorize ordered merge"),
 ]
 
-T0, T1 = t("15:13:00"), t("16:56:00")
-MERGE0, MERGE1 = t("16:15:29"), t("16:52:30")
+T0, T1 = 0, t("16:56:00")
+MERGE0, MERGE1 = t("16:15:29"), t("16:52:30")  # relative minutes
 
 fig, ax = plt.subplots(figsize=(12.5, 5.0))
 ax.set_xlim(T0, T1)
@@ -109,9 +112,8 @@ for i, (ts, label) in enumerate(INTERVENTIONS, 1):
             fontsize=8, fontweight="bold", color="#333333",
             bbox=dict(boxstyle="circle,pad=0.15", fc="white", ec="#555555", lw=0.7))
 
-ticks = ["15:15", "15:30", "15:45", "16:00", "16:15", "16:30", "16:45"]
-ax.set_xticks([t(x + ":00") for x in ticks])
-ax.set_xticklabels(ticks, fontsize=9)
+ax.set_xticks(range(0, 111, 15))
+ax.set_xticklabels([f"{m} min" if m else "0" for m in range(0, 111, 15)], fontsize=9)
 ax.set_yticks([])
 for spine in ("top", "right", "left"):
     ax.spines[spine].set_visible(False)
@@ -124,8 +126,8 @@ handles.append(plt.Line2D([0], [0], color="#555555", linestyle=":", marker="v",
                           label="Human intervention"))
 ax.legend(handles=handles, loc="lower right", fontsize=8, ncol=4, frameon=False)
 
-ax.set_title("Session 01a0ba3a: five issues, five parallel sessions, five merged PRs "
-             "(2026-09-19, 15:13\u201316:55 UTC)", fontsize=11)
+ax.set_title("Five issues, five parallel sessions, five merged PRs "
+             "(minutes from kickoff)", fontsize=11)
 
 plt.tight_layout()
 plt.savefig("figures/fig-session-timeline.png", dpi=150, bbox_inches="tight")

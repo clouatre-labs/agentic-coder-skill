@@ -5,8 +5,8 @@ refactoring issues (1578–1582) against `clouatre-labs/aptu-coder` (Rust worksp
 single orchestrated run. The orchestrator classified all five via `typesafe-judge`, ran
 five parallel single-issue sessions with per-session worktrees and handoff directories,
 and produced PRs #1584–#1588: all approved by an external LLM review gate, CI green,
-squash-merged in dependency order. Total wall clock: 15:12:50–16:55:21 UTC (~1h42m),
-16 subagent spawns, 3 human interventions — all approvals/steering, zero rescues. Net
+squash-merged in dependency order. Total wall clock: about 1h42m,
+22 subagent spawns, 3 human interventions — all approvals/steering, zero rescues. Net
 result was a reduction in lines of code.
 
 ## The task
@@ -53,9 +53,10 @@ Twenty-two subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 12
 
 ![Timeline of the 22 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
 
-*Figure 1: Timeline of the 22 agent spawns (scout/guard/build/check, with retries and fixes)
- across the five parallel sessions, 15:13–16:55 UTC. Dashed markers show the three
- human steering interventions; the shaded band is the merge window.*
+*Figure 1: Timeline of the 22 agent spawns (scout/guard/build/check, with retries and
+fixes) across the five parallel sessions, plotted in minutes from kickoff. Dashed
+markers show the three human steering interventions; the shaded band is the merge
+window.*
 
 ## What went right
 
