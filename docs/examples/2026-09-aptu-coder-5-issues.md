@@ -5,7 +5,8 @@ refactoring issues (1578–1582) against `clouatre-labs/aptu-coder` (Rust worksp
 single orchestrated run. The orchestrator classified all five via `typesafe-judge`, ran
 five parallel single-issue sessions with per-session worktrees and handoff directories,
 and produced PRs #1584–#1588: all approved by an external LLM review gate, CI green,
-squash-merged in dependency order. The run took about 1h42m with 23 subagent spawns, 3 human interventions — all approvals/steering, zero rescues. Net
+squash-merged in dependency order. The run took about 1h42m, with 23 subagent
+spawns and 3 human interventions — all approvals/steering, zero rescues. Net
 result was a reduction in lines of code.
 
 ## The task
@@ -48,7 +49,8 @@ BUILD delegation, with CHECK run at PR time. Issue 1582 was classified **complex
 including GUARD.
 
 Twenty-three subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 10
-`coder-build`, 7 `coder-check` — most running in parallel in the background across the five sessions.
+`coder-build`, 7 `coder-check` — most running in parallel in the background
+across the five sessions.
 
 ![Timeline of the 23 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
 
