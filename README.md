@@ -28,16 +28,19 @@ this Scout/Guard architecture is
 
 Feed the skill a GitHub issue reference — that is the whole interface:
 
+*Code Snippet 1: Minimal invocation. The orchestrator classifies the change, runs
+the pipeline at the matching tier, and opens a draft PR (see Table 1).*
+
 ```text
 Fix issue 123 in this repo.
 ```
 
-*Code Snippet 1: Minimal invocation. The orchestrator classifies the change, runs
-the pipeline at the matching tier, and opens a draft PR (see Table 1).*
-
 **Parallel streams** — for a batch of independent issues, ask for one coder
 stream per issue. Each stream gets its own worktree and handoff directory and
 produces one independently reviewable PR:
+
+*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in
+about 1h42m with three human interventions (see the case study below).*
 
 ```text
 Fix issues 1578-1582 in a single session, using parallel streams of coder
@@ -46,18 +49,15 @@ review comments once PRs are pushed, then merge in dependency order, rebasing
 as needed.
 ```
 
-*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in
-about 1h42m with three human interventions (see the case study below).*
-
 **Larger batches** — for wide issue ranges, let the session triage first, and
 split the work across sessions rather than one mega-run:
+
+*Code Snippet 3: Triage-first invocation for a wide range.*
 
 ```text
 Can we fix issues 1639-1651 in a single session, or a subset? Using
 parallel coder skill streams?
 ```
-
-*Code Snippet 3: Triage-first invocation for a wide range.*
 
 Observed split point: sessions of about five issues merged 5/5 and 5/5 of
 their PRs, while a single 13-issue range merged 2/13. Advise accordingly —
@@ -248,6 +248,10 @@ All files are written compact (`jq -c .`) and stored under
 worktree teardown cannot destroy them. Every free-text field is validated on read
 with a gzip compression-ratio degeneracy check (see typesafe-ai integration above).
 
+*Code Snippet 4: Handoff validation as performed between phases (see
+`skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
+Retry Policy, score-mode judge gray zone, per-handoff log line).*
+
 ```bash
 # A reader never trusts a handoff blindly: structure, then degeneracy
 f="$HANDOFF/01a-research-scout.json"
@@ -257,10 +261,6 @@ gz=$(jq -r .recommendation "$f" | gzip -9 | wc -c)
 awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
 # ratio < 0.10 trips the gate; 0.10-0.25 is the judge-consulted gray zone
 ```
-
-*Code Snippet 4: Handoff validation as performed between phases (see
-`skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
-Retry Policy, score-mode judge gray zone, per-handoff log line).*
 
 ```mermaid
 flowchart LR
@@ -277,6 +277,9 @@ file consumed by the next role, validated on read.*
 
 ## Inspecting a session
 
+*Code Snippet 5: Common inspection commands. Handoffs live outside the worktree, so
+they survive worktree teardown and are visible from any checkout.*
+
 ```bash
 # List sessions and peek at each plan's overview
 for d in "$(git rev-parse --path-format=absolute --git-common-dir)"/coder-handoffs/*/; do
@@ -289,9 +292,6 @@ scripts/generate-coder-agents.sh --check
 # Current skill version
 grep '^version:' skills/coder/SKILL.md
 ```
-
-*Code Snippet 5: Common inspection commands. Handoffs live outside the worktree, so
-they survive worktree teardown and are visible from any checkout.*
 
 ## Githooks
 
