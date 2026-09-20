@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.transforms import blended_transform_factory
 
 def t(hhmmss):
     """Minutes since session start (15:13:00), the figure's t=0."""
@@ -93,9 +94,10 @@ ax.text(MERGE0 + 1, -0.05,
         "ordered merges (CI-gated)",
         ha="left", va="bottom", fontsize=8, color="#2e7d32", style="italic")
 
-# Lane labels (outside, left)
+# Lane labels (anchored to the left axes edge, so no dead margin)
+tr = blended_transform_factory(ax.transAxes, ax.transData)
 for row, lane in enumerate(LANES):
-    ax.text(T0 - 40, row + 0.5, lane, ha="right", va="center",
+    ax.text(-0.012, row + 0.5, lane, transform=tr, ha="right", va="center",
             fontsize=9, fontweight="bold")
     if row:
         ax.axhline(row, color="#e0e0e0", linewidth=0.6, zorder=0)
