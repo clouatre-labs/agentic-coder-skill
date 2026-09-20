@@ -5,8 +5,7 @@ refactoring issues (1578–1582) against `clouatre-labs/aptu-coder` (Rust worksp
 single orchestrated run. The orchestrator classified all five via `typesafe-judge`, ran
 five parallel single-issue sessions with per-session worktrees and handoff directories,
 and produced PRs #1584–#1588: all approved by an external LLM review gate, CI green,
-squash-merged in dependency order. Total wall clock: about 1h42m,
-22 subagent spawns, 3 human interventions — all approvals/steering, zero rescues. Net
+squash-merged in dependency order. The run took about 1h42m with 23 subagent spawns, 3 human interventions — all approvals/steering, zero rescues. Net
 result was a reduction in lines of code.
 
 ## The task
@@ -48,16 +47,15 @@ BUILD delegation, with CHECK run at PR time. Issue 1582 was classified **complex
 (new abstraction: shared telemetry preamble extraction), so it got the full pipeline
 including GUARD.
 
-Twenty-two subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 12
-`coder-build`, 4 `coder-check` — most running in parallel in the background across the five sessions.
+Twenty-three subagent spawns in total — 5 `coder-scout`, 1 `coder-guard`, 10
+`coder-build`, 7 `coder-check` — most running in parallel in the background across the five sessions.
 
-![Timeline of the 22 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
+![Timeline of the 23 agent spawns across the 5 parallel sessions](../../figures/fig-session-timeline.png)
 
-*Figure 1: Timeline of the 22 agent spawns (scout/guard/build/check, with retries and
-fixes) across the five parallel sessions, plotted in minutes from kickoff. Green
-diamonds mark each PR merge; dashed markers show the three human steering
-interventions; shaded bands mark the review/CI wait and the merge window, where
-PRs merged in dependency order (#1588 rebased onto main after #1587 landed).
+*Figure 1: Agent activity across the five parallel sessions, in minutes from kickoff.
+Both CHECK failures and every subsequent repair self-healed without blocking the
+other lanes; the long quiet band is external wait (review gate and CI), not agent
+work.*
 
 ## What went right
 
