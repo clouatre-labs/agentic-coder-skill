@@ -33,7 +33,7 @@ BARS = [
     ("15:47:38", "15:50:54", "RETRY", 1),   # BUILD retry: add tests
     ("15:54:29", "16:01:41", "CHECK", 1),
     ("16:02:08", "16:02:37", "FIX", 1),     # semver bump
-    ("16:45:10", "16:46:41", "RETRY", 1),   # rebase #1588
+    ("16:45:10", "16:46:41", "RETRY", 1),   # rebase #1588 (after #1587 landed)
     # Lane #1580 (PR #1587)
     ("15:16:20", "15:18:11", "SCOUT", 2),
     ("15:21:01", "15:31:16", "BUILD", 2),
@@ -65,6 +65,7 @@ COLOR = {
 
 # Actual merge times per lane (from GitHub), minutes from kickoff:
 # row order: #1578, #1579, #1580, #1581, #1582
+MERGE_ORDER = {"#1584": 1, "#1586": 2, "#1585": 3, "#1587": 4, "#1588": 5}
 MERGES = {0: ("16:22:08", "#1586"), 1: ("16:51:43", "#1588"),
           2: ("16:44:27", "#1587"), 3: ("16:15:58", "#1584"), 4: ("16:32:19", "#1585")}
 
@@ -109,7 +110,8 @@ for row, (ts, pr) in MERGES.items():
     x = t(ts)
     ax.plot(x, row + 0.5, marker="D", markersize=7, color="#2e7d32",
             markeredgecolor="#1b5e20", zorder=4)
-    ax.annotate(pr, (x, row + 0.5), xytext=(0, 9), textcoords="offset points",
+    ax.annotate(f"{MERGE_ORDER[pr]}. {pr}", (x, row + 0.5), xytext=(0, 9),
+                textcoords="offset points",
                 ha="center", fontsize=7.5, color="#1b5e20", fontweight="bold",
                 zorder=5)
 
@@ -125,6 +127,12 @@ for start, end, kind, row in BARS:
         linestyle="--" if kind.endswith("_FAIL") else "-",
         zorder=3,
     ))
+
+# Label the one rebase bar (its cause is not obvious from the bar alone)
+rx0, rx1 = t("16:45:10"), t("16:46:41")
+ax.annotate("rebase #1588 (#1587 landed)", (rx0, 1.5), xytext=(-7, 0),
+            textcoords="offset points", ha="right", va="center",
+            fontsize=7, color="#5d4037", zorder=5)
 
 # Human interventions: dashed vlines + numbered markers
 for i, (ts, label) in enumerate(INTERVENTIONS, 1):
