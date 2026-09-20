@@ -24,6 +24,62 @@ README predates the model pins in `tools/agents/*.yaml`); the predecessor study 
 this Scout/Guard architecture is
 [prompt-repetition-experiments](https://github.com/clouatre-labs/prompt-repetition-experiments).
 
+## Quick start
+
+Feed the skill a GitHub issue reference — that is the whole interface.
+
+*Table 1: Choosing an invocation pattern (merge rates are observed from real
+runs; see the case study linked below).*
+
+| Situation | Pattern | Observed merge rate |
+|---|---|---|
+| One issue | Single stream (below) | — |
+| A few independent issues (≤ ~6) | One parallel stream per issue | 5/5 and 5/5 |
+| A wide range | Triage first, split across sessions | 2/13 as one mega-run |
+
+### One issue
+
+*Code Snippet 1: Minimal invocation. The orchestrator classifies the change, runs
+the pipeline at the matching tier, and opens a draft PR (see Table 2).*
+
+```text
+Fix issue 123 in this repo.
+```
+
+### A few independent issues
+
+Ask for one coder stream per issue. Each stream gets its own worktree and
+handoff directory and produces one independently reviewable PR.
+
+*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in
+about 1h42m with three human interventions (see the case study below).*
+
+```text
+Fix issues 1578-1582 in a single session, using parallel streams of coder
+skill. Work from the latest code. Ensure CI is green, fix and resolve inline
+review comments once PRs are pushed, then merge in dependency order, rebasing
+as needed.
+```
+
+### A wide range
+
+Let the session triage first, then split the work across sessions rather than
+one mega-run — for example, half the issues in this session, half in the next.
+
+*Code Snippet 3: Triage-first invocation for a wide range.*
+
+```text
+Can we fix issues 1639-1651 in a single session, or a subset? Using
+parallel coder skill streams?
+```
+
+For a full annotated run — five issues, five parallel sessions, five merged
+PRs — see
+[docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md).
+
+The mechanics behind these invocations — tier classification, handoffs,
+constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+
 ## Pipeline
 
 ```mermaid
@@ -50,7 +106,7 @@ phase-by-phase detail, including the constraints each delegate operates under, l
 [`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec and the
 changelog, not just an entry point.
 
-*Table 1: Tier classification. Uncertainty resolves to the higher tier. Each
+*Table 2: Tier classification. Uncertainty resolves to the higher tier. Each
 change is classified by ONE `typesafe-judge` Choice question (the judge is
 required on PATH — its absence is a STOP, never an inline fallback), with two
 deterministic pre-filters for trivially Simple changes (explicit issue label +
@@ -69,7 +125,7 @@ classification appends a JSONL log line — no log line, no session.*
 tier, implementation and PR are inline — no delegate runs; the regenerate script
 is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
 
-*Table 2: Pipeline phases, the four subagents, and their model pins (sources:
+*Table 3: Pipeline phases, the four subagents, and their model pins (sources:
 `tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored by the orchestrator,
 whose model is whatever the host session runs — this repo pins only the four
 delegates.*
@@ -84,7 +140,7 @@ delegates.*
 
 ## What's here
 
-*Table 3: Repository layout — edit the sources, never the generated files.*
+*Table 4: Repository layout — edit the sources, never the generated files.*
 
 | Path | Description |
 |---|---|
@@ -162,7 +218,7 @@ Since v3.13.0 the pipeline uses TypeSafe System One judgments
 (the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
 on any API failure — the pipeline never blocks on the judge:
 
-- **Tier classification** (Table 1): ONE Choice question over the three tiers — a
+- **Tier classification** (Table 2): ONE Choice question over the three tiers — a
   bounded enum decision, not per-tier prose judgment. The selected option is the
   tier; confidence < 0.6 escalates one tier. Verdicts are logged as one JSONL line
   per session at `${DOTFILES:-$HOME/.local/state}/var/coder-log/<host>.jsonl`.
@@ -186,7 +242,7 @@ Every phase boundary is a JSON file on disk — no context is passed through cha
 memory. The orchestrator writes, each delegate reads its predecessor's file and
 writes its own:
 
-*Table 4: The five handoff files. A missing handoff is fatal: the orchestrator
+*Table 5: The five handoff files. A missing handoff is fatal: the orchestrator
 stops and reports — it never works inline as a fallback.*
 
 | Handoff | Written by | Read by |
@@ -202,6 +258,10 @@ All files are written compact (`jq -c .`) and stored under
 worktree teardown cannot destroy them. Every free-text field is validated on read
 with a gzip compression-ratio degeneracy check (see typesafe-ai integration above).
 
+*Code Snippet 4: Handoff validation as performed between phases (see
+`skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
+Retry Policy, score-mode judge gray zone, per-handoff log line).*
+
 ```bash
 # A reader never trusts a handoff blindly: structure, then degeneracy
 f="$HANDOFF/01a-research-scout.json"
@@ -211,10 +271,6 @@ gz=$(jq -r .recommendation "$f" | gzip -9 | wc -c)
 awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
 # ratio < 0.10 trips the gate; 0.10-0.25 is the judge-consulted gray zone
 ```
-
-*Code Snippet 1: Handoff validation as performed between phases (see
-`skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
-Retry Policy, score-mode judge gray zone, per-handoff log line).*
 
 ```mermaid
 flowchart LR
@@ -231,6 +287,9 @@ file consumed by the next role, validated on read.*
 
 ## Inspecting a session
 
+*Code Snippet 5: Common inspection commands. Handoffs live outside the worktree, so
+they survive worktree teardown and are visible from any checkout.*
+
 ```bash
 # List sessions and peek at each plan's overview
 for d in "$(git rev-parse --path-format=absolute --git-common-dir)"/coder-handoffs/*/; do
@@ -243,13 +302,6 @@ scripts/generate-coder-agents.sh --check
 # Current skill version
 grep '^version:' skills/coder/SKILL.md
 ```
-
-*Code Snippet 2: Common inspection commands. Handoffs live outside the worktree, so
-they survive worktree teardown and are visible from any checkout.*
-
-For a real end-to-end run — five issues, five parallel sessions, five merged PRs,
-three human interventions — see
-[docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md),
 
 ## Githooks
 
@@ -272,7 +324,7 @@ These are the same conventions `coder-check`'s commit/PR step assumes are in pla
 
 ## Tooling
 
-*Table 5: Tooling requirements. Pipeline rows are runtime dependencies of a
+*Table 6: Tooling requirements. Pipeline rows are runtime dependencies of a
 coder session; BUILD rows run only when the change touches that language; repo
 CI rows run on pull requests to `main`. Figures are regenerated with matplotlib
 via `figures/fig-tier-pipeline.py`.*
