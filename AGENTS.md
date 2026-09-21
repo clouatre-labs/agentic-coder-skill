@@ -30,10 +30,13 @@ shell hooks, not compiled code.
   CI fails on drift (`--check`)
 - Bump the version in `skills/coder/SKILL.md` for any behavioral change
   to the pipeline
-- typesafe-ai is an external dependency of the skill: tier classification and the
-  handoff degeneracy gate call `api.typesafe.ai` via the dedicated decisions-judge
-  MCP server (npm: `decisions-judge-mcp`, repo `clouatre-labs/decisions-judge-mcp`)
-  with `TYPESAFE_API_KEY` from the shell env (never committed, never written
+- `~/git/dotfiles/config/claude/skills/coder/SKILL.md` (clouatre/dotfiles) is the
+  source of truth for the skill; sync changes from there rather than editing
+  `skills/coder/SKILL.md` in isolation
+- typesafe-ai is an external dependency of the skill: tier classification calls
+  `api.typesafe.ai` via the `judge` tool of the `typesafe` MCP server (bin
+  `decisions-judge-mcp`; source `clouatre-labs/decisions-judge-mcp`, published on
+  npm) with `TYPESAFE_API_KEY` from the shell env (never committed, never written
   to files or handoffs). Every judge path must keep its deterministic inline fallback;
   this repo documents only the judge's contract (`skills/coder/SKILL.md`,
   Constraints #9–#10 and Handoff Validation)
@@ -53,7 +56,8 @@ shell hooks, not compiled code.
 ## Design references
 
 - [README.md](README.md) — pipeline overview and phase diagram
-- `skills/coder/SKILL.md` — the orchestrator's own phase-by-phase spec and changelog
+- `skills/coder/SKILL.md` — the orchestrator's own phase-by-phase spec (synced from
+  clouatre/dotfiles, the source of truth)
 
 ## Do not
 
