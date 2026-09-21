@@ -103,12 +103,12 @@ The orchestrator classifies every change into one of three tiers and scales the
 pipeline accordingly — a one-line config change skips every delegate, while an
 architectural change runs the full SCOUT + GUARD + BUILD + CHECK chain. Full
 phase-by-phase detail, including the constraints each delegate operates under, lives in
-[`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec and the
-changelog, not just an entry point.
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec, not just an entry point.
 
 *Table 2: Tier classification. Uncertainty resolves to the higher tier. Each
-change is classified by ONE `typesafe-judge` Choice question (the judge is
-required on PATH — its absence is a STOP, never an inline fallback), with two
+change is classified by ONE Choice question asked to the `judge` tool of the
+`typesafe` MCP server (bin `decisions-judge-mcp`; its absence is a STOP, never
+an inline fallback), with two
 deterministic pre-filters for trivially Simple changes (explicit issue label +
 single file + small self-declared diff; `issue_text` viability guard). Every
 classification appends a JSONL log line — no log line, no session.*
@@ -153,7 +153,7 @@ delegates.*
 
 ```mermaid
 flowchart TD
-    SKILL["skills/coder/SKILL.md\npipeline spec + versioned changelog"]
+    SKILL["skills/coder/SKILL.md\nversioned pipeline spec"]
     subgraph src[Edit sources]
         SHARED["agents-shared/coder-&lt;role&gt;.md\nharness-agnostic bodies"]
         TMPL["tools/agents/{pi,claude}-coder-&lt;role&gt;.yaml\nfrontmatter templates"]
@@ -215,26 +215,29 @@ hand-edited.*
 ## typesafe-ai integration
 
 Since v3.13.0 the pipeline uses TypeSafe System One judgments
-(the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
-on any API failure — the pipeline never blocks on the judge:
+(the `jev` model, served at `api.typesafe.ai`) for tier classification, with deterministic inline fallback
+on any API failure — the pipeline never blocks on the judge. Since the
+skill v3.20.0), the judge is reached through the `typesafe`
+MCP server — the deployed instance of the dedicated
+[decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp) server
+(published on npm as `decisions-judge-mcp`) — not a local helper script:
 
-- **Tier classification** (Table 2): ONE Choice question over the three tiers — a
+- **Tier classification** (Table 2): ONE `choice` question over the three tiers — a
   bounded enum decision, not per-tier prose judgment. The selected option is the
-  tier; confidence < 0.6 escalates one tier. Verdicts are logged as one JSONL line
-  per session at `${DOTFILES:-$HOME/.local/state}/var/coder-log/<host>.jsonl`.
-- **Handoff degeneracy gate**: free-text fields in the five JSON handoff files are
-  checked with a gzip compression-ratio test; ambiguous gray-zone ratios
-  (0.10–0.25) get ONE score question ("how padded/repetitive?"), batched into a
-  single `--manifest` call per handoff (≤ 8 in-flight); a "padded" verdict acts
-  only at p ≥ 0.8. Each validation also logs one JSONL line (`status`, `ratio`).
-  Both judgment types are small, bounded, threshold-gated decisions composed by
-  deterministic code — cheap in tokens and verifiable after the fact.
+  tier; answer confidence < 0.6 escalates one tier. Verdicts are logged as one JSONL line
+  per session at `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`.
 
-All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_AI_TOKEN`
-environment variable is inherited via the shell and is never written to files or
-handoffs. The `typesafe-judge` helper script itself is external to this repo — this
-repo documents only its contract (see [`skills/coder/SKILL.md`](skills/coder/SKILL.md),
-Constraints #9–#10 and Handoff Validation).
+Handoff free-text fields are guarded by the **deterministic gzip degeneracy gate**
+only (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below 0.10
+trips the Retry Policy without any model consultation.
+
+All judgments transit `api.typesafe.ai`, a third-party service; the auth token
+(`TYPESAFE_API_KEY`) is consumed by the MCP server from the shell environment and
+is never written to files or handoffs. The server itself lives in
+[clouatre-labs/decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp);
+this repo documents only the judge contract (see
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md), Constraints #9–#10 and Handoff
+Validation).
 
 ## Handoff protocol
 
@@ -260,7 +263,7 @@ with a gzip compression-ratio degeneracy check (see typesafe-ai integration abov
 
 *Code Snippet 4: Handoff validation as performed between phases (see
 `skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
-Retry Policy, score-mode judge gray zone, per-handoff log line).*
+0.10 threshold, Retry Policy, per-handoff log line).*
 
 ```bash
 # A reader never trusts a handoff blindly: structure, then degeneracy
@@ -269,7 +272,7 @@ jq empty "$f"                                        # structural validity
 raw=$(jq -r .recommendation "$f" | wc -c)            # extract a free-text field
 gz=$(jq -r .recommendation "$f" | gzip -9 | wc -c)
 awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
-# ratio < 0.10 trips the gate; 0.10-0.25 is the judge-consulted gray zone
+# ratio < 0.10 trips the gate deterministically
 ```
 
 ```mermaid
@@ -334,8 +337,8 @@ via `figures/fig-tier-pipeline.py`.*
 | git 2.40+ | pipeline | worktrees, githooks, handoff storage under the common git dir |
 | jq | pipeline | all handoff read/write (`jq -c .` compact form) |
 | gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
-| `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is CHECK-only) |
-| `typesafe-judge` | pipeline | tier classification + degeneracy gate (Choice/score questions); external script, contract in SKILL.md |
+| `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is ship work — Rule 8) |
+| `typesafe` MCP server (`decisions-judge-mcp`) | pipeline | tier classification via the `judge` tool (Choice question); npm package, source at clouatre-labs/decisions-judge-mcp |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
