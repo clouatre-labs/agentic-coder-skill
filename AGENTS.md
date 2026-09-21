@@ -30,9 +30,6 @@ shell hooks, not compiled code.
   CI fails on drift (`--check`)
 - Bump the version in `skills/coder/SKILL.md` for any behavioral change
   to the pipeline
-- `~/git/dotfiles/config/claude/skills/coder/SKILL.md` (clouatre/dotfiles) is the
-  source of truth for the skill; sync changes from there rather than editing
-  `skills/coder/SKILL.md` in isolation
 - typesafe-ai is an external dependency of the skill: tier classification calls
   `api.typesafe.ai` via the `judge` tool of the `typesafe` MCP server (bin
   `decisions-judge-mcp`; source `clouatre-labs/decisions-judge-mcp`, published on
@@ -56,8 +53,7 @@ shell hooks, not compiled code.
 ## Design references
 
 - [README.md](README.md) — pipeline overview and phase diagram
-- `skills/coder/SKILL.md` — the orchestrator's own phase-by-phase spec (synced from
-  clouatre/dotfiles, the source of truth)
+- `skills/coder/SKILL.md` — the orchestrator's own phase-by-phase spec (versioned)
 
 ## Do not
 

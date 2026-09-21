@@ -217,7 +217,7 @@ hand-edited.*
 Since v3.13.0 the pipeline uses TypeSafe System One judgments
 (the `jev` model, served at `api.typesafe.ai`) for tier classification, with deterministic inline fallback
 on any API failure — the pipeline never blocks on the judge. Since the
-dotfiles-led refactor (skill v3.20.0), the judge is reached through the `typesafe`
+skill v3.20.0), the judge is reached through the `typesafe`
 MCP server — the deployed instance of the dedicated
 [decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp) server
 (published on npm as `decisions-judge-mcp`) — not a local helper script:
@@ -225,7 +225,7 @@ MCP server — the deployed instance of the dedicated
 - **Tier classification** (Table 2): ONE `choice` question over the three tiers — a
   bounded enum decision, not per-tier prose judgment. The selected option is the
   tier; answer confidence < 0.6 escalates one tier. Verdicts are logged as one JSONL line
-  per session at `${DOTFILES:-$HOME/git/dotfiles}/var/coder-log/<host>.jsonl`.
+  per session at `${DOTFILES:-$HOME/.local/state}/var/coder-log/<host>.jsonl`.
 
 Handoff free-text fields are guarded by the **deterministic gzip degeneracy gate**
 only (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below 0.10
