@@ -225,7 +225,7 @@ MCP server — the deployed instance of the dedicated
 - **Tier classification** (Table 2): ONE `choice` question over the three tiers — a
   bounded enum decision, not per-tier prose judgment. The selected option is the
   tier; answer confidence < 0.6 escalates one tier. Verdicts are logged as one JSONL line
-  per session at `${DOTFILES:-$HOME/.local/state}/var/coder-log/<host>.jsonl`.
+  per session at `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`.
 
 Handoff free-text fields are guarded by the **deterministic gzip degeneracy gate**
 only (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below 0.10
