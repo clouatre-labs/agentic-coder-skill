@@ -28,7 +28,7 @@ shell hooks, not compiled code.
   frontmatter) and `agents-shared/coder-*.md` (shared body), then run
   `scripts/generate-coder-agents.sh --write`. Never hand-edit `agents/{pi,claude}/*`;
   CI fails on drift (`--check`)
-- Bump the version and changelog in `skills/coder/SKILL.md` for any behavioral change
+- Bump the version in `skills/coder/SKILL.md` for any behavioral change
   to the pipeline
 - typesafe-ai is an external dependency of the skill: tier classification and the
   handoff degeneracy gate call `api.typesafe.ai` via the dedicated decisions-judge

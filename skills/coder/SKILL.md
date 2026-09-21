@@ -10,15 +10,6 @@ compatibility:
   - pi
 ---
 
-# Changelog
-
-<!--
-  3.18.0 -- judge path migrated from the external `typesafe-judge` CLI helper to the dedicated decisions-judge MCP server (npm: decisions-judge-mcp, tool `judge`, https://github.com/clouatre-labs/decisions-judge-mcp): tier classification and the degeneracy gray-zone gate now go through one MCP judge call per site with a named-questions map (replaces `--manifest` batching); env var is TYPESAFE_API_KEY; gate semantics unchanged (confidence < 0.6 escalation, probabilities["2"] >= 0.8 padded verdict, {fallback: true, error} envelope).
-  3.17.0 -- tier classification: one Choice question over tiers with criteria mirroring Constraint #2, requires typesafe-judge on PATH (STOP if absent), cheap-first pre-filter for trivially Simple issues, issue_text viability guard, mandatory per-session classify JSONL log; unified Retry Policy section referenced by all phases and agent templates; score-mode degeneracy gate in Handoff Validation gray zone (score question spec, probabilities["2"] >= 0.8, per-handoff manifest batching, validation log line); BUILD sharding: deterministic per-shard gate, merge only passing shards, per-shard retry budget; handoff schema slimmed to fields actually read downstream; 02-plan.json branch derivation from commit_message.
-  3.13.1 -- PR creation is CHECK-only (Rule 8, the orchestrator never runs `gh pr create`); coder-check constraint forbids body-supplying flags on `gh pr create` (`--body`, `--fill`, `--fill-first`, `--fill-verbose`) and requires `--body-file` so repo PR templates are never bypassed.
-  3.13.0 -- add pi to compatibility; add typesafe-judge tier classification (Constraint #10) and third-party-transit constraint (#9); add Handoff Validation section (gzip degeneracy gate + HYBRID judge); absolute git-common-dir paths; concurrency-safe Phase 0. Goose recipe retired: goose now consumes this SKILL.md directly as a workflow; agents are generated from tools/agents/*.yaml + agents-shared/ bodies via scripts/generate-coder-agents.sh.
--->
-
 # Goose Coder - Scout/Guard Architecture
 
 ## Overview
