@@ -34,7 +34,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 6. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
 7. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 8. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
-9. **Third-party transit** - Coder pipeline judgments (tier classification, degeneracy checks) transit api.typesafe.ai, a third-party service. The auth token is inherited via the shell env; never write it to files or handoffs.
+9. **Third-party transit** - Coder pipeline judgments (tier classification via the `judge` tool) transit api.typesafe.ai, a third-party service. The handoff degeneracy gate is deterministic (`gzip -9` compression ratio) and makes no API call. The auth token is inherited via the shell env; never write it to files or handoffs.
 10. **Tier classification via the judge tool** - Requires the `judge` tool from the `typesafe` MCP server (bin `decisions-judge-mcp` on PATH and registered in the orchestrator; source at https://github.com/clouatre-labs/decisions-judge-mcp); if the judge tool is unavailable, STOP and report. State: `{"issue_text": ...}`; ONE choice question whose criteria mirror Constraint #2's tier definitions verbatim (incl. the 50-line rule):
 
     ```json
