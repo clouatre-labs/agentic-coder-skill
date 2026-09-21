@@ -107,8 +107,9 @@ phase-by-phase detail, including the constraints each delegate operates under, l
 changelog, not just an entry point.
 
 *Table 2: Tier classification. Uncertainty resolves to the higher tier. Each
-change is classified by ONE `typesafe-judge` Choice question (the judge is
-required on PATH — its absence is a STOP, never an inline fallback), with two
+change is classified by ONE `judge` Choice question via the decisions-judge MCP
+server (the server is required in the harness config — its absence is a STOP,
+never an inline fallback), with two
 deterministic pre-filters for trivially Simple changes (explicit issue label +
 single file + small self-declared diff; `issue_text` viability guard). Every
 classification appends a JSONL log line — no log line, no session.*
@@ -216,7 +217,9 @@ hand-edited.*
 
 Since v3.13.0 the pipeline uses TypeSafe System One judgments
 (the `jev` model, served at `api.typesafe.ai`) in two places, with deterministic inline fallback
-on any API failure — the pipeline never blocks on the judge:
+on any API failure — the pipeline never blocks on the judge. Since v3.18.0 the
+judge is reached through the dedicated [decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp)
+MCP server (published on npm as `decisions-judge-mcp`), not a local helper script:
 
 - **Tier classification** (Table 2): ONE Choice question over the three tiers — a
   bounded enum decision, not per-tier prose judgment. The selected option is the
@@ -225,16 +228,17 @@ on any API failure — the pipeline never blocks on the judge:
 - **Handoff degeneracy gate**: free-text fields in the five JSON handoff files are
   checked with a gzip compression-ratio test; ambiguous gray-zone ratios
   (0.10–0.25) get ONE score question ("how padded/repetitive?"), batched into a
-  single `--manifest` call per handoff (≤ 8 in-flight); a "padded" verdict acts
+  single `judge` call per handoff (≤ 8 named questions in-flight); a "padded" verdict acts
   only at p ≥ 0.8. Each validation also logs one JSONL line (`status`, `ratio`).
   Both judgment types are small, bounded, threshold-gated decisions composed by
   deterministic code — cheap in tokens and verifiable after the fact.
 
-All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_AI_TOKEN`
-environment variable is inherited via the shell and is never written to files or
-handoffs. The `typesafe-judge` helper script itself is external to this repo — this
-repo documents only its contract (see [`skills/coder/SKILL.md`](skills/coder/SKILL.md),
-Constraints #9–#10 and Handoff Validation).
+All judgments transit `api.typesafe.ai`, a third-party service; the `TYPESAFE_API_KEY`
+environment variable is consumed by the MCP server (configured per harness, e.g.
+`npx -y decisions-judge-mcp` under `mcpServers.decisions-judge`) and is never written to
+files or handoffs. This repo documents only the judge contract (see
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md), Constraints #9–#10 and Handoff
+Validation); the server itself lives in [clouatre-labs/decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp).
 
 ## Handoff protocol
 
@@ -335,7 +339,7 @@ via `figures/fig-tier-pipeline.py`.*
 | jq | pipeline | all handoff read/write (`jq -c .` compact form) |
 | gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
 | `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is CHECK-only) |
-| `typesafe-judge` | pipeline | tier classification + degeneracy gate (Choice/score questions); external script, contract in SKILL.md |
+| `decisions-judge-mcp` | pipeline | MCP server (npm) exposing the `judge` tool: tier classification + degeneracy gate (Choice/score questions); contract in SKILL.md |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
