@@ -209,9 +209,8 @@ hand-edited.*
 
 ## typesafe-ai integration
 
-Tier classification uses the `judge` tool of the `typesafe` MCP server
-([decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp),
-published on npm). Since skill v3.21.0 the judge **validates** an inline
+Tier classification uses the `judge` tool of the `typesafe` MCP server.
+Since skill v3.21.0 the judge **validates** an inline
 proposal instead of classifying blind: the orchestrator proposes a tier from
 observable repo facts (file count, diff size, docs-vs-code; see Table 2), and
 one `choice` question validates it with `confirm` / `promote` / `demote`
@@ -228,10 +227,11 @@ gate** (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below
 
 All judgments transit `api.typesafe.ai`, a third-party service. The auth token
 (`TYPESAFE_API_KEY`) is consumed by the MCP server from the shell environment
-and never written to files or handoffs. This repo documents only the judge
-contract (see [`skills/coder/SKILL.md`](skills/coder/SKILL.md), Constraints
-#9–#10 and Handoff Validation); the server itself lives in
-[clouatre-labs/decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp).
+and never written to files or handoffs. The judge server itself is
+[decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp);
+this repo documents only the judge contract (see
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md), Constraints #9–#10 and
+Handoff Validation).
 
 ## Handoff protocol
 
