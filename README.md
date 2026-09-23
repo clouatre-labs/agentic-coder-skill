@@ -209,34 +209,29 @@ hand-edited.*
 
 ## typesafe-ai integration
 
-Tier classification runs through the `typesafe` MCP server — the deployed
-instance of the dedicated
-[decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp)
-server (published on npm as `decisions-judge-mcp`). Since skill v3.21.0 the
-judge **validates** an inline proposal instead of classifying blind (see Table
-2), and a fallback verdict never blocks the pipeline:
+Tier classification uses the `judge` tool of the `typesafe` MCP server
+([decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp),
+published on npm). Since skill v3.21.0 the judge **validates** an inline
+proposal instead of classifying blind: the orchestrator proposes a tier from
+observable repo facts (file count, diff size, docs-vs-code; see Table 2), and
+one `choice` question validates it with `confirm` / `promote` / `demote`
+criteria. The answer is final, clamped to the tier ladder. On judge
+unavailability or a `{fallback: true}` envelope, the proposal stands and the
+classify log line carries `fallback: true`. Every classification attempts one
+JSONL log line per session at
+`${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`; logging
+failures never block the pipeline.
 
-- **Tier classification** (Table 2): the orchestrator proposes a tier inline
-  from observable repo facts (file count, diff size, docs-vs-code), then ONE
-  `choice` question to the `judge` tool validates it with `confirm` /
-  `promote` / `demote` criteria. The answer is final, clamped to the tier
-  ladder. On judge unavailability or a `{fallback: true}` envelope, the
-  proposal stands and the classify log line carries `fallback: true`. Every
-  classification attempts one JSONL log line per session at
-  `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`; logging
-  failures never block the pipeline.
+Handoff free-text fields are guarded by a **deterministic gzip degeneracy
+gate** (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below
+0.10 trips the Retry Policy without any model consultation.
 
-Handoff free-text fields are guarded by the **deterministic gzip degeneracy gate**
-only (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below 0.10
-trips the Retry Policy without any model consultation.
-
-All judgments transit `api.typesafe.ai`, a third-party service; the auth token
-(`TYPESAFE_API_KEY`) is consumed by the MCP server from the shell environment and
-is never written to files or handoffs. The server itself lives in
-[clouatre-labs/decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp);
-this repo documents only the judge contract (see
-[`skills/coder/SKILL.md`](skills/coder/SKILL.md), Constraints #9–#10 and Handoff
-Validation).
+All judgments transit `api.typesafe.ai`, a third-party service. The auth token
+(`TYPESAFE_API_KEY`) is consumed by the MCP server from the shell environment
+and never written to files or handoffs. This repo documents only the judge
+contract (see [`skills/coder/SKILL.md`](skills/coder/SKILL.md), Constraints
+#9–#10 and Handoff Validation); the server itself lives in
+[clouatre-labs/decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp).
 
 ## Handoff protocol
 
