@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.20.0"
+version: "3.21.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -27,7 +27,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 ## Critical Constraints
 
 1. **You do NOT write code** - Only BUILD modifies code
-2. **Classify the change (typesafe-judge-assisted)** - Three tiers: **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave_search when the change touches library APIs or needs external verification. **Medium** (multi-file docs, cross-repo reference, well-understood patterns, no new abstractions): SCOUT only, then PLAN, then BUILD; skip GUARD and CHECK. Use context7 and brave_search during SCOUT for cross-repo verification. **Complex** (architectural decisions, new abstractions, multi-file code >50 lines, security-sensitive): full SCOUT + GUARD + BUILD + CHECK. If uncertain between tiers, choose the higher one. Classification is judge-assisted -- see Constraint #10.
+2. **Classify the change (typesafe-judge-assisted)** - Three tiers: **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave_search when the change touches library APIs or needs external verification. **Medium** (multi-file docs, cross-repo reference, well-understood patterns, no new abstractions): SCOUT only, then PLAN, then BUILD; skip GUARD and CHECK. Use context7 and brave_search during SCOUT for cross-repo verification. **Complex** (architectural decisions, new abstractions, multi-file code >50 lines, security-sensitive): full SCOUT + GUARD + BUILD + CHECK. If uncertain between tiers, choose the higher one -- this tie-break applies only in the fallback path of the tier stage (see Constraint #10), never to override a judge answer.
 3. **You do NOT review code** - Only CHECK validates
 4. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
 5. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
@@ -35,13 +35,15 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 7. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
 8. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
 9. **Third-party transit** - Coder pipeline judgments (tier classification via the `judge` tool) transit api.typesafe.ai, a third-party service. The handoff degeneracy gate is deterministic (`gzip -9` compression ratio) and makes no API call. The auth token is inherited via the shell env; never write it to files or handoffs.
-10. **Tier classification via the judge tool** - Requires the `judge` tool from the `typesafe` MCP server (bin `decisions-judge-mcp` on PATH and registered in the orchestrator; source at https://github.com/clouatre-labs/decisions-judge-mcp); if the judge tool is unavailable, STOP and report. State: `{"issue_text": ...}`; ONE choice question whose criteria mirror Constraint #2's tier definitions verbatim (incl. the 50-line rule):
+10. **Tier classification via propose/validate** - Requires the `judge` tool from the `typesafe` MCP server (bin `decisions-judge-mcp` on PATH and registered in the orchestrator; source at https://github.com/clouatre-labs/decisions-judge-mcp). The orchestrator **proposes** a tier inline by checking Constraint #2's tier definitions against observable repo facts (file count, diff size via `git diff --stat`, docs-vs-code) -- a deterministic lookup, no LLM call, no pre-filter heuristics. One judge call then **validates** the proposal; criteria mirror Constraint #2's tier definitions verbatim (incl. the 50-line rule):
 
     ```json
-    {"state": {"issue_text": "..."}, "questions": {"tier": {"type": "choice", "instructions": "<Constraint #2 tier definitions, verbatim>", "criteria": {"simple": "<#2 Simple>", "medium": "<#2 Medium>", "complex": "<#2 Complex>"}}}}
+    {"state": {"issue_text": "...", "proposed_tier": "simple|medium|complex", "evidence": {"files_changed": 0, "lines_changed": 0}}, "questions": {"tier": {"type": "choice", "instructions": "<Constraint #2 tier definitions, verbatim>", "criteria": {"confirm": "<proposed tier matches the definitions>", "promote": "<change warrants one tier higher>", "demote": "<one tier lower suffices>"}}}}
     ```
 
-    Selected option = tier; answer confidence < 0.6 -> escalate one tier (re-derive the threshold from accumulated classify logs once enough data exists). Skip the judge -- classify inline as Simple, `fallback: true`, log with fallback provenance -- when any of: (a) explicit issue label + single file + self-declared small diff (cheap-first pre-filter); (b) `issue_text` < 20 chars or < 5 words, i.e. too incoherent to judge reliably; (c) API failure/fallback. Research-genre issues: classify at PLAN time (post-research), not from issue text. **Mandatory:** after classification, append one classify JSON line (tier, fallback, confidence) to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl`; never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted.
+    The judge-tool call is `{state, questions}` exactly as shown (no extra keys). `"stage": "tier"` appears only in the classify log line below.
+
+    The answer is **final**: `confirm`/`promote`/`demote` maps directly to the tier (clamp to the ladder: `promote` from complex stays complex, `demote` from simple stays simple) -- no escalation rules, no confidence thresholds, no post-processing. **Fallback (never fatal):** on judge-tool unavailability, API failure, or a `{fallback: true}` envelope, take the orchestrator's proposal as-is and log with `fallback: true`; Constraint #2's "choose the higher one" tie-break applies only here. Research-genre issues: propose at PLAN time (post-research) from researched facts instead of issue text. **Mandatory:** after classification, append one classify JSON line `{stage: "tier", tier, proposed_tier, confidence, fallback}` to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl`; legacy lines lacking `stage`/`proposed_tier` remain valid for log consumers; never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted.
 
 ## Rules (All Phases)
 

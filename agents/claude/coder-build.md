@@ -51,7 +51,7 @@ jq -c . <literal HANDOFF path>/04-validation.json 2>/dev/null
 git branch --show-current && git status
 ```
 
-Read `branch` from `02-plan.json`. If the current branch is not that value, run `git checkout -B <branch from plan>` (never create an ad-hoc name).
+Branch: run `git checkout -B <branch from 02-plan.json>` before any work (per your task prompt).
 If 04-validation.json has FAIL verdict, address those issues first.
 
 ## Phase 2: Implement
