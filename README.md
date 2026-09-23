@@ -105,13 +105,8 @@ architectural change runs the full SCOUT + GUARD + BUILD + CHECK chain. Full
 phase-by-phase detail, including the constraints each delegate operates under, lives in
 [`skills/coder/SKILL.md`](skills/coder/SKILL.md) — that file is the spec, not just an entry point.
 
-*Table 2: Tier classification. Each change is classified by a propose/validate
-pair: the orchestrator proposes a tier inline from observable repo facts (file
-count, diff size, docs-vs-code), then ONE Choice question to the `judge` tool of
-the `typesafe` MCP server (bin `decisions-judge-mcp`) confirms, promotes, or
-demotes it. The judge answer is final; on judge unavailability the proposal
-stands with `fallback: true`. Every classification appends a JSONL log line — no
-log line, no session.*
+*Table 2: Tier classification and the pipeline each tier runs. Classification
+is a propose/validate pair (see [typesafe-ai integration](#typesafe-ai-integration)).*
 
 | Tier | Typical change (SKILL.md Constraint #2) | Pipeline |
 |---|---|---|
@@ -214,21 +209,22 @@ hand-edited.*
 
 ## typesafe-ai integration
 
-Since v3.13.0 the pipeline uses TypeSafe System One judgments
-(the `jev` model, served at `api.typesafe.ai`) for tier classification. Since
-skill v3.20.0 the judge is reached through the `typesafe`
-MCP server — the deployed instance of the dedicated
-[decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp) server
-(published on npm as `decisions-judge-mcp`) — not a local helper script; since
-v3.21.0 the judge **validates** an inline proposal instead of classifying blind
-(see Table 2), and a fallback verdict never blocks the pipeline:
+Tier classification runs through the `typesafe` MCP server — the deployed
+instance of the dedicated
+[decisions-judge-mcp](https://github.com/clouatre-labs/decisions-judge-mcp)
+server (published on npm as `decisions-judge-mcp`). Since skill v3.21.0 the
+judge **validates** an inline proposal instead of classifying blind (see Table
+2), and a fallback verdict never blocks the pipeline:
 
-- **Tier classification** (Table 2): ONE `choice` question with `confirm` /
-  `promote` / `demote` criteria over the orchestrator's proposed tier. The answer
-  is final, clamped to the tier ladder. On judge unavailability or a
-  `{fallback: true}` envelope, the proposal stands and the classify log line
-  carries `fallback: true`. Verdicts are logged as one JSONL line per session at
-  `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`.
+- **Tier classification** (Table 2): the orchestrator proposes a tier inline
+  from observable repo facts (file count, diff size, docs-vs-code), then ONE
+  `choice` question to the `judge` tool validates it with `confirm` /
+  `promote` / `demote` criteria. The answer is final, clamped to the tier
+  ladder. On judge unavailability or a `{fallback: true}` envelope, the
+  proposal stands and the classify log line carries `fallback: true`. Every
+  classification attempts one JSONL log line per session at
+  `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`; logging
+  failures never block the pipeline.
 
 Handoff free-text fields are guarded by the **deterministic gzip degeneracy gate**
 only (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below 0.10
