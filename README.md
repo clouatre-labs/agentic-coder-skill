@@ -216,7 +216,7 @@ observable repo facts (file count, diff size, docs-vs-code; see Table 2), and
 one `choice` question validates it with `confirm` / `promote` / `demote`
 criteria. The answer is final, clamped to the tier ladder. On judge
 unavailability or a `{fallback: true}` envelope, the proposal stands and the
-classify log line carries `fallback: true`. Every classification attempts one
+classify log line is flagged as fallback. Every classification attempts one
 JSONL log line per session at
 `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`; logging
 failures never block the pipeline.
