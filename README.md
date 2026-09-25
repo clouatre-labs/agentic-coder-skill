@@ -61,11 +61,7 @@ review comments once PRs are pushed, then merge in dependency order, rebasing
 as needed.
 ```
 
-Since v3.23.0 the pipeline also enforces a **CI gate** — after a PR is marked
-ready, the orchestrator watches `gh pr checks` asynchronously and re-runs
-BUILD+CHECK on red checks before reporting done — and applies deterministic
-**merge ordering** across multiple PRs (dependency order inferred from issue
-cross-references and PR bases, with dependents rebased after each merge).
+Since v3.23.0 the pipeline also enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously and re-runs BUILD+CHECK on red checks before reporting done. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
 
 ### A wide range
 
@@ -245,8 +241,7 @@ Every phase boundary is a JSON file on disk — no context is passed through cha
 memory. The orchestrator writes, each delegate reads its predecessor's file and
 writes its own:
 
-*Table 5: The five handoff files. A missing handoff is re-spawned per the
-Retry Policy — the orchestrator never works inline as a fallback.*
+*Table 5: The five handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
 
 | Handoff | Written by | Read by |
 |---|---|---|

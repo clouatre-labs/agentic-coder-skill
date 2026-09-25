@@ -2,6 +2,7 @@
 name: coder-build
 description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Task instructions carry absolute worktree and handoff paths; env vars are not set.
 model: sonnet
+effort: medium
 tools: ["mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__edit_overwrite", "mcp__aptu-coder__edit_replace", "mcp__aptu-coder__exec_command"]
 ---
 
