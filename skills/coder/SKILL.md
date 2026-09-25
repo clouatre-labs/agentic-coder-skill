@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.21.0"
+version: "3.23.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -32,7 +32,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 4. **You orchestrate** - Spawn agents, read handoffs, present results, manage gates
 5. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
 6. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
-7. **Provider errors are fatal** - STOP and tell the user. Never retry with different providers/models or work inline.
+7. **Provider errors** - follow the Retry Policy's provider fallback; never swap the model or work inline.
 8. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
 9. **Third-party transit** - Coder pipeline judgments (tier classification via the `judge` tool) transit api.typesafe.ai, a third-party service. The handoff degeneracy gate is deterministic (`gzip -9` compression ratio) and makes no API call. The auth token is inherited via the shell env; never write it to files or handoffs.
 10. **Tier classification via propose/validate** - Requires the `judge` tool from the `typesafe` MCP server (bin `decisions-judge-mcp` on PATH and registered in the orchestrator; source at https://github.com/clouatre-labs/decisions-judge-mcp). The orchestrator **proposes** a tier inline by checking Constraint #2's tier definitions against observable repo facts (file count, diff size via `git diff --stat`, docs-vs-code) -- a deterministic lookup, no LLM call, no pre-filter heuristics. One judge call then **validates** the proposal; criteria mirror Constraint #2's tier definitions verbatim (incl. the 50-line rule):
@@ -63,7 +63,7 @@ One policy for all retries in this skill:
 - Retry the failed operation exactly once; on second failure STOP and report.
 - Surface only the single offending field or component, never the whole handoff or pipeline.
 - Agent-authored files are fixed by full re-invocation of the authoring role with a note naming the offending field (never inline patches); orchestrator-authored `02-plan.json` is rewritten in place.
-- **Provider fallback:** after 2 consecutive rate-limit errors on an external gate, retry once with the environment's designated fallback provider, if one is configured; log the switch to the handoff dir. Never hardcode provider names.
+- **Provider fallback:** after 2 consecutive rate-limit errors, retry once on the environment's designated fallback provider, if one is configured; log the switch to the handoff dir. Never swap the model. Never hardcode provider names.
 - **Wait asynchronously:** wait on CI checks and review gates via a background waiter subagent or harness background-agent notification -- never sequential sleeps.
 
 Phases and agent task-prompt templates reference this section instead of restating retry semantics.
@@ -111,6 +111,9 @@ HANDOFF=$GIT_COMMON_DIR/coder-handoffs/$SESSION_ID
 # Metadata-only maintenance: reclaims admin entries for directories that were
 # already deleted by hand. Never removes working files.
 git worktree prune 2>/dev/null || true
+
+# Ensure origin/main is current before deriving any worktree from it
+git fetch origin main --prune
 
 # Resume: reuse worktree/branch as-is; create from origin/main only if neither exists
 if [ -f "$WORKTREE/.git" ]; then :
@@ -170,7 +173,7 @@ After SCOUT completes, verify handoff exists:
 jq -c . $HANDOFF/01a-research-scout.json || echo "ERROR: scout handoff missing"
 ```
 
-If missing: per Retry Policy, retry SCOUT once; on second failure STOP and report. Do not proceed.
+If missing: re-spawn SCOUT per Retry Policy.
 
 **Say:** "Scout complete. Spawning GUARD research agent (session: $SESSION_ID)..."
 
@@ -199,7 +202,7 @@ After GUARD completes, verify handoff exists:
 jq -c . $HANDOFF/01b-research-guard.json || echo "ERROR: guard handoff missing"
 ```
 
-If missing: per Retry Policy, retry GUARD once; on second failure STOP and report. Do not proceed.
+If missing: re-spawn GUARD per Retry Policy.
 
 After both agents complete:
 1. Verify handoff files exist: `ls $HANDOFF/01*.json`; read both and synthesize agreements, tensions, recommendations
@@ -270,7 +273,7 @@ Goose: delegate parameters per Handoff Protocol.
 Invoke the `coder-build` agent via Task tool with the filled-in prompt.
 
 After BUILD completes:
-1. Verify handoff exists: `jq -c . $HANDOFF/03-build.json`. If missing: per Retry Policy, re-spawn BUILD once; on second failure STOP.
+1. Verify handoff exists: `jq -c . $HANDOFF/03-build.json`. If missing: re-spawn BUILD per Retry Policy.
 2. Read `$HANDOFF/03-build.json` and present summary and test results.
 3. Proceed immediately to CHECK (no gate).
 
@@ -306,7 +309,7 @@ After CHECK completes:
 1. Read `$HANDOFF/04-validation.json` and present verdict.
 2. **If PASS:** Proceed immediately to PR REVIEW & READY (no gate).
 3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to PR REVIEW & READY, or address notes first?"
-4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" Per Retry Policy, after a second BUILD+CHECK failure: STOP.
+4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" Per Retry Policy: second BUILD+CHECK failure = STOP.
 
 ---
 
@@ -318,9 +321,11 @@ Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **A
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
 - `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD once per Retry Policy, then re-spawn CHECK. If the second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 
+**CI gate:** after `gh pr ready`, wait on `gh pr checks <PR_URL> --watch` asynchronously per Retry Policy. Green: report done. Red: write failing check names into `04-validation.json` as `retry_instructions` and re-run BUILD+CHECK per Retry Policy.
+
 **Inline review comments:** after the review gate, fetch inline comments via `gh api repos/{owner}/{repo}/pulls/{n}/comments`. Delegate fixes (BUILD re-spawn per Retry Policy), then resolve each thread once fixed. Wait on gate completion asynchronously per Retry Policy.
 
-**Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash --auto -A "$(git config user.email)"`.
+**Merge (explicit user request only):** `gh pr merge <PR_NUMBER> --squash --auto -A "$(git config user.email)"`. For multiple PRs, order by dependencies inferred from issue cross-references, PR bases, and handoff plans; after each merge, rebase dependents and re-run the CI gate.
 After the PR merges, clean up this session's own worktree and branch (own-session cleanup only -- never other sessions'):
 
 ```bash
