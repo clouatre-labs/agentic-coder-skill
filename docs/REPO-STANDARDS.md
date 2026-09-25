@@ -15,7 +15,7 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.github/ISSUE_TEMPLATE/` | Structured issue templates | repo |
 | `.github/instructions/` | VS Code / Copilot scoped instruction files (applyTo pattern) | repo |
 | `.github/PULL_REQUEST_TEMPLATE.md` | PR template | repo |
-| `.github/workflows/ci.yml` | Two jobs: `coder-agents-drift` verifies generated coder agents via `scripts/generate-coder-agents.sh --check`, and `lint-commits` runs commitlint over every PR commit; both feed the required `Coder agents drift` and `Lint Commits` checks | repo |
+| `.github/workflows/ci.yml` | Two jobs: `coder-agents-drift` verifies generated coder agents via `scripts/generate-coder-agents.sh --check`, and `lint-commits` runs commitlint over every PR commit; `coder-agents-drift` is not itself a required ruleset check — it runs in `ci.yml` and its result is gated through the `CI Result` aggregate check, which is the required check | repo |
 | `.github/workflows/markdown-lint.yml` | Lints all Markdown on pull requests targeting `main` (pull_request-only, no push trigger) with markdownlint-cli2; runs with narrowed `contents: read` permissions | repo |
 | `.github/workflows/security.yml` | Sequential trufflehog and zizmor steps in a single required `Security Result` job | repo |
 | `.github/workflows/scheduled-security-audit.yml` | Weekly scheduled zizmor security audit | repo |
@@ -137,7 +137,7 @@ jobs:
 
 **trufflehog `--only-verified` flag.** TruffleHog's detector set matches a broad set of patterns and generates false positives on test fixtures, redacted excerpts, and example strings embedded in documentation, which are common in an engagement repo that quotes API responses and config examples. `--only-verified` instructs TruffleHog to attempt live verification against the issuing service before reporting a finding; only credentials confirmed active are surfaced. This keeps the signal-to-noise ratio high enough that the job does not become routine noise to bypass.
 
-**Why TruffleHog over gitleaks.** `gitleaks/gitleaks-action` requires a `GITLEAKS_LICENSE` org secret for any repo belonging to a GitHub organisation (a free Starter tier is available but requires registration and adds a per-repo secret-management dependency). TruffleHog's official GitHub Action has no per-organisation licensing gate, making it the practical default for a reusable template targeting organisation-owned repos. The gitleaks CLI itself is MIT-licensed and suitable for local use; the licensing constraint is specific to the `gitleaks-action` wrapper. gitleaks has since been succeeded by Betterleaks (by the original gitleaks author), but no official Betterleaks GitHub Action exists yet, so TruffleHog remains the practical CI default.
+**Why TruffleHog over gitleaks.** `gitleaks/gitleaks-action` requires a `GITLEAKS_LICENSE` org secret for any repo belonging to a GitHub organisation (a free Starter tier is available but requires registration and adds a per-repo secret-management dependency). TruffleHog's official GitHub Action has no per-organisation licensing gate, making it the practical default for a reusable template targeting organisation-owned repos. The gitleaks CLI itself is MIT-licensed and suitable for local use; the licensing constraint is specific to the `gitleaks-action` wrapper. gitleaks has since been succeeded by [Betterleaks](https://github.com/betterleaks/betterleaks) (created by gitleaks' original author, announced March 2026), but no official Betterleaks GitHub Action exists yet, so TruffleHog remains the practical CI default.
 
 **`fetch-depth: 0` for trufflehog.** GitHub Actions clones repos with `--depth 1` by default, exposing only the tip commit. A developer who commits a credential and then removes it in a subsequent commit leaves the secret accessible in the git object store but invisible in a shallow clone. TruffleHog requires the complete commit graph to scan all reachable commits. In `security.yml` the zizmor step shares this same `fetch-depth: 0` checkout, so the single full clone serves both steps. A shallow clone is only used in `scheduled-security-audit.yml`, where zizmor needs just the current state of `.github/workflows/`.
 
@@ -149,7 +149,7 @@ jobs:
 
 **`subject-case`, `body-max-line-length`, and `footer-leading-blank` disabled in `.commitlintrc.yml`.** `@commitlint/config-conventional` enforces lowercase commit subjects, a 100-character body line limit, and a blank line before the footer, but none of these rules are part of the Conventional Commits spec; all are opinions layered on top by the preset. Every automated tool in the ecosystem (Dependabot, Renovate, release-please, GitHub Copilot) generates sentence-case subjects (e.g. "Bump the actions group with 2 updates") and embeds full changelogs in commit bodies that routinely exceed 100 characters. `footer-leading-blank` is cosmetic and not in the spec. These three rules are disabled at severity 0 so bot-generated commits pass CI without whitelisting individual actors. All structural rules remain enforced: `type-enum`, `type-case`, `scope-case`, `header-max-length`, `body-leading-blank`, and `subject-full-stop`.
 
-**Runner pinning to ubuntu-26.04-arm.** `ubuntu-latest` is a moving alias; GitHub advances it to the next LTS image with short notice. Pinning to a specific image (`ubuntu-26.04-arm`) makes toolchain changes explicit and reviewable rather than silent. The `-arm` suffix selects GitHub's ARM64 runner fleet, which provides equivalent performance to x86 at lower cost and avoids contention on the oversubscribed x86 pool. Renovate keeps the pin current via automated PRs.
+**Runner pinning to ubuntu-26.04-arm.** `ubuntu-latest` is a moving alias; GitHub advances it to the next LTS image with short notice. Pinning to a specific image (`ubuntu-26.04-arm`) makes toolchain changes explicit and reviewable rather than silent. The `-arm` suffix selects GitHub's ARM64 runner fleet, which provides equivalent performance to x86 at lower cost and avoids contention on the oversubscribed x86 pool. Renovate keeps the pin current via automated PRs. `ubuntu-26.04-arm` is a supported GitHub-hosted runner label; this repository's own `security.yml` and `ci.yml` jobs run on it successfully on `main`.
 
 **Permissions-first sequencing.** The org default GITHUB_TOKEN permission was flipped to `read` on 2026-03-25. New repos work without per-workflow blocks, but explicit blocks are still required as defence in depth and should be placed before the first `jobs:` key by convention for readability. Per-workflow pattern for CI: `contents: read` / `pull-requests: read`. Minimum required permissions set per job; jobs using `actions/checkout` need at least `contents: read`.
 
@@ -199,8 +199,7 @@ These steps replicate all controls to any new engagement repo under `github.com/
      -F verified_allowed=false \
      --field 'patterns_allowed[]=DavidAnson/markdownlint-cli2-action@*' \
      --field 'patterns_allowed[]=trufflesecurity/trufflehog@*' \
-     --field 'patterns_allowed[]=zizmorcore/zizmor-action@*' \
-     --field 'patterns_allowed[]=ossf/scorecard-action@*'
+     --field 'patterns_allowed[]=zizmorcore/zizmor-action@*'
    ```
 
    *Code Snippet 7: Set the selected-actions allowlist. Add entries for any additional third-party actions the new repo uses.*
