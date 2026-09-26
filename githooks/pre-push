@@ -4,6 +4,10 @@ set -euo pipefail
 # Protected branches pattern
 PROTECTED_BRANCHES="^(main|master|release/.*)$"
 
+# Advisory: warn on session-placeholder branches (per issue #914 guardrail)
+SESSION_BRANCHES="^feat/session-[0-9]+$"
+
+# shellcheck disable=SC2034  # hook stdin contract: read all four fields
 while read -r local_ref local_sha remote_ref remote_sha; do
     remote_branch="${remote_ref#refs/heads/}"
     
@@ -11,6 +15,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         echo "BLOCKED: Direct push to protected branch '$remote_branch'"
         echo "  Use a feature branch and create a PR instead."
         exit 1
+    fi
+    
+    if [[ "$remote_branch" =~ $SESSION_BRANCHES ]]; then
+        echo "WARNING: Pushing session placeholder branch '$remote_branch'"
+        echo "  Branches must be derived from 02-plan.json (see SKILL.md Branch derivation)."
+        echo "  CI's placeholder-branch job will fail PRs from ^feat/session-[0-9]+\$."
     fi
 done
 

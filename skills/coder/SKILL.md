@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.23.0"
+version: "3.24.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -35,13 +35,13 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 7. **Provider errors** - follow the Retry Policy's provider fallback; never swap the model or work inline.
 8. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
 9. **Third-party transit** - Coder pipeline judgments (tier classification via the `judge` tool) transit api.typesafe.ai, a third-party service. The handoff degeneracy gate is deterministic (`gzip -9` compression ratio) and makes no API call. The auth token is inherited via the shell env; never write it to files or handoffs.
-10. **Tier classification via propose/validate** - Requires the `judge` tool from the `typesafe` MCP server (bin `decisions-judge-mcp` on PATH and registered in the orchestrator; source at https://github.com/clouatre-labs/decisions-judge-mcp). The orchestrator **proposes** a tier inline by checking Constraint #2's tier definitions against observable repo facts (file count, diff size via `git diff --stat`, docs-vs-code) -- a deterministic lookup, no LLM call, no pre-filter heuristics. One judge call then **validates** the proposal; criteria mirror Constraint #2's tier definitions verbatim (incl. the 50-line rule):
+10. **Tier classification via propose/validate** - Requires the `judge` tool from the `typesafe` MCP server (bin `decisions-judge-mcp` on PATH and registered in the orchestrator; source at https://github.com/clouatre-labs/decisions-judge-mcp). The orchestrator **proposes** a tier inline by checking Constraint #2's tier definitions against observable repo facts (file count, diff size via `git diff --stat`, docs-vs-code) -- a deterministic lookup, no LLM call, no pre-filter heuristics. One judge call per session then **validates** all proposals (one `tier_<issue>` question per issue); criteria mirror Constraint #2's tier definitions verbatim (incl. the 50-line rule):
 
     ```json
     {"state": {"issue_text": "...", "proposed_tier": "simple|medium|complex", "evidence": {"files_changed": 0, "lines_changed": 0}}, "questions": {"tier": {"type": "choice", "instructions": "<Constraint #2 tier definitions, verbatim>", "criteria": {"confirm": "<proposed tier matches the definitions>", "promote": "<change warrants one tier higher>", "demote": "<one tier lower suffices>"}}}}
     ```
 
-    The judge-tool call is `{state, questions}` exactly as shown (no extra keys). `"stage": "tier"` appears only in the classify log line below.
+    The judge-tool call is `{state, questions}` exactly as shown (no extra keys). `"stage": "tier"` appears only in the classify log lines below -- with an `issue` field.
 
     The answer is **final**: `confirm`/`promote`/`demote` maps directly to the tier (clamp to the ladder: `promote` from complex stays complex, `demote` from simple stays simple) -- no escalation rules, no confidence thresholds, no post-processing. **Fallback (never fatal):** on judge-tool unavailability, API failure, or a `{fallback: true}` envelope, take the orchestrator's proposal as-is and log with `fallback: true`; Constraint #2's "choose the higher one" tie-break applies only here. Research-genre issues: propose at PLAN time (post-research) from researched facts instead of issue text. **Mandatory:** after classification, append one classify JSON line `{stage: "tier", tier, proposed_tier, confidence, fallback}` to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl`; legacy lines lacking `stage`/`proposed_tier` remain valid for log consumers; never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted.
 
@@ -158,8 +158,8 @@ Handoff dir: <HANDOFF>
 Issue: <ISSUE_URL>
 Entry points: <SOURCE_DIR>, <FILE_OR_SYMBOL_FROM_ISSUE>
 Output: write <HANDOFF>/01a-research-scout.json (compact: jq -c .), then run `jq empty <HANDOFF>/01a-research-scout.json`; non-zero exit means fix and rewrite before stopping.
-Validation: per Handoff Validation, check `recommendation` (jq -r), `conventions` (jq -c), `file_structure_summary` (jq -c).
-Schema fields: session_id, file_structure_summary, lens, relevant_files, conventions, patterns, approaches, recommendation.
+Validation: per Handoff Validation, check `recommendation` (jq -r), `conventions` (jq -c), `file_structure_summary` (jq -c), `premise` (jq -c).
+Schema fields: session_id, file_structure_summary, lens, premise, relevant_files, conventions, patterns, approaches, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
 
@@ -187,8 +187,8 @@ Handoff dir: <HANDOFF>
 Scout handoff: <HANDOFF>/01a-research-scout.json
 Verification targets: <2-3 specific checks from scout's findings: blast radius claims to verify, API surfaces to confirm>
 Output: write <HANDOFF>/01b-research-guard.json (compact: jq -c .), then run `jq empty <HANDOFF>/01b-research-guard.json`; non-zero exit means fix and rewrite before stopping.
-Validation: per Handoff Validation, check `recommendation` (jq -r), `risk_analysis` (jq -c), `warnings` (jq -c).
-Schema fields: session_id, lens, scout_verification, risk_analysis, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
+Validation: per Handoff Validation, check `recommendation` (jq -r), `risk_analysis` (jq -c), `warnings` (jq -c), `issue_risk` (jq -c).
+Schema fields: session_id, lens, scout_verification, risk_analysis, issue_risk, safety_ranking, implementation_constraints, guard_test_gaps, warnings, recommendation.
 Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 ```
 
@@ -206,7 +206,23 @@ If missing: re-spawn GUARD per Retry Policy.
 
 After both agents complete:
 1. Verify handoff files exist: `ls $HANDOFF/01*.json`; read both and synthesize agreements, tensions, recommendations
-2. Present: problem, files, conventions, approaches with risk
+2. **Premise gate (GATE)** -- applies at every tier that runs SCOUT (medium runs it without GUARD: treat `issue_risk` as none found). From scout's `premise` combined with guard's `issue_risk`:
+   - `falsified` or `blocked` (evidence-backed): STOP and ASK the user before PLAN; present the evidence and a proposed restatement -- unless the judge (item 3) softens the stop to `diverges`.
+   - `diverges` (mechanism- or outcome-level): proceed autonomously; the deviation MUST appear as a "Deviation from issue" section in the PR body later (restated outcome, chosen approach, why it beats the ask) -- CHECK enforces this (medium tier: Ship step verifies via `jq -r '.premise.need.verdict'` on the scout handoff).
+   - `sound` and no guard outcome-alternative: proceed silently.
+3. **Premise judge (confirm-ride, one call)** -- propose the verdict inline from the recorded fields, then validate via one `judge` call; payload, thresholds, and field definitions are normative in `agents-shared/premise-gate.schema.json` (`x-gate-rules`):
+
+    ```json
+    {"state": {"outcome": "...", "evidence": "...", "consumer": "...", "preconditions": "...", "issue_ask": "...", "issue_risk": "..."}, "questions": {"premise_consistent": {"type": "noul", "instructions": "Is the issue's premise consistent with this evidence?"}, "verdict": {"type": "choice", "instructions": "Which direction does the evidence support?", "criteria": {"proceed": "premise sound", "proceed_with_deviation": "a materially better mechanism or outcome exists"}}}}
+    ```
+
+    Mapping: `proceed`→`sound`, `proceed_with_deviation`→`diverges`. **Stop rules** (decided by the noul arm only; the choice arm never decides stops):
+    - scout `falsified`/`blocked` + noul ≤ 0.3 → STOP before PLAN with evidence and proposed restatement; noul > 0.3 → soften to `diverges` (proceed, mandatory "Deviation from issue" section per the GATE rules above).
+    - scout `sound` → proceed regardless of noul; the judge never creates a stop. noul ≥ 0.7 on scout-`sound` → surface scout-judge disagreement at the presentation step.
+
+    The question is asked predicate-positive per `x-gate-rules.polarity`. **Fallback:** never fatal -- judge unavailable, API failure, or `{fallback: true}` envelope → scout's verdict stands, log `fallback: true`. **Log:** append `{stage: "premise", verdict, proposed_verdict, consistent, fallback, gate_decision}` (`gate_decision`: stop|soften|proceed) to the same jsonl as Constraint #10 -- fallback or not (the log line is mandatory on fallback too). **Verify:** the append must land: `grep -c '"stage":"premise"'` must exceed the pre-run count, else the step was skipped -- go back and run it.
+
+4. Present: problem, files, conventions, approaches with risk
 
 **Say:** "Proceeding with: [approach and rationale]." Then proceed to PLAN.
 
@@ -279,7 +295,7 @@ After BUILD completes:
 
 ---
 
-**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section), opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review` as the automated gate. Then continue to PR REVIEW & READY.
+**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review` as the automated gate. Then continue to PR REVIEW & READY.
 
 ## Phase 4: CHECK [AGENT]
 
@@ -317,7 +333,7 @@ After CHECK completes:
 
 Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **ASK** user.
 
-`pr_url` present: CHECK created draft PR (or the medium-tier Ship step did). Run `aptu pr review <PR_URL> -o json`, waiting asynchronously per Retry Policy (background waiter subagent or harness notification -- never sequential sleeps).
+`pr_url` present: CHECK created draft PR (or the medium-tier Ship step did). If the premise gate recorded a `diverges`, the PR body MUST contain a "Deviation from issue" section (restated outcome, chosen approach, why it beats the ask) -- the orchestrator verifies its presence on medium tier (Ship step), CHECK on complex tier. Run `aptu pr review <PR_URL> -o json`, waiting asynchronously per Retry Policy (background waiter subagent or harness notification -- never sequential sleeps).
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
 - `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD once per Retry Policy, then re-spawn CHECK. If the second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 

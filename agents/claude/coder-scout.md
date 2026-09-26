@@ -39,6 +39,15 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
 9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
 
+## Phase0: Premise Check (before reading the issue's proposed mechanism)
+
+Two questions, evidence-backed. No evidence (file:line or issue ref) = no pass; `consumer: "unstated"` = NEED fails. Derive the outcome from repo evidence, not from the issue's wording.
+
+1. **NEED** -- state the outcome in one sentence BEFORE engaging the issue's proposed mechanism; identify who/what consumes or benefits from the change; verify the issue's factual claims against the codebase.
+2. **NOW** -- verify preconditions and cross-issue dependencies hold today (each: verified or unverified).
+
+Verdicts: `need.verdict` is `sound` (premise true, ask matches outcome), `diverges` (a materially better mechanism or outcome exists than the issue's ask), or `falsified` (premise contradicted by evidence); `now.verdict` is `ready` or `blocked` (precondition or dependency unmet).
+
 ## Phase1: Repo Structure
 
 Read README, CONTRIBUTING.md, manifest files; note layout, build system, CI.
@@ -61,7 +70,7 @@ Read issue thread, linked PRs; note maintainer preferences.
 
 ## Phase6: Propose Approaches
 
-Identify 2-3 approaches. For each: describe changes, pros/cons, complexity estimate. Include elegant option even if it touches more files.
+Generate approaches against the outcome from Phase0, not against the issue's ask. If the best approach to the outcome differs from the ask, set `need.verdict` to `diverges` and say how. Identify 2-3 approaches. For each: describe changes, pros/cons, complexity estimate. Include elegant option even if it touches more files.
 
 ## Output
 
@@ -76,6 +85,10 @@ Write `<HANDOFF>/01a-research-scout.json` via `edit_overwrite` (path from task i
   "conventions": {"commits": "...", "testing": "...", "linting": "...", "error_handling": "..."},
   "patterns": ["existing pattern 1"],
   "existing_coverage": ["test_name_1: one-line behavior description"],
+  "premise": {
+    "need": {"verdict": "sound|diverges|falsified", "outcome": "<one-sentence outcome, distinct from the issue's mechanism>", "evidence": ["<file:line or issue ref>"], "consumer": "<who/what consumes or benefits; 'unstated' fails the check>"},
+    "now": {"verdict": "ready|blocked", "preconditions": ["<repo fact the issue assumes: verified or unverified>"]}
+  },
   "approaches": [
     {"name": "...", "description": "...", "pros": [], "cons": [], "complexity": "simple|medium|complex", "files_touched": 0}
   ],
