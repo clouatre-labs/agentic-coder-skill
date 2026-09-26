@@ -99,7 +99,7 @@ git log --show-signature -1  # Verify GPG + DCO
 git push origin <branch>
 ```
 
-Write `<HANDOFF>/pr-body.md` via `edit_overwrite` (literal handoff path) from the target repo's PR template if one exists (`.github/PULL_REQUEST_TEMPLATE*`), filling every section (Related Issues: `Closes #N`; Checklist: tick applicable boxes); otherwise use `## Summary` / `## Changes` / `## Test plan`. No hard line breaks inside sentences.
+Write `<HANDOFF>/pr-body.md` via `edit_overwrite` (literal handoff path) from the target repo's PR template if one exists (`.github/PULL_REQUEST_TEMPLATE*`), filling every section (Related Issues: `Closes #N`; Checklist: tick applicable boxes); otherwise use `## Summary` / `## Changes` / `## Test plan`. No hard line breaks inside sentences. If the scout handoff (`01a-research-scout.json`) records `premise.need.verdict: "diverges"`, the PR body MUST contain a `## Deviation from issue` section (restated outcome, chosen approach, why it beats the ask); missing section = FAIL.
 
 Verify the file was written before proceeding:
 

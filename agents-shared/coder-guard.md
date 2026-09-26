@@ -54,7 +54,7 @@ Verify API claims before flagging non-existent; unverified blockers are themselv
 
 ## Phase4: Re-rank by Safety
 
-Rank safest to riskiest; prefer minimal viable diff. If all high risk, propose safer alternative.
+Rank safest to riskiest; prefer minimal viable diff. If all high risk, propose safer alternative. Also answer once, with repo evidence only: is there an outcome-level alternative the issue forecloses? (nothing parses X, no consumer of Y, a cheaper mechanism serves the same outcome). Record in `issue_risk`; judgment-level alternatives (aesthetics, taste) are out of scope.
 
 ## Phase5: Implementation Constraints
 
@@ -81,6 +81,7 @@ Write `<HANDOFF>/01b-research-guard.json` via `edit_overwrite` (path from task i
       "edge_cases": ["edge case 1"]
     }
   ],
+  "issue_risk": {"outcome_alternative": "<evidence-backed better mechanism or outcome the issue forecloses, or 'none found'>", "evidence": ["<file:line or ref>"]},
   "safety_ranking": ["approach name (safest)", "approach name (riskiest)"],
   "implementation_constraints": ["must do X", "must not do Y"],
   "guard_test_gaps": [{"function": "<production function or component>", "predicate": "one-line behavior description", "tag": "happy_path|edge_case"}],

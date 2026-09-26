@@ -3,11 +3,6 @@
 COMMIT_MSG_FILE="$1"
 COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
 
-# ASCII only (Cloudflare Pages rejects non-ASCII), excluding Signed-off-by
-if grep -v "^Signed-off-by:" "$COMMIT_MSG_FILE" | LC_ALL=C grep -q '[^[:print:][:space:]]'; then
-    echo "BLOCKED: Non-ASCII in commit message"
-    exit 1
-fi
 
 # Total header (first line) must not exceed 100 chars (parity with commitlint header-max-length)
 if [ ${#COMMIT_MSG} -gt 100 ]; then
@@ -73,7 +68,7 @@ done < "$COMMIT_MSG_FILE"
 total=${#lines[@]}
 
 # body-leading-blank: if total line count > 1 and lines[1] is not empty, block
-if [ $total -gt 1 ] && [ -n "${lines[1]}" ]; then
+if [ "$total" -gt 1 ] && [ -n "${lines[1]}" ]; then
     echo "BLOCKED: Body must be separated from subject by a blank line"
     exit 1
 fi

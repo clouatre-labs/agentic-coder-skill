@@ -1,0 +1,9 @@
+#!/bin/bash
+# Auto-append DCO Signed-off-by trailer so no commit path can forget it.
+# Covers -m, --amend, rebase, and tooling that shells out to git commit.
+# The commit-msg hook still verifies presence and identity match.
+
+COMMIT_MSG_FILE="$1"
+
+SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+grep -qs "^$SOB" "$COMMIT_MSG_FILE" || printf '\n%s\n' "$SOB" >> "$COMMIT_MSG_FILE"

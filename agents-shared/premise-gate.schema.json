@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/clouatre-labs/agentic-coder-skill/main/agents-shared/premise-gate.schema.json",
+  "title": "Premise gate",
+  "description": "Normative contract for the coder-skill premise gate (PRs #946/#947). Two consumers: (1) this document IS a JSON Schema (draft-07) validating one premise telemetry record from the coder jsonl ($CODER_LOG_DIR/$(hostname -s).jsonl); (2) the x-gate-rules extension holds the normative judge constants -- the prose in SKILL.md references this file instead of restating field names or thresholds. Changing anything in x-gate-rules requires re-running scripts/premise-gate-battery.sh (9-state smoke battery, audit #946 section 5.6) before merge.",
+  "type": "object",
+  "required": ["stage", "verdict", "fallback"],
+  "properties": {
+    "stage": { "const": "premise" },
+    "verdict": {
+      "description": "Scout's premise verdict after the judge confirm-ride (post-softening).",
+      "enum": ["sound", "diverges", "falsified", "blocked"]
+    },
+    "proposed_verdict": {
+      "description": "Judge choice-arm answer: proceed | proceed_with_deviation. Absent on fallback.",
+      "enum": ["proceed", "proceed_with_deviation"]
+    },
+    "consistent": {
+      "description": "Judge premise_consistent noul (0..1), predicate-positive wording per x-gate-rules.question. Absent on fallback.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "fallback": {
+      "description": "true when the judge was unavailable/failed and scout's verdict stood.",
+      "type": "boolean"
+    },
+    "gate_decision": {
+      "description": "What the orchestrator actually did: stop (before PLAN), soften (falsified/blocked -> diverges), proceed. Recorded so audit #946 section 7 checkpoints can compute firing rate and stop precision without re-deriving from threshold prose.",
+      "enum": ["stop", "soften", "proceed"]
+    },
+    "ts": { "type": "number" },
+    "session": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "fallback": { "const": false } } },
+      "then": { "required": ["proposed_verdict", "consistent", "gate_decision"] }
+    },
+    {
+      "if": { "properties": { "fallback": { "const": true } } },
+      "then": {
+        "properties": { "proposed_verdict": { "const": null }, "consistent": { "const": null } }
+      }
+    }
+  ],
+  "x-gate-rules": {
+    "question": "Is the issue's premise consistent with this evidence?",
+    "polarity": "predicate-positive -- the dangerous 'yes' must mean proceed, never stop (audit #946 section 5.6; arXiv 2306.08189, 2601.13537, 2509.08480)",
+    "stop_threshold": 0.3,
+    "stop_rule": "scout falsified/blocked stands as a stop only if premise_consistent noul <= stop_threshold; above it the stop softens to diverges",
+    "never_create_stop": "scout sound proceeds as sound regardless of noul; the judge may confirm or soften a stop but never create one",
+    "disagreement_threshold": 0.7,
+    "disagreement_rule": "noul >= disagreement_threshold on a scout-sound verdict is surfaced as scout-judge disagreement at presentation",
+    "choice_arm": "separates proceed from proceed_with_deviation only; NEVER decides stops",
+    "fallback": "never fatal: judge unavailable/API failure/{fallback: true} envelope -> scout's verdict stands, log fallback: true",
+    "telemetry": "{stage: 'premise', verdict, proposed_verdict, consistent, fallback, gate_decision} appended to the same jsonl as SKILL.md Constraint #10; never block on logging failures; on fallback omit proposed_verdict/consistent or set them to null"
+  }
+}

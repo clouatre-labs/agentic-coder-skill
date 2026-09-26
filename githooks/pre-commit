@@ -1,15 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Block commits directly on protected branches
-CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || true)
-PROTECTED_BRANCHES="^(main|master|release/.*)$"
-if [[ "$CURRENT_BRANCH" =~ $PROTECTED_BRANCHES ]]; then
-    echo "BLOCKED: Cannot commit directly on '$CURRENT_BRANCH'"
-    echo "  Create a feature branch: git checkout -b feat/your-change"
-    exit 1
-fi
-
+# Protected-branch enforcement lives in pre-push only (single enforcement point:
+# a commit on main can never be pushed, and blocking commits there also blocks
+# legitimate local history use like fixes on main before branching).
 AUTHOR_EMAIL=$(git config user.email || echo "")
 AUTHOR_KEY=$(git config user.signingkey || echo "")
 
@@ -100,19 +94,38 @@ for _var in GIT_AUTHOR_NAME GIT_COMMITTER_NAME; do
     fi
 done
 
-# Scan staged changes for secrets
-if command -v gitleaks &>/dev/null; then
-    if ! gitleaks git --staged --verbose; then
-        echo "BLOCKED: gitleaks detected secrets in staged changes"
+# Scan staged changes for secrets (betterleaks, gitleaks successor; same
+# CLI/config semantics). Config precedence: repo's own .gitleaks.toml if
+# present (betterleaks inherits gitleaks config discovery), else this hook
+# directory's baseline config (githooks/betterleaks.toml); if neither
+# exists, built-in defaults.
+if command -v betterleaks &>/dev/null; then
+    HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+    REPO_ROOT="$(git rev-parse --show-toplevel)"
+    if [[ -f "$REPO_ROOT/.gitleaks.toml" ]]; then
+        SECRETS_ARGS=(-c "$REPO_ROOT/.gitleaks.toml")
+    elif [[ -f "$HOOK_DIR/betterleaks.toml" ]]; then
+        SECRETS_ARGS=(-c "$HOOK_DIR/betterleaks.toml")
+    else
+        SECRETS_ARGS=()
+    fi
+    SECRETS_SCAN=(betterleaks git --staged --verbose)
+    if ! "${SECRETS_SCAN[@]}" "${SECRETS_ARGS[@]}"; then
+        echo "BLOCKED: ${SECRETS_SCAN[0]} detected secrets in staged changes"
         echo "Bypass with caution: git commit --no-verify"
         exit 1
     fi
 fi
 
-# Lint staged markdown files
+# Lint staged markdown files only when the repo has no markdownlint config of
+# its own (the fallback config below is for config-less repos). When the repo
+# ships its own config, its CI is authoritative and linting here duplicates it.
 if command -v bun &>/dev/null; then
+    REPO_ROOT="$(git rev-parse --show-toplevel)"
     STAGED_MD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' || true)
-    if [[ -n "$STAGED_MD" ]]; then
+    # markdownlint-cli2 discovers any .markdownlint* config in the repo root;
+    # if one exists, its CI is authoritative and the fallback would duplicate it.
+    if [[ -z "$(compgen -G "$REPO_ROOT/.markdownlint*")" && -n "$STAGED_MD" ]]; then
         ARGS=()
         while IFS= read -r f; do
             ARGS+=(":$f")

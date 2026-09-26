@@ -1,0 +1,17 @@
+# Personal baseline secret-scan config for betterleaks (gitleaks successor,
+# same config format), used by the pre-commit hook when a repo has no
+# .gitleaks.toml of its own. Repos that ship .gitleaks.toml take precedence
+# (the hook passes -c explicitly).
+[extend]
+useDefault = true
+
+# Catches secrets stored in plist/XML style (key and value on separate
+# lines), which the default generic-api-key rule misses. Closes the same
+# gap as goose-metrics' .gitleaks.toml (incident 2026-09).
+[[rules]]
+id = "xml-sensitive-value"
+description = "High-entropy value under a sensitive XML <key> (plist/LaunchAgent style secrets)"
+regex = '''(?i)<key>[^<]*(token|secret|password|passwd|api[_-]?key|credential)[^<]*</key>\s*<string>([A-Za-z0-9+/=_.~-]{32,})</string>'''
+secretGroup = 2
+entropy = 3.5
+keywords = ["<key>", "<string>"]
