@@ -328,6 +328,7 @@ The hooks in `githooks/` are local, opt-in tooling: enable them via `git config 
 - `pre-commit` identity checks expect the committer's `~/.gitconfig*` identity files to define a `signingkey`. Contributors without that setup will be blocked from committing and should bypass (`--no-verify`) or adapt the hook locally.
 - `agents-shared/premise-gate.schema.json` carries an `$id` pointing at this repo's canonical location; adjust it if you fork.
 - The premise-gate CI battery and coder-log validator used upstream are not bundled here; schema validity can be checked with `jq empty`.
+- aptu integration is optional: the `aptu-*` GitHub workflows under `.github/` and the `aptu-coder` extension referenced by the skill and agents can be removed without affecting the pipeline's runtime dependencies.
 
 ## Tooling
 
