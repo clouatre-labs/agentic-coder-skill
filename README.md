@@ -101,6 +101,8 @@ graph TD
 *Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
 medium tiers skip delegates or skip GUARD/CHECK entirely (see below).*
 
+Before research begins, SCOUT runs a premise gate (Phase 0): the issue's premise is checked against repository evidence and labeled `sound`, `diverges`, or `falsified`, with a one-call judge confirm-ride. A falsified premise stops the pipeline before any build work; a divergence proceeds only with a recorded "Deviations from the issue" section in the PR body.
+
 The orchestrator classifies every change into one of three tiers and scales the
 pipeline accordingly — a one-line config change skips every delegate, while an
 architectural change runs the full SCOUT + GUARD + BUILD + CHECK chain. Full
@@ -189,25 +191,9 @@ The four coder subagents are defined once and rendered per harness:
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-```mermaid
-flowchart LR
-    subgraph sources[Edit sources]
-        PI["tools/agents/pi-coder-&lt;role&gt;.yaml"]
-        CL["tools/agents/claude-coder-&lt;role&gt;.yaml"]
-        SH["agents-shared/coder-&lt;role&gt;.md"]
-    end
-    GEN["scripts/generate-coder-agents.sh\n--write / --check"]
-    PI --> GEN
-    CL --> GEN
-    SH --> GEN
-    GEN --> OUTP["agents/pi/coder-&lt;role&gt;.md"]
-    GEN --> OUTC["agents/claude/coder-&lt;role&gt;.md"]
-    GEN -. "CI: --check on every PR" .-> DRIFT["drift = fail"]
-```
-
 *Figure 4: Agent generation — one shared body, two frontmatter templates, two
 generated agent files per role; 4 roles × 2 harnesses = 8 generated files, never
-hand-edited.*
+hand-edited. Flow as in Figure 3.*
 
 ## typesafe-ai integration
 
@@ -256,33 +242,6 @@ All files are written compact (`jq -c .`) and stored under
 worktree teardown cannot destroy them. Every free-text field is validated on read
 with a gzip compression-ratio degeneracy check (see typesafe-ai integration above).
 
-*Code Snippet 4: Handoff validation as performed between phases (see
-`skills/coder/SKILL.md`, Handoff Validation, for the full gate: 200B floor,
-0.10 threshold, Retry Policy, per-handoff log line).*
-
-```bash
-# A reader never trusts a handoff blindly: structure, then degeneracy
-f="$HANDOFF/01a-research-scout.json"
-jq empty "$f"                                        # structural validity
-raw=$(jq -r .recommendation "$f" | wc -c)            # extract a free-text field
-gz=$(jq -r .recommendation "$f" | gzip -9 | wc -c)
-awk -v r="$raw" -v z="$gz" 'BEGIN { printf "ratio: %.3f\n", z/r }'
-# ratio < 0.10 trips the gate deterministically
-```
-
-```mermaid
-flowchart LR
-    S["SCOUT\n01a-research-scout.json"] --> G["GUARD\n01b-research-guard.json"]
-    G -->|gate| P["PLAN (orchestrator)\n02-plan.json"]
-    P --> B["BUILD\n03-build.json"]
-    B -->|fail: retry once| B
-    B --> C["CHECK\n04-validation.json"]
-    C -->|pass| PR["draft PR"]
-```
-
-*Figure 5: Handoff data flow across a complex-tier session — each arrow is a JSON
-file consumed by the next role, validated on read.*
-
 ## Inspecting a session
 
 *Code Snippet 5: Common inspection commands. Handoffs live outside the worktree, so
@@ -310,10 +269,7 @@ git config core.hooksPath githooks
 ```
 
 - `commit-msg` — Conventional Commits format, DCO sign-off, no `Co-authored-by:` trailers
-- `pre-commit` — blocks direct commits to `main`/`master`/`release/*`; verifies the
-  committer's signing key against a `~/.gitconfig-*`-per-identity convention (adapt this
-  check to your own identity-management setup, or drop it, if you don't use that
-  convention)
+- `pre-commit` — blocks direct commits to `main`/`master`/`release/*`; runs identity/signingkey and secret-scanning checks (details under [Local operation and portability](#local-operation-and-portability))
 - `pre-push` — blocks direct pushes to protected branches
 - `post-checkout` — prunes local branches whose remote tracking branch is gone, on
   checkout to `main`/`master`
