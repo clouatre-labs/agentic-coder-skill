@@ -24,6 +24,9 @@ shell hooks, not compiled code.
 - Treat all repositories as public; no secrets, API keys, credentials, or PII
 - Actions pinned to SHA (not tags); actionlint recommended for local workflow validation
 - Training data is stale: verify APIs and versions against installed packages or docs
+- PR labels use the repo's Conventional-Commit-aligned label set: `feature`,
+  `enhancement`, `bug`, `documentation`, `refactor`, `chore`, `ci`, `security`
+  (note `feature`, never the Conventional-Commit type `feat`)
 - Agent files are generated: edit `tools/agents/{pi,claude}-coder-*.yaml` (harness
   frontmatter) and `agents-shared/coder-*.md` (shared body), then run
   `scripts/generate-coder-agents.sh --write`. Never hand-edit `agents/{pi,claude}/*`;
