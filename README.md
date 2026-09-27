@@ -84,19 +84,7 @@ constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md
 
 ## Pipeline
 
-```mermaid
-graph TD
-    Setup[Setup] --> Scout[Scout]
-    subgraph Research
-        Scout --> Guard[Guard]
-    end
-    Guard -->|Gate| Plan[Plan]
-    Plan --> Build[Build]
-    Build -->|Fail: retry once| Build
-    Build -->|Pass| Check[Check]
-    Check -->|Fail| Stop[Stop & Ask]
-    Check -->|Pass| Review[PR Review]
-```
+![Scout/Guard/Build/Check pipeline](figures/fig-pipeline.svg)
 
 *Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
 medium tiers skip delegates or skip GUARD/CHECK entirely (see below).*
@@ -148,26 +136,7 @@ delegates.*
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
-```mermaid
-flowchart TD
-    SKILL["skills/coder/SKILL.md\nversioned pipeline spec"]
-    subgraph src[Edit sources]
-        SHARED["agents-shared/coder-&lt;role&gt;.md\nharness-agnostic bodies"]
-        TMPL["tools/agents/{pi,claude}-coder-&lt;role&gt;.yaml\nfrontmatter templates"]
-        GENSCRIPT["scripts/generate-coder-agents.sh"]
-    end
-    subgraph out[Generated — never hand-edit]
-        API["agents/pi/coder-&lt;role&gt;.md"]
-        ACL["agents/claude/coder-&lt;role&gt;.md"]
-    end
-    HOOKS["githooks/\ncommit-msg · pre-commit · pre-push · post-checkout"]
-    DOCS["docs/ · figures/\nsetup, standards, figure sources"]
-    SHARED -->|rendered by| GENSCRIPT
-    TMPL -->|rendered by| GENSCRIPT
-    GENSCRIPT --> API
-    GENSCRIPT --> ACL
-    SKILL --- src
-```
+![Project structure](figures/fig-project-structure.svg)
 
 *Figure 3: Project structure. Edit sources (top) are rendered into the generated
 agent files (bottom); the generation mechanics are detailed in Figure 4.*
@@ -189,21 +158,7 @@ The four coder subagents are defined once and rendered per harness:
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-```mermaid
-flowchart LR
-    subgraph sources[Edit sources]
-        PI["tools/agents/pi-coder-&lt;role&gt;.yaml"]
-        CL["tools/agents/claude-coder-&lt;role&gt;.yaml"]
-        SH["agents-shared/coder-&lt;role&gt;.md"]
-    end
-    GEN["scripts/generate-coder-agents.sh\n--write / --check"]
-    PI --> GEN
-    CL --> GEN
-    SH --> GEN
-    GEN --> OUTP["agents/pi/coder-&lt;role&gt;.md"]
-    GEN --> OUTC["agents/claude/coder-&lt;role&gt;.md"]
-    GEN -. "CI: --check on every PR" .-> DRIFT["drift = fail"]
-```
+![Agent generation flow](figures/fig-agent-generation.svg)
 
 *Figure 4: Agent generation — one shared body, two frontmatter templates, two
 generated agent files per role; 4 roles × 2 harnesses = 8 generated files, never
@@ -334,6 +289,7 @@ via `figures/fig-tier-pipeline.py`.*
 | gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
 | `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is ship work — Rule 8) |
 | `typesafe` MCP server (`decisions-judge-mcp`) | pipeline | tier classification via the `judge` tool (Choice question); npm package, source at clouatre-labs/decisions-judge-mcp |
+| Node 22+, network access to kroki.io | repo CI + local | Mermaid → Excalidraw figure pipeline: `sh scripts/figures/render-figures.sh` regenerates `figures/*.{excalidraw,svg}` from the `.mmd` sources; CI fails on drift (`--check`) |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
