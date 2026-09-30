@@ -131,7 +131,7 @@ delegates.*
 
 | Phase | Delegate | Model (pi / Claude Code) | Responsibility |
 |---|---|---|---|
-| SCOUT | `coder-scout` | `zai/glm-5.3-flash` / `haiku` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
+| SCOUT | `coder-scout` | `zai/glm-5.3-flash` / `sonnet` | Read-only research: relevant files, conventions, 2–3 candidate approaches |
 | GUARD | `coder-guard` | `zai/glm-5.3-flash` / `haiku` | Adversarial review of Scout's output: risk, blast radius, safety ranking |
 | PLAN | orchestrator | session model (not pinned here) | Implementation plan synthesizing Scout + Guard |
 | BUILD | `coder-build` | `zai/glm-5.3-flash` / `sonnet` | Implements the plan, runs test/lint/format. Large plans shard deterministically into parallel worktree-isolated shards, each gated on shard-scoped test/lint (never the judge); only passing shards merge, and CHECK then validates the merged diff once |
