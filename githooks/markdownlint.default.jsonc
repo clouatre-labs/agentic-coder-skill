@@ -1,0 +1,33 @@
+// Fallback markdownlint config used by githooks/pre-commit for any repo that
+// doesn't ship its own .markdownlint.jsonc / .markdownlint-cli2.jsonc.
+//
+// A repo-local config, if present, fully governs and this file is ignored
+// entirely for that repo -- verified empirically: as soon as any
+// .markdownlint.jsonc exists in the discovery path, it replaces this
+// --config base rather than merging with it. This is only the baseline for
+// otherwise-unconfigured repos, standing in for markdownlint-cli2's own
+// default (every rule on, including noisy ones like MD013/MD060) which is
+// what applies today with no config anywhere.
+{
+  "default": false,
+
+  // Trailing spaces: require exactly 2 for hard line breaks, forbid all others
+  "MD009": {
+    "br_spaces": 2,
+    "list_item_empty_lines": false,
+    "strict": false
+  },
+
+  // Blank line required around headings, fenced code, and lists
+  "MD022": true,
+  "MD031": true,
+  "MD032": true,
+
+  // Fenced code blocks must declare a language
+  "MD040": true,
+
+  // Horizontal rule style consistency (does not forbid HRs, just normalizes the token)
+  "MD035": {
+    "style": "---"
+  }
+}
