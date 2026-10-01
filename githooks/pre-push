@@ -23,4 +23,58 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     fi
 done
 
+# Copy-only gate for the public coder-skill mirror (clouatre-labs/agentic-coder-skill).
+# The mirror must be a mechanical rewrite of the private canonical repository; nothing else may diverge.
+# Allowed rewrites (documented in agentic-coder-skill README):
+#   1. Path prefix: config/agents-shared/ -> agents-shared/
+#   2. Schema $id: any raw.githubusercontent URL is replaced by the mirror's own URL
+# Generated agents (agents/{claude,pi}/) map from config/{claude}/agents/ fragments;
+# pi has no canonical equivalent and is skipped.
+mirror_remote=$(git config --get remote.origin.url 2>/dev/null || true)
+if [[ "$mirror_remote" == *"clouatre-labs/agentic-coder-skill"* ]]; then
+    DOTFILES_ROOT=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)
+    MIRROR_ROOT=$(git rev-parse --show-toplevel)
+
+    check_pair() {
+        local canonical="$1" mirror="$2"
+        if [[ ! -f "$DOTFILES_ROOT/$canonical" ]]; then
+            echo "COPY-GATE: canonical file missing: $canonical"
+            return 1
+        fi
+        if [[ ! -f "$MIRROR_ROOT/$mirror" ]]; then
+            echo "COPY-GATE: mirror file missing: $mirror"
+            return 1
+        fi
+        if [[ "$canonical" == githooks/* ]]; then
+            # Hooks are copied verbatim; content rewrites apply only to mirrored docs/schema.
+            if ! diff -q "$DOTFILES_ROOT/$canonical" "$MIRROR_ROOT/$mirror" >/dev/null; then
+                echo "COPY-GATE: $mirror diverges from $canonical (hooks must be verbatim copies)"
+                echo "  Sync from the canonical source."
+                return 1
+            fi
+        elif ! sed -e 's|config/agents-shared/|agents-shared/|g' \
+                  -e 's|"https://raw\.githubusercontent\.com/[^"]*/agents-shared/premise-gate\.schema\.json"|"https://raw.githubusercontent.com/clouatre-labs/agentic-coder-skill/main/agents-shared/premise-gate.schema.json"|' \
+                  "$DOTFILES_ROOT/$canonical" | diff -q - "$MIRROR_ROOT/$mirror" >/dev/null; then
+            echo "COPY-GATE: $mirror diverges from $canonical beyond documented rewrites"
+            echo "  Sync from the canonical source; only path-prefix and schema \$id rewrites are permitted."
+            return 1
+        fi
+    }
+
+    gate_failed=0
+    check_pair config/claude/skills/coder/SKILL.md skills/coder/SKILL.md || gate_failed=1
+    for role in scout guard check; do
+        check_pair "config/agents-shared/coder-${role}.md" "agents-shared/coder-${role}.md" || gate_failed=1
+        check_pair "config/claude/agents/coder-${role}.md" "agents/claude/coder-${role}.md" || gate_failed=1
+    done
+    check_pair config/agents-shared/premise-gate.schema.json agents-shared/premise-gate.schema.json || gate_failed=1
+    check_pair githooks/commit-msg githooks/commit-msg || gate_failed=1
+    check_pair githooks/pre-push githooks/pre-push || gate_failed=1
+
+    if [[ "$gate_failed" -ne 0 ]]; then
+        echo "BLOCKED: agentic-coder-skill is a copy-only mirror; resolve the divergence above."
+        exit 1
+    fi
+fi
+
 exit 0
