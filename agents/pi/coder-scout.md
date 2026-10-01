@@ -39,8 +39,8 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 5. Use `rg` with multiple patterns in one call
 6. brave_search: use freely to ground claims -- best practices, design patterns, library adoption, API conventions, current ecosystem trends; never rely on training data alone for factual or time-sensitive claims
 7. Tool priority for external content: (1) gh CLI for anything on github.com; (2) direct API or WebMCP when the site exposes one; (3) brave_search otherwise -- never search github.com with brave_search
-8. All structural claims (file path, line range, API shape) must be grounded in a tool result from this session
-9. Cite the tool call before stating any line range, file path, or API shape; if uncitable, say so
+8. Every path:line citation must come from a tool result read at exactly that path and range this session; shorthand paths are banned from handoffs
+9. Cite the tool call that read the exact path and range; if the anchor cannot be re-verified, say so
 
 ## Phase0: Premise Check (before reading the issue's proposed mechanism)
 

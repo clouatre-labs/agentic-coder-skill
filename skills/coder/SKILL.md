@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.24.0"
+version: "3.25.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility:
@@ -218,7 +218,7 @@ After both agents complete:
 
     Mapping: `proceed`→`sound`, `proceed_with_deviation`→`diverges`. **Stop rules** (decided by the noul arm only; the choice arm never decides stops):
     - scout `falsified`/`blocked` + noul ≤ 0.3 → STOP before PLAN with evidence and proposed restatement; noul > 0.3 → soften to `diverges` (proceed, mandatory "Deviation from issue" section per the GATE rules above).
-    - scout `sound` → proceed regardless of noul; the judge never creates a stop. noul ≥ 0.7 on scout-`sound` → surface scout-judge disagreement at the presentation step.
+    - scout `sound` → proceed regardless of noul; the judge never creates a stop. noul ≤ 0.3 on scout-`sound` → surface scout-judge disagreement at the presentation step.
 
     The question is asked predicate-positive per `x-gate-rules.polarity`. **Fallback:** never fatal -- judge unavailable, API failure, or `{fallback: true}` envelope → scout's verdict stands, log `fallback: true`. **Log:** append `{stage: "premise", verdict, proposed_verdict, consistent, fallback, gate_decision}` (`gate_decision`: stop|soften|proceed) to the same jsonl as Constraint #10 -- fallback or not (the log line is mandatory on fallback too). **Verify:** the append must land: `grep -c '"stage":"premise"'` must exceed the pre-run count, else the step was skipped -- go back and run it.
 
@@ -322,7 +322,7 @@ Goose: delegate parameters per Handoff Protocol.
 Invoke the `coder-check` agent via Task tool with the filled-in prompt.
 
 After CHECK completes:
-1. Read `$HANDOFF/04-validation.json` and present verdict.
+1. Read `$HANDOFF/04-validation.json` and present verdict. CHECK's citation gate appends `{stage: "citation", verdict, fallback, disagreements}` to the same jsonl as Constraint #10 (constants: `x-gate-rules.citation_gate` in `agents-shared/premise-gate.schema.json`; fallback: mechanical verdict stands, log line mandatory on fallback too).
 2. **If PASS:** Proceed immediately to PR REVIEW & READY (no gate).
 3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to PR REVIEW & READY, or address notes first?"
 4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" Per Retry Policy: second BUILD+CHECK failure = STOP.

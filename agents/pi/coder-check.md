@@ -68,10 +68,10 @@ If `git status --porcelain` empty but `origin/main..HEAD` has commits, validate 
 
 Checklist:
 
-- Planned files modified, no unplanned changes
+- Planned files modified with no unplanned changes, no scope creep, secrets, or KISS violations
+- Citation gate: verify every path:line citation in the diff against the worktree (file exists at that exact path, content present in range, symbol word-boundary match within +/-2 lines); any unverifiable citation = FAIL with the file, anchor, and re-verification step in `retry_instructions`; judge confirm-ride constants: `x-gate-rules.citation_gate` in `agents-shared/premise-gate.schema.json` (fallback: mechanical verdict stands); then one batched judge call over all anchors verifying claim support (`citation_gate.claim_support`; fallback: skip)
 - Test results from 03-build.json pass
 - `implementation_constraints` honored
-- No scope creep, secrets, or KISS violations
 - Behavior coverage: every entry in `test_strategy.test_behaviors` from 02-plan.json is implemented by at least one new test, matched by {function, predicate, tag}; a planned behavior with no test = FAIL (behavior coverage, not raw count)
 - For each new test added by BUILD (visible in `git diff`), verify its described behavior is not already covered by an entry in `test_strategy.existing_coverage` from `02-plan.json`. A new test whose behavior is a strict subset of an existing test = FAIL; populate `retry_instructions` with the redundant test name and the existing test it duplicates.
 - Intra-PR duplicate test behaviors: each entry in `test_strategy.test_behaviors[]` is a structured object `{function, predicate, tag}`. Build a set of `(function, predicate, tag)` triples; if any two entries share an identical triple = FAIL. Entries with different `tag` values (`happy_path` vs `edge_case`) are never duplicates. On FAIL: populate `retry_instructions` naming both conflicting entries by index and their triple (e.g., `test_behaviors[0] and test_behaviors[3] share {function: \"parse_config\", predicate: \"returns error on missing key\", tag: \"edge_case\"}; remove one`).
