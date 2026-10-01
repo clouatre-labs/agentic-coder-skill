@@ -44,7 +44,7 @@
 
 # Dotfiles & Configuration
 
-- Config files are managed via hardlinks and symlinks to `~/git/dotfiles/`
+- Config files are managed via hardlinks and symlinks to a private dotfiles checkout
 - Edit in place; do not overwrite or recreate files (breaks hardlinks)
 
 # Development Standards
