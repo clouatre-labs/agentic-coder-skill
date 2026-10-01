@@ -7,7 +7,6 @@ PROTECTED_BRANCHES="^(main|master|release/.*)$"
 # Advisory: warn on session-placeholder branches (per issue #914 guardrail)
 SESSION_BRANCHES="^feat/session-[0-9]+$"
 
-# shellcheck disable=SC2034  # hook stdin contract: read all four fields
 while read -r local_ref local_sha remote_ref remote_sha; do
     remote_branch="${remote_ref#refs/heads/}"
     

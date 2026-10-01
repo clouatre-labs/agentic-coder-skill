@@ -47,7 +47,7 @@ cd <literal WORKTREE path> && jq . <literal Scout handoff path>
 
 Read `file_structure_summary` from the scout handoff JSON first. Use it to understand directory layout without re-running `analyze_directory`. Only call `analyze_directory` if `file_structure_summary` is absent or insufficient.
 
-Spot-check identified files with `aptu-coder`: `analyze_directory` for overview, `analyze_module` for lightweight scan. Verify conventions; validate feasibility.
+Spot-check identified files with `aptu-coder`: `analyze_directory` for overview, `analyze_module` for lightweight scan. Verify conventions; validate feasibility. Verify each path:line anchor at its exact path and line range; an unverifiable anchor demotes the claim to unverified.
 
 ## Phase3: Risk Analysis (for each approach)
 
