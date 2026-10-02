@@ -26,8 +26,7 @@ this Scout/Guard architecture is
 
 ## Quick start
 
-Feed the skill a GitHub issue reference; name `coder skill` explicitly to make
-the invocation deterministic.
+Feed the skill a GitHub issue reference; name `coder skill` explicitly to make the invocation deterministic.
 
 *Table 1: Choosing an invocation pattern (merge rates are observed from real
 runs; see the case study linked below).*
@@ -44,18 +43,16 @@ runs; see the case study linked below).*
 the pipeline at the matching tier, and opens a draft PR (see Table 2).*
 
 ```text
-Fix issue 123 with coder skill. Work from the latest code. Ensure CI is green. Fix and resolve inline review comments.
+Fix issue 123 with coder skill.
 ```
 
-Everything after the first sentence restates built-in behavior (SETUP fetches `origin/main` before deriving a worktree; the CI gate and inline review-comment handling run automatically after the PR is ready), so the explicitness is redundant but harmless. The two things a prompt must carry are the issue reference and, if merge is wanted, an explicit merge request: the skill never merges on its own initiative.
+The prompt needs two things: the issue reference and, if merge is wanted, an explicit merge request — the skill never merges on its own initiative. Everything else (fetching the latest code, the CI gate, inline review-comment handling) is built in, so spelling it out is redundant but harmless; the batch prompt below does so for those who prefer explicitness.
 
 ### A few independent issues
 
-Ask for one coder stream per issue. Each stream gets its own worktree and
-handoff directory and produces one independently reviewable PR.
+Ask for one coder stream per issue. Each stream gets its own worktree and handoff directory and produces one independently reviewable PR.
 
-*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in
-about 1h42m with three human interventions (see the case study below).*
+*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in about 1h42m with three human interventions (see the case study below).*
 
 ```text
 Fix issues 1578-1582 with coder skill parallel streams. Work from the latest code. Ensure CI is green. Fix and resolve inline review comments. Merge and rebase.
@@ -65,19 +62,15 @@ As with the single-issue prompt, the essential parts are the issue range and the
 
 ### A wide range
 
-Let the session triage first, then split the work across sessions rather than
-one mega-run — for example, half the issues in this session, half in the next.
+Let the session triage first, then split the work across sessions rather than one mega-run — for example, half the issues in this session, half in the next.
 
 *Code Snippet 3: Triage-first invocation for a wide range.*
 
 ```text
-Can we fix issues 1639-1651 in a single session, or a subset? Using parallel
-coder skill streams?
+Can we fix issues 1639-1651 in a single session, or a subset? Using parallel coder skill streams?
 ```
 
-For a full annotated run — five issues, five parallel sessions, five merged
-PRs — see
-[docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md).
+For a full annotated run — five issues, five parallel sessions, five merged PRs — see [docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md).
 
 The mechanics behind these invocations — tier classification, handoffs,
 constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
