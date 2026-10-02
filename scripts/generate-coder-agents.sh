@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# generate-coder-agents.sh -- regenerate coder-* agent files for pi and Claude Code
-# from per-role frontmatter fragments (tools/agents/{pi,claude}-coder-<role>.yaml)
+# generate-coder-agents.sh -- regenerate coder-* agent files for pi, Claude Code,
+# and goose from per-role frontmatter fragments (tools/agents/{pi,claude,goose}-coder-<role>.yaml)
 # and the shared body (config/agents-shared/coder-<role>.md).
 #
 # Usage:
@@ -14,6 +14,7 @@ FRAGMENTS="$ROOT/tools/agents"
 BODIES="$ROOT/agents-shared"
 PI_DIR="$ROOT/agents/pi"
 CLAUDE_DIR="$ROOT/agents/claude"
+GOOSE_DIR="$ROOT/agents/goose"
 MODE="${1:---check}"
 
 usage() { echo "usage: $0 (--check|--write)" >&2; exit 2; }
@@ -23,10 +24,11 @@ drift=0
 for role in scout guard build check; do
   body="$BODIES/coder-$role.md"
   [ -f "$body" ] || { echo "ERROR: missing body $body" >&2; exit 2; }
-  for target in pi claude; do
+  for target in pi claude goose; do
     frag="$FRAGMENTS/$target-coder-$role.yaml"
     out="$PI_DIR/coder-$role.md"
     [ "$target" = "claude" ] && out="$CLAUDE_DIR/coder-$role.md"
+    [ "$target" = "goose" ] && out="$GOOSE_DIR/coder-$role.md"
     [ -f "$frag" ] || { echo "ERROR: missing fragment $frag" >&2; exit 2; }
     tmp="$(mktemp)"
     {

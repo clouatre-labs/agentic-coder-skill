@@ -115,8 +115,8 @@ is a propose/validate pair (see [typesafe-ai integration](#typesafe-ai-integrati
 | Tier | Typical change (SKILL.md Constraint #2) | Pipeline |
 |---|---|---|
 | Simple | Config, docs, CI, single-file < 50 lines, no cross-repo research | Inline, no delegates; test/lint/format before commit |
-| Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions | SCOUT → PLAN → BUILD (no GUARD, no CHECK) |
-| Complex | Architectural decisions, new abstractions, multi-file code > 50 lines, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
+| Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions, code > 50 lines single- or multi-file | SCOUT → PLAN → BUILD (no GUARD, no CHECK) |
+| Complex | Architectural decisions, new abstractions, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
 
 ![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
 
@@ -183,21 +183,22 @@ retired in v3.13.0).
 
 The four coder subagents are defined once and rendered per harness:
 
-1. **Edit the sources**: `tools/agents/{pi,claude}-coder-<role>.yaml` holds the
+1. **Edit the sources**: `tools/agents/{pi,claude,goose}-coder-<role>.yaml` holds the
    harness frontmatter (model, tools, thinking, max_turns); `agents-shared/coder-<role>.md`
    holds the harness-agnostic body.
 2. **Regenerate**: `scripts/generate-coder-agents.sh --write` concatenates
-   frontmatter + body into `agents/pi/coder-<role>.md` and `agents/claude/coder-<role>.md`.
+   frontmatter + body into `agents/pi/coder-<role>.md`, `agents/claude/coder-<role>.md`,
+   and `agents/goose/coder-<role>.md`.
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-*Figure 4: Agent generation — one shared body, two frontmatter templates, two
-generated agent files per role; 4 roles × 2 harnesses = 8 generated files, never
-hand-edited. Flow as in Figure 3.*
+*Figure 4: Agent generation — one shared body, three frontmatter templates, one
+generated agent file per role and harness; 4 roles × 3 harnesses = 12 generated
+files, never hand-edited. Flow as in Figure 3.*
 
 ## typesafe-ai integration
 
-Tier classification uses the `judge` tool of the `typesafe` MCP server.
+Tier classification uses the `judge` tool of the `decisions-judge` MCP server.
 Since skill v3.21.0 the judge **validates** an inline
 proposal instead of classifying blind: the orchestrator proposes a tier from
 observable repo facts (file count, diff size, docs-vs-code; see Table 2), and
@@ -299,7 +300,7 @@ via `figures/fig-tier-pipeline.py`.*
 | jq | pipeline | all handoff read/write (`jq -c .` compact form) |
 | gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
 | `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is ship work — Rule 8) |
-| `typesafe` MCP server (`decisions-judge-mcp`) | pipeline | tier classification via the `judge` tool (Choice question); npm package, source at clouatre-labs/decisions-judge-mcp |
+| `decisions-judge` MCP server (`decisions-judge-mcp`) | pipeline | tier classification via the `judge` tool (Choice question); npm package, source at clouatre-labs/decisions-judge-mcp |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
 | bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
 | cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
