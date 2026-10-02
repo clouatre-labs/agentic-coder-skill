@@ -55,10 +55,10 @@ Ask for one coder stream per issue. Each stream gets its own worktree and handof
 *Code Snippet 2: Batch invocation. Five streams produced five merged PRs in about 1h42m with three human interventions (see the case study below).*
 
 ```text
-Fix issues 1578-1582 with coder skill parallel streams. Work from the latest code. Ensure CI is green. Fix and resolve inline review comments. Merge and rebase.
+Fix issues 1578-1582 with coder skill parallel streams. Merge and rebase.
 ```
 
-As with the single-issue prompt, the essential parts are the issue range and the merge request. Once a merge is requested, the pipeline enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously, re-runs BUILD+CHECK on red checks, and fetches and resolves inline review comments before merging. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
+As with the single-issue prompt, the essential parts are the issue range and the merge request; the same logic applies here, so the prompt carries only what the skill cannot infer. Once a merge is requested, the pipeline enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously, re-runs BUILD+CHECK on red checks, and fetches and resolves inline review comments before merging. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
 
 ### A wide range
 
