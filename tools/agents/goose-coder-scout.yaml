@@ -4,5 +4,5 @@ provider: zai
 model: glm-5.3-flash
 extensions:
   - aptu-coder
-  - brave_search
+  - brave
 max_turns: 40

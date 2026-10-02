@@ -142,7 +142,7 @@
 
 - `gh` CLI for issues, PRs, repo metadata, cross-repo search
 - Context7 for library/framework docs, APIs, and code examples
-- Web search (brave_search, Tavily, Perplexity, etc.) as last resort for cross-project design rationale or blog posts
+- Web search (brave, Tavily, Perplexity, etc.) as last resort for cross-project design rationale or blog posts
 
 ## CLI Conventions
 
