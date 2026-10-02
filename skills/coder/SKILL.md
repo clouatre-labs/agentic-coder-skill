@@ -28,7 +28,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
 1. **You do NOT write code** - Only BUILD modifies code
 2. **Classify the change (decisions-judge-assisted)** - Three tiers:
-   - **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave_search when the change touches library APIs or needs external verification.
+   - **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave when the change touches library APIs or needs external verification.
    - **Medium** (multi-file docs, cross-repo reference, well-understood patterns, no new abstractions, code >50 lines single- or multi-file): SCOUT only, then PLAN, then BUILD; skip GUARD and CHECK.
    - **Complex** (architectural decisions, new abstractions, security-sensitive): full SCOUT + GUARD + BUILD + CHECK.
    - If uncertain between tiers, choose the higher one -- this tie-break applies only in the fallback path of the tier stage (see Constraint #10), never to override a judge answer.
@@ -53,7 +53,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
 1. No emojis in code, commits, PRs, docs, or responses
 2. Concise - lead with summary, use bullets, facts only
-3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave_search for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave_search for live web data not reachable via a structured interface. Pass this rule to every delegate.
+3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave for live web data not reachable via a structured interface. Pass this rule to every delegate.
 4. Minimal gates - stop for decisions, auto-proceed for execution. After classifying issues, start the appropriate path immediately without presenting a summary and asking to proceed.
 5. Do not use aptu for issue reading - use `gh issue view`
 6. Code analysis tools - see Constraint #8. Pass this constraint to every delegate you spawn.
@@ -86,7 +86,7 @@ All phases communicate via `$(git rev-parse --path-format=absolute --git-common-
 
 Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent context, `jq .` for human presentation.
 
-**Goose delegate parameters** (ignore when running under Claude Code or pi): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave_search", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["context7", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai`, model `glm-5.3-flash`.
+**Goose delegate parameters** (ignore when running under Claude Code or pi): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["context7", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai`, model `glm-5.3-flash`.
 
 ## Handoff Validation
 

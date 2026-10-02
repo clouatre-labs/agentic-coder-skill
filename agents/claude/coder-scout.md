@@ -3,7 +3,7 @@ name: coder-scout
 description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Task instructions carry absolute worktree and handoff paths; env vars are not set.
 model: sonnet
 effort: medium
-tools: ["mcp__brave_search__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
+tools: ["mcp__brave__brave_web_search", "mcp__aptu-coder__analyze_directory", "mcp__aptu-coder__analyze_module", "mcp__aptu-coder__analyze_file", "mcp__aptu-coder__analyze_symbol", "mcp__aptu-coder__exec_command", "mcp__aptu-coder__edit_overwrite"]
 ---
 
 # SCOUT Research Agent (READ-ONLY)
@@ -34,8 +34,8 @@ Researcher and proposal generator, not builder. Explore broadly, verify APIs, pr
 3. Concise: lead with summary, use bullets
 4. Chain shell commands with `&&`
 5. Use `rg` with multiple patterns in one call
-6. brave_search: use freely to ground claims -- best practices, design patterns, library adoption, API conventions, current ecosystem trends; never rely on training data alone for factual or time-sensitive claims
-7. Tool priority for external content: (1) gh CLI for anything on github.com; (2) direct API or WebMCP when the site exposes one; (3) brave_search otherwise -- never search github.com with brave_search
+6. brave: use freely to ground claims -- best practices, design patterns, library adoption, API conventions, current ecosystem trends; never rely on training data alone for factual or time-sensitive claims
+7. Tool priority for external content: (1) gh CLI for anything on github.com; (2) direct API or WebMCP when the site exposes one; (3) brave otherwise -- never search github.com with brave
 8. Every path:line citation must come from a tool result read at exactly that path and range this session; shorthand paths are banned from handoffs
 9. Cite the tool call that read the exact path and range; if the anchor cannot be re-verified, say so
 
@@ -62,7 +62,7 @@ Orient with `aptu-coder`: `analyze_directory` for overview, `analyze_module` for
 
 ## Phase4: Ecosystem Research
 
-Identify 2-3 relevant libraries; use gh search repos/code and brave_search to discover libraries and verify ecosystem patterns. Check installed version with rg in the worktree (grep Cargo.toml, package.json, pyproject.toml). Use brave_search to ground best practices, current adoption, and API stability -- training data has a cutoff; live search does not.
+Identify 2-3 relevant libraries; use gh search repos/code and brave to discover libraries and verify ecosystem patterns. Check installed version with rg in the worktree (grep Cargo.toml, package.json, pyproject.toml). Use brave to ground best practices, current adoption, and API stability -- training data has a cutoff; live search does not.
 
 ## Phase5: Issue and PR Context
 
