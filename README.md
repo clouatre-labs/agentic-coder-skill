@@ -46,7 +46,7 @@ the pipeline at the matching tier, and opens a draft PR (see Table 2).*
 Fix issue 123 with coder skill.
 ```
 
-The prompt needs two things: the issue reference and, if merge is wanted, an explicit merge request — the skill never merges on its own initiative. Everything else (fetching the latest code, the CI gate, inline review-comment handling) is built in, so spelling it out is redundant but harmless; the batch prompt below does so for those who prefer explicitness.
+The prompt needs two things: the issue reference and, if merge is wanted, an explicit merge request — the skill never merges on its own initiative. Everything else (fetching the latest code, the CI gate, inline review-comment handling) is built in and needs no prompt text.
 
 ### A few independent issues
 
@@ -58,7 +58,7 @@ Ask for one coder stream per issue. Each stream gets its own worktree and handof
 Fix issues 1578-1582 with coder skill parallel streams. Merge and rebase.
 ```
 
-As with the single-issue prompt, the essential parts are the issue range and the merge request; the same logic applies here, so the prompt carries only what the skill cannot infer. Once a merge is requested, the pipeline enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously, re-runs BUILD+CHECK on red checks, and fetches and resolves inline review comments before merging. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
+Once a merge is requested, the pipeline enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously, re-runs BUILD+CHECK on red checks, and fetches and resolves inline review comments before merging. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
 
 ### A wide range
 
