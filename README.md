@@ -26,7 +26,8 @@ this Scout/Guard architecture is
 
 ## Quick start
 
-Feed the skill a GitHub issue reference — that is the whole interface.
+Feed the skill a GitHub issue reference; name `coder skill` explicitly to make
+the invocation deterministic.
 
 *Table 1: Choosing an invocation pattern (merge rates are observed from real
 runs; see the case study linked below).*
@@ -43,8 +44,10 @@ runs; see the case study linked below).*
 the pipeline at the matching tier, and opens a draft PR (see Table 2).*
 
 ```text
-Fix issue 123 in this repo.
+Fix issue 123 with coder skill. Work from the latest code. Ensure CI is green. Fix and resolve inline review comments.
 ```
+
+Everything after the first sentence restates built-in behavior (SETUP fetches `origin/main` before deriving a worktree; the CI gate and inline review-comment handling run automatically after the PR is ready), so the explicitness is redundant but harmless. The two things a prompt must carry are the issue reference and, if merge is wanted, an explicit merge request: the skill never merges on its own initiative.
 
 ### A few independent issues
 
@@ -55,13 +58,10 @@ handoff directory and produces one independently reviewable PR.
 about 1h42m with three human interventions (see the case study below).*
 
 ```text
-Fix issues 1578-1582 in a single session, using parallel streams of coder
-skill. Work from the latest code. Ensure CI is green, fix and resolve inline
-review comments once PRs are pushed, then merge in dependency order, rebasing
-as needed.
+Fix issues 1578-1582 with coder skill parallel streams. Work from the latest code. Ensure CI is green. Fix and resolve inline review comments. Merge and rebase.
 ```
 
-Since v3.23.0 the pipeline also enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously and re-runs BUILD+CHECK on red checks before reporting done. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
+As with the single-issue prompt, the essential parts are the issue range and the merge request. Once a merge is requested, the pipeline enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously, re-runs BUILD+CHECK on red checks, and fetches and resolves inline review comments before merging. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
 
 ### A wide range
 
@@ -71,8 +71,8 @@ one mega-run — for example, half the issues in this session, half in the next.
 *Code Snippet 3: Triage-first invocation for a wide range.*
 
 ```text
-Can we fix issues 1639-1651 in a single session, or a subset? Using
-parallel coder skill streams?
+Can we fix issues 1639-1651 in a single session, or a subset? Using parallel
+coder skill streams?
 ```
 
 For a full annotated run — five issues, five parallel sessions, five merged
