@@ -1,0 +1,7 @@
+name: coder-build
+description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Task instructions carry absolute worktree and handoff paths; env vars are not set.
+provider: zai
+model: glm-5.3-flash
+extensions:
+  - aptu-coder
+max_turns: 80

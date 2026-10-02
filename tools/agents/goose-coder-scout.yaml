@@ -1,0 +1,8 @@
+name: coder-scout
+description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches. Task instructions carry absolute worktree and handoff paths; env vars are not set.
+provider: zai
+model: glm-5.3-flash
+extensions:
+  - aptu-coder
+  - brave_search
+max_turns: 40

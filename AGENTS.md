@@ -27,14 +27,14 @@ shell hooks, not compiled code.
 - PR labels use the repo's Conventional-Commit-aligned label set: `feature`,
   `enhancement`, `bug`, `documentation`, `refactor`, `chore`, `ci`, `security`
   (note `feature`, never the Conventional-Commit type `feat`)
-- Agent files are generated: edit `tools/agents/{pi,claude}-coder-*.yaml` (harness
+- Agent files are generated: edit `tools/agents/{pi,claude,goose}-coder-*.yaml` (harness
   frontmatter) and `agents-shared/coder-*.md` (shared body), then run
-  `scripts/generate-coder-agents.sh --write`. Never hand-edit `agents/{pi,claude}/*`;
+  `scripts/generate-coder-agents.sh --write`. Never hand-edit `agents/{pi,claude,goose}/*`;
   CI fails on drift (`--check`)
 - Bump the version in `skills/coder/SKILL.md` for any behavioral change
   to the pipeline
 - typesafe-ai is an external dependency of the skill: tier classification calls
-  `api.typesafe.ai` via the `judge` tool of the `typesafe` MCP server (bin
+  `api.typesafe.ai` via the `judge` tool of the `decisions-judge` MCP server (bin
   `decisions-judge-mcp`; source `clouatre-labs/decisions-judge-mcp`, published on
   npm) with `TYPESAFE_API_KEY` from the shell env (never committed, never written
   to files or handoffs). Every judge path must keep its deterministic inline fallback;
@@ -63,4 +63,4 @@ shell hooks, not compiled code.
 - Add dependencies without justification in the PR description
 - Implement features not specified in the assigned issue
 - Modify files outside the scope of the assigned issue
-- Hand-edit generated agent files under `agents/pi/` or `agents/claude/`
+- Hand-edit generated agent files under `agents/pi/`, `agents/claude/`, or `agents/goose/`
