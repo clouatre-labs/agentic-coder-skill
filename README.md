@@ -92,10 +92,8 @@ graph TD
 ```
 
 *Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
-medium tiers skip delegates or skip GUARD/CHECK entirely (see below). All tiers
-converge on PR Review & Ready: every PR opens as a draft and is marked ready only
-after the Phase 5 review gate approves; merging still requires an explicit user
-request.*
+medium tiers skip delegates or skip GUARD/CHECK entirely. Every PR opens as a
+draft and is marked ready only after the review gate approves.*
 
 Before research begins, SCOUT runs a premise gate (Phase 0): the issue's premise is checked against repository evidence and labeled `sound`, `diverges`, or `falsified`, with a one-call judge confirm-ride. A falsified premise stops the pipeline before any build work; a divergence proceeds only with a recorded "Deviations from the issue" section in the PR body.
 
