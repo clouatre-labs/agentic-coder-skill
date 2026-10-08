@@ -9,12 +9,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-PHASES = ["Setup", "SCOUT", "GUARD", "PLAN", "BUILD", "CHECK", "Draft PR"]
+PHASES = ["Setup", "SCOUT", "GUARD", "PLAN", "BUILD", "CHECK", "PR Review\n& Ready"]
 TIERS = ["Simple", "Medium", "Complex"]
 # Which phases each tier runs, per SKILL.md Constraint #2 / Table 1.
+# All tiers end with PR Review & Ready (draft PR, review gate, ready).
+READY = PHASES[-1]
 RUNS = {
-    "Simple": {"Setup", "Draft PR"},  # inline implementation, no delegates
-    "Medium": {"Setup", "SCOUT", "PLAN", "BUILD", "Draft PR"},
+    "Simple": {"Setup", READY},  # inline implementation, no delegates
+    "Medium": {"Setup", "SCOUT", "PLAN", "BUILD", READY},
     "Complex": set(PHASES),
 }
 RUN_COLOR = "#2ca02c"
