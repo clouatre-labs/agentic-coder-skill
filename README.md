@@ -88,11 +88,14 @@ graph TD
     Build -->|Fail: retry once| Build
     Build -->|Pass| Check[Check]
     Check -->|Fail| Stop[Stop & Ask]
-    Check -->|Pass| Review[PR Review]
+    Check -->|Pass| Review[PR Review & Ready]
 ```
 
 *Figure 1: Scout/Guard/Build/Check pipeline for a complex-tier change; simple and
-medium tiers skip delegates or skip GUARD/CHECK entirely (see below).*
+medium tiers skip delegates or skip GUARD/CHECK entirely (see below). All tiers
+converge on PR Review & Ready: every PR opens as a draft and is marked ready only
+after the Phase 5 review gate approves; merging still requires an explicit user
+request.*
 
 Before research begins, SCOUT runs a premise gate (Phase 0): the issue's premise is checked against repository evidence and labeled `sound`, `diverges`, or `falsified`, with a one-call judge confirm-ride. A falsified premise stops the pipeline before any build work; a divergence proceeds only with a recorded "Deviations from the issue" section in the PR body.
 
@@ -108,7 +111,7 @@ is a propose/validate pair (see [typesafe-ai integration](#typesafe-ai-integrati
 | Tier | Typical change (SKILL.md Constraint #2) | Pipeline |
 |---|---|---|
 | Simple | Config, docs, CI, single-file < 50 lines, no cross-repo research | Inline, no delegates; test/lint/format before commit |
-| Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions, code > 50 lines single- or multi-file | SCOUT → PLAN → BUILD (no GUARD, no CHECK) |
+| Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions, code > 50 lines single- or multi-file | SCOUT → PLAN → BUILD → Ship step (draft PR + review, no GUARD/CHECK delegates) |
 | Complex | Architectural decisions, new abstractions, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
 
 ![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
