@@ -1,0 +1,21 @@
+# Vibe agent fragment for coder-build (generates agents/vibe/coder-build.toml).
+# No active_model: delegates inherit the session model (Mistral-hosted zai-glm-5-3 on the Mistral Pro subscription, pinned in ~/.vibe/config.toml; thinking high is the ONLY working option on the subscription path -- Vibe's mistral backend maps low->"none" and off->"off", both REJECTED by zai-glm-5-3 per mistralai/mistral-vibe#1115).
+agent_type: agent
+display_name: Coder Build
+description: Implements approved plans and verifies with tests. Writes code, tests, and verification.
+safety: destructive
+enabled_tools:
+  # Code analysis: aptu-coder MCP tools (preferred per Constraint #8).
+  - aptu-coder_analyze_directory
+  - aptu-coder_analyze_module
+  - aptu-coder_analyze_file
+  - aptu-coder_analyze_symbol
+  - aptu-coder_exec_command
+  - aptu-coder_edit_overwrite
+  # Fallback built-ins (for when MCP groups are dropped by unified harness,
+  # mistralai/mistral-vibe#1159): run with --legacy-harness for full MCP access.
+  - read_file
+  - grep
+  - bash
+  - write_file
+  - edit

@@ -119,7 +119,7 @@ tier, implementation and PR are inline — no delegate runs; the regenerate scri
 is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
 
 *Table 3: Pipeline phases, the four subagents, and their model pins (sources:
-`tools/agents/{pi,claude}-coder-*.yaml`). PLAN is authored by the orchestrator,
+`tools/agents/{pi,claude,goose,vibe}-*.yaml`). PLAN is authored by the orchestrator,
 whose model is whatever the host session runs — this repo pins only the four
 delegates.*
 
@@ -138,9 +138,9 @@ delegates.*
 | Path | Description |
 |---|---|
 | `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
-| `agents-shared/coder-*.md` | Shared agent bodies (harness-agnostic), the edit source |
-| `tools/agents/{pi,claude}-coder-*.yaml` | Per-harness frontmatter templates: model, tools, effort |
-| `agents/{pi,claude}/coder-*.md` | Generated agent files (frontmatter + body) — do not hand-edit |
+| `agents-shared/{coder-*,prose-polish}.md` | Shared agent bodies (harness-agnostic), the edit source |
+| `tools/agents/{pi,claude,goose,vibe}-*.yaml` | Per-harness frontmatter templates: model, tools, effort |
+| `agents/{pi,claude,goose,vibe}/*.md` (+ `agents/vibe/*.toml`, prompts) | Generated agent files (frontmatter + body) — do not hand-edit |
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
@@ -149,45 +149,47 @@ flowchart TD
     SKILL["skills/coder/SKILL.md\nversioned pipeline spec"]
     subgraph src[Edit sources]
         SHARED["agents-shared/coder-&lt;role&gt;.md\nharness-agnostic bodies"]
-        TMPL["tools/agents/{pi,claude}-coder-&lt;role&gt;.yaml\nfrontmatter templates"]
+        TMPL["tools/agents/{pi,claude,goose,vibe}-&lt;agent&gt;.yaml\nfrontmatter templates"]
         GENSCRIPT["scripts/generate-coder-agents.sh"]
     end
     subgraph out[Generated — never hand-edit]
-        API["agents/pi/coder-&lt;role&gt;.md"]
-        ACL["agents/claude/coder-&lt;role&gt;.md"]
+        API["agents/{pi,claude,goose}/&lt;agent&gt;.md"]
+        AVIBE["agents/vibe/&lt;agent&gt;.toml + prompt"]
     end
     HOOKS["githooks/\ncommit-msg · pre-commit · pre-push · post-checkout"]
     DOCS["docs/ · figures/\nsetup, standards, figure sources"]
     SHARED -->|rendered by| GENSCRIPT
     TMPL -->|rendered by| GENSCRIPT
     GENSCRIPT --> API
-    GENSCRIPT --> ACL
+    GENSCRIPT --> AVIBE
     SKILL --- src
 ```
 
 *Figure 3: Project structure. Edit sources (top) are rendered into the generated
 agent files (bottom); the generation mechanics are detailed in Figure 4.*
 
-## One pipeline, four harnesses
+## One pipeline, five harnesses
 
 `skills/coder/SKILL.md` is the single pipeline definition. Its frontmatter declares
-compatibility with four harnesses: **pi**, **Claude Code**, **Codex**, and **Goose**
-(Goose consumes `SKILL.md` directly as a workflow; the dedicated recipe format was
-retired in v3.13.0).
+compatibility with five harnesses: **pi**, **Claude Code**, **Codex**, **Goose**, and
+**Vibe** (Goose consumes `SKILL.md` directly as a workflow; the dedicated recipe format
+was retired in v3.13.0. Vibe consumes generated TOML subagents under `agents/vibe/` and
+inherits the session model).
 
-The four coder subagents are defined once and rendered per harness:
+The four coder subagents plus the `prose-polish` agent are defined once and rendered
+per harness:
 
-1. **Edit the sources**: `tools/agents/{pi,claude,goose}-coder-<role>.yaml` holds the
-   harness frontmatter (model, tools, thinking, max_turns); `agents-shared/coder-<role>.md`
+1. **Edit the sources**: `tools/agents/{pi,claude,goose,vibe}-<agent>.yaml` holds the
+   harness frontmatter (model, tools, thinking, max_turns); `agents-shared/<agent>.md`
    holds the harness-agnostic body.
 2. **Regenerate**: `scripts/generate-coder-agents.sh --write` concatenates
-   frontmatter + body into `agents/pi/coder-<role>.md`, `agents/claude/coder-<role>.md`,
-   and `agents/goose/coder-<role>.md`.
+   frontmatter + body into `agents/pi/`, `agents/claude/`, and `agents/goose/`
+   (markdown) and `agents/vibe/` (TOML + prompt).
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-*Figure 4: Agent generation — one shared body, three frontmatter templates, one
-generated agent file per role and harness; 4 roles × 3 harnesses = 12 generated
+*Figure 4: Agent generation — one shared body, four frontmatter templates, one
+generated agent file per role and harness; 5 agents × 4 harnesses = 20 generated
 files, never hand-edited. Flow as in Figure 3.*
 
 ## typesafe-ai integration
@@ -204,9 +206,14 @@ JSONL log line per session at
 `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`; logging
 failures never block the pipeline.
 
-Handoff free-text fields are guarded by a **deterministic gzip degeneracy
-gate** (200B floor, 0.10 trip threshold, per-handoff JSONL log): a ratio below
-0.10 trips the Retry Policy without any model consultation.
+The PLAN phase runs a **plan-completeness gate** on medium and complex tiers:
+a deterministic pass over the plan's `external_facts` proposes `complete` or
+`incomplete`, and one `judge` call validates it; a mechanical `incomplete`
+confirmed by the judge sends the plan back for rework, and a warning-level
+undeclared-facts advisory forces external claims to be declared in the PR body
+(constants normative in `agents-shared/premise-gate.schema.json`,
+`x-gate-rules.plan_completeness`). The gate is never fatal: on judge
+unavailability the mechanical proposal stands.
 
 All judgments transit `api.typesafe.ai`, a third-party service. The auth token
 (`TYPESAFE_API_KEY`) is consumed by the MCP server from the shell environment
@@ -234,8 +241,9 @@ writes its own:
 
 All files are written compact (`jq -c .`) and stored under
 `<git-common-dir>/coder-handoffs/<session-id>/`, outside the session worktree so
-worktree teardown cannot destroy them. Every free-text field is validated on read
-with a gzip compression-ratio degeneracy check (see typesafe-ai integration above).
+worktree teardown cannot destroy them. Handoffs are checked for structural validity
+with `jq empty` before use; a malformed or missing handoff is fatal and follows the
+Retry Policy.
 
 ## Inspecting a session
 
@@ -291,8 +299,7 @@ via `figures/fig-tier-pipeline.py`.*
 | Tool | Scope | Used for |
 |---|---|---|
 | git 2.40+ | pipeline | worktrees, githooks, handoff storage under the common git dir |
-| jq | pipeline | all handoff read/write (`jq -c .` compact form) |
-| gzip | pipeline | handoff degeneracy gate (`gzip -9` compression ratio) |
+| jq | pipeline | all handoff read/write (`jq -c .` compact form) and handoff validation (`jq empty`) |
 | `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is ship work — Rule 8) |
 | `decisions-judge` MCP server (`decisions-judge-mcp`) | pipeline | tier classification via the `judge` tool (Choice question); npm package, source at clouatre-labs/decisions-judge-mcp |
 | uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |

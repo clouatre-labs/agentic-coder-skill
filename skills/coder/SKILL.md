@@ -1,16 +1,12 @@
 ---
 name: coder
-version: "3.25.0"
+version: "3.27.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
-compatibility:
-  - claude-code
-  - codex
-  - goose
-  - pi
+compatibility: claude-code, codex, goose, pi, vibe
 ---
 
-# Goose Coder - Scout/Guard Architecture
+# Coder - Scout/Guard Architecture
 
 ## Overview
 
@@ -22,13 +18,13 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
                                                                          FAIL -> Retry Policy  FAIL -> Stop & Ask
 ```
 
-**You handle PLAN directly. Delegate SCOUT, GUARD, BUILD, and CHECK via the Task tool.**
+**You handle PLAN directly. Delegate SCOUT, GUARD, BUILD, and CHECK via the Agent tool (Claude Code, pi) or Task tool (goose, vibe).**
 
 ## Critical Constraints
 
 1. **You do NOT write code** - Only BUILD modifies code
 2. **Classify the change (decisions-judge-assisted)** - Three tiers:
-   - **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use context7 and brave when the change touches library APIs or needs external verification.
+   - **Simple** (config, docs, CI, single-file <50 lines, no cross-repo research): implement inline, skip all delegates. Run test/lint/format before commit (see Tooling Reference). Use brave (and `curl` of official docs / `llms.txt`) when the change touches library APIs or needs external verification.
    - **Medium** (multi-file docs, cross-repo reference, well-understood patterns, no new abstractions, code >50 lines single- or multi-file): SCOUT only, then PLAN, then BUILD; skip GUARD and CHECK.
    - **Complex** (architectural decisions, new abstractions, security-sensitive): full SCOUT + GUARD + BUILD + CHECK.
    - If uncertain between tiers, choose the higher one -- this tie-break applies only in the fallback path of the tier stage (see Constraint #10), never to override a judge answer.
@@ -37,8 +33,8 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 5. **Handoff missing = fatal** - STOP and report. Never work inline as a fallback.
 6. **No correctness judgment** - Never assess whether code, tests, or diffs are correct. Delegate verdicts are authoritative.
 7. **Provider errors** - follow the Retry Policy's provider fallback; never swap the model or work inline.
-8. **Code analysis tools** - Any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive. `aptu-coder` is always preferred. The native `analyze` tool is never used.
-9. **Third-party transit** - Coder pipeline judgments (tier classification via the `judge` tool) transit api.typesafe.ai, a third-party service. The handoff degeneracy gate is deterministic (`gzip -9` compression ratio) and makes no API call. The auth token is inherited via the shell env; never write it to files or handoffs.
+8. **Code analysis tools (goose)** - Under goose, any delegate doing research or code analysis must list `aptu-coder` in extensions, not `developer`; the two are mutually exclusive and `aptu-coder` is always preferred. Claude Code, pi, and vibe select tools via their own mechanism and ignore this rule; under codex the tool set is configured per delegate and this rule does not apply. The native `analyze` tool is never used.
+9. **Third-party transit** - Coder pipeline judgments (tier classification via the `judge` tool) transit api.typesafe.ai, a third-party service. The auth token is inherited via the shell env; never write it to files or handoffs.
 10. **Tier classification via propose/validate** - Requires the `judge` tool from the `decisions-judge` MCP server (bin `decisions-judge-mcp`; source at https://github.com/clouatre-labs/decisions-judge-mcp). The orchestrator **proposes** a tier per issue from observable repo facts (file count, diff size via `git diff --stat`, docs-vs-code) -- a deterministic lookup against Constraint #2's tier definitions, no LLM call. One judge call per session then **validates** all proposals (one `tier_<issue>` question per issue, criteria mirroring those definitions verbatim, incl. the 50-line rule):
 
     ```json
@@ -51,7 +47,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
 ## Rules (All Phases)
 
-1. No emojis in code, commits, PRs, docs, or responses
+1. Skip emojis in code, commits, PRs, docs, and responses
 2. Concise - lead with summary, use bullets, facts only
 3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave for live web data not reachable via a structured interface. Pass this rule to every delegate.
 4. Minimal gates - stop for decisions, auto-proceed for execution. After classifying issues, start the appropriate path immediately without presenting a summary and asking to proceed.
@@ -86,23 +82,23 @@ All phases communicate via `$(git rev-parse --path-format=absolute --git-common-
 
 Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent context, `jq .` for human presentation.
 
-**Goose delegate parameters** (ignore when running under Claude Code or pi): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["context7", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai`, model `glm-5.3-flash`.
+**No concurrent worktree edits:** while a delegate is running, the orchestrator does not edit the worktree; it waits for the delegate's completion (and its handoff file) before any further worktree operation.
+
+**Goose delegate parameters** (ignore when running under Claude Code, pi, or vibe): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["brave", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai`, model `glm-5.3-flash`.
+
+**Vibe notes** (running under Mistral Vibe): delegates are declared subagent TOMLs in `~/.vibe/agents/coder-*.toml` (generated from `tools/agents/vibe-coder-*.yaml`), spawned via the Task tool; they inherit the session model (Mistral-hosted `zai-glm-5-3`, pinned in `~/.vibe/config.toml` -- Mistral Pro subscription only, no Z.ai key; thinking high is the ONLY working option because Vibe's mistral backend maps low->"none" and off->"off", both REJECTED by zai-glm-5-3 per mistralai/mistral-vibe#1115). Aptu-coder tool references in the shared bodies resolve to the built-ins (`bash`, `read_file`, `grep`, `edit`); on the unified harness declared subagents get no MCP groups (mistralai/mistral-vibe#1159), so run with `--legacy-harness` when SCOUT needs brave search, and the `judge` tool (decisions-judge MCP) is orchestrator-level, not delegate-level.
 
 ## Handoff Validation
 
-Beyond `jq empty` (structural validity) and the Context Budget 60%-utilization heuristic (context sizing), free-text fields in all five handoff files (`01a-research-scout.json`, `01b-research-guard.json`, `02-plan.json`, `03-build.json`, `04-validation.json`) are checked for compression-ratio degeneracy. Every file is written by one role and read downstream by another agent or the orchestrator, so all five carry the same risk of padded/repetitive filler reaching a reader; purely numeric or enum fields (e.g. `04-validation.json`'s `security_summary` counts) are never in scope regardless of length.
-
-- **200B floor** -- fields under 200 bytes are skipped without evaluating a ratio; gzip overhead dominates on short strings, making the ratio meaningless below this size.
-- **0.10 ratio threshold** -- a ratio below 0.10 means the compressed form is under a tenth of the original, indicating repetitive or padded filler rather than genuine free text.
-- **Mechanics** -- compare `gzip -9 -c | wc -c` against `wc -c` on the field's raw bytes. Extract string-valued fields with `jq -r` (e.g. `recommendation`, `overview`, `recommended_approach`, `notes`, `summary`) and array/object-valued fields with `jq -c` (e.g. `conventions`, `file_structure_summary`, `test_strategy`, `test_results`, `risk_analysis`, `warnings`, `issues`) before piping to both.
-- **On trip** -- follow the Retry Policy: surface only the offending field; `02-plan.json` is rewritten in place, any other file gets a full re-invocation of its authoring role.
-- **Log** -- after validating each handoff, append one JSON line to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl` (mkdir -p first; the dir is gitignored): {"ts": <epoch>, "session": "$SESSION_ID", "file": "<handoff>", "status": "pass|trip|retry", "ratio": <gzip ratio, only when the gzip gate ran>}. Never block the pipeline on logging failures.
+Handoff files are checked for structural validity with `jq empty` before use. A malformed or missing handoff is fatal: follow the Retry Policy (surface only the offending file).
 
 ---
 
 ## Phase 0: SETUP
 
 If user asks to list or resume sessions, run `find $(git rev-parse --path-format=absolute --git-common-dir)/coder-handoffs -mindepth 1 -maxdepth 1 -type d` and for each dir show its `02-plan.json` overview field via `jq -r .overview`, regardless of whether a matching `.worktrees/<sid>` still exists.
+
+**Issue gate:** when the request cites an issue, resolve it in the CWD repo first (`gh issue view <N>`, no `--repo`) and confirm the URL's owner/repo matches this repo's `origin`; mismatch or missing issue: STOP and ask. Never work in a different repo unless the user explicitly names it.
 
 Generate session ID, create isolated worktree. Setup never deletes or resets another session's worktree, branch, or handoffs. Resume reuses worktree and branch as-is; manual GC commands below.
 
@@ -112,11 +108,8 @@ WORKTREE=.worktrees/$SESSION_ID
 GIT_COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir)
 HANDOFF=$GIT_COMMON_DIR/coder-handoffs/$SESSION_ID
 
-# Metadata-only maintenance: reclaims admin entries for directories that were
-# already deleted by hand. Never removes working files.
+# Metadata-only maintenance: reclaims admin entries for deleted directories, never working files
 git worktree prune 2>/dev/null || true
-
-# Ensure origin/main is current before deriving any worktree from it
 git fetch origin main --prune
 
 # Resume: reuse worktree/branch as-is; create from origin/main only if neither exists
@@ -169,7 +162,7 @@ Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 
 Goose: delegate parameters per Handoff Protocol.
 
-Invoke the `coder-scout` agent via Task tool with the filled-in prompt.
+Invoke the `coder-scout` agent via the Agent tool (Claude Code, pi) or Task tool (goose, vibe) with the filled-in prompt.
 
 After SCOUT completes, verify handoff exists:
 
@@ -198,7 +191,7 @@ Constraint: READ-ONLY. No code changes, no commits. Write handoff only.
 
 Goose: delegate parameters per Handoff Protocol.
 
-Invoke the `coder-guard` agent via Task tool with the filled-in prompt.
+Invoke the `coder-guard` agent via the Agent tool (Claude Code, pi) or Task tool (goose, vibe) with the filled-in prompt.
 
 After GUARD completes, verify handoff exists:
 
@@ -236,13 +229,14 @@ After both agents complete:
 
 Produce structured plan. No gate - auto-proceed to BUILD.
 
-**Quality standards:** plan ONLY what solves the problem; reuse existing patterns; minimal scope; incorporate guard's `implementation_constraints` and `warnings`; sum estimated lines changed -- if >500: STOP and ASK.
+**Quality standards:** plan ONLY what solves the problem; reuse existing patterns; minimal scope; incorporate guard's `implementation_constraints` and `warnings`; sum estimated lines changed -- if >500: STOP and ASK. Every externally-observable fact (provider, model, env var, API surface) must trace to issue text or be flagged as an open grounded decision; unspecified fields are a plan defect (SCOUT grounds open decisions; otherwise the orchestrator resolves them before BUILD).
 
 **Actions:**
 - Read both research handoffs; identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`). Write `files[].path` relative to `<WORKTREE>` (never absolute or worktree-prefixed) -- BUILD passes it as-is to `edit_overwrite`/`edit_replace` with `working_dir` set to the literal `Worktree:` value. Map out implementation steps (5-10) and risks/edge cases.
 - Strip rationale from `implementation_constraints` -- imperative verb + target only; move risk items phrased as requirements (must/must not) into it and remove them from `risks`.
 - Consolidate test behaviors: merge PLAN behaviors and `guard_test_gaps` into `test_behaviors[]` ({function, predicate, tag}); dedup by triple; drop triples already in `existing_coverage` and library primitive gaps; `existing_coverage` lists actual test names from scout's findings, or `["none found"]` -- never empty.
 - Set `commit_message` first, then set `branch` per the Branch derivation rule (it needs `commit_message`), and run `git checkout -B <branch>` in the worktree.
+- Curate `external_facts`: one entry `{kind: provider|model|env_var|api_surface, value, source: issue|grounded}` per externally-observable claim in scope; `source: issue` only when `value` appears verbatim in the issue text, otherwise `source: grounded` (SCOUT-grounded). Facts feed the plan-completeness gate below. `external_facts` carries only provider, model, env-var, and API-surface claims; internal code symbols (e.g. `CachedModel.context_window`) are not external facts.
 
 Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `exec_command` or shell heredocs to write handoff JSON. Compact: `| jq -c .`. After writing, run `jq empty $HANDOFF/02-plan.json`; non-zero exit means fix and rewrite before proceeding:
 
@@ -257,6 +251,7 @@ Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `ex
   "implementation_constraints": ["must do X", "must not do Y"],
   "test_strategy": {"test_behaviors": [{"function": "<function_or_component>", "predicate": "<what it does or returns>", "tag": "happy_path|edge_case"}], "existing_coverage": ["test_name: behavior"]},
   "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
+  "external_facts": [{"kind": "provider", "value": "zai", "source": "grounded"}],
   "tooling": {"language": "Rust|Python|TypeScript|etc", "test_command": "cargo test|pytest|bun test", "linter": "cargo clippy|ruff check|biome check", "formatter": "cargo fmt|ruff format|biome format"},
   "complexity": "simple|medium|complex",
   "line_budget": {"total_max": 500, "test_ratio_max": 1.5},
@@ -265,7 +260,21 @@ Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `ex
 }
 ```
 
-Per Handoff Validation, check `overview` (jq -r), `test_strategy` (jq -c), `recommended_approach` (jq -r).
+Per Handoff Validation, check `overview` (jq -r), `test_strategy` (jq -c), `recommended_approach` (jq -r), `external_facts` (jq -c).
+
+**Plan-completeness gate (after the `jq empty` check, before BUILD; medium and complex tiers):** deterministic propose, one judge validate; constants are normative in `agents-shared/premise-gate.schema.json` (`x-gate-rules.plan_completeness`). Simple tier plans inline and skips the gate.
+
+1. **Propose (no LLM call, pure `jq`):** a fact passes iff `value` is non-empty AND (`source == "grounded"` OR (`source == "issue"` AND `value` appears verbatim in the issue text)); any failing or malformed fact → proposal `incomplete` with the offending fact list; absent/empty array or all facts passing → `complete`.
+2. **One judge call validates** (single `{state, questions}` envelope):
+
+    ```json
+    {"state": {"issue_text": "...", "external_facts": [{"kind": "provider", "value": "...", "source": "issue"}], "mechanical_proposal": "complete|incomplete"}, "questions": {"facts_traceable": {"type": "noul", "instructions": "<x-gate-rules.plan_completeness.question>"}, "completeness": {"type": "choice", "instructions": "Which way does the evidence go?", "criteria": {"complete": "every fact passes the fact_rule", "incomplete": "at least one fact fails"}}}}
+    ```
+
+3. **Stop rules:** mechanical `complete` → proceed regardless of the judge answer (the judge never creates a stop; noul <= 0.3 there is surfaced as judge-mechanical disagreement at presentation). Mechanical `incomplete` + judge `complete` → soften to proceed, disagreement surfaced. Mechanical `incomplete` + judge `incomplete` → `gate_decision: rework`.
+4. **On rework:** rewrite `02-plan.json` in place (ground the offending facts first: issue text, scout handoff, or a grounded lookup), then re-run this gate. BUILD never spawns while `gate_decision` is `rework`.
+5. **Fallback (never fatal):** judge unavailable, API failure, or `{fallback: true}` envelope → the mechanical proposal stands, log `fallback: true`. **Log:** append `{stage: "plan_completeness", proposal, field_list, judge_answer, noul, fallback, gate_decision}` to the same jsonl as Constraint #10 (mandatory on fallback too); verify with `grep -c '"stage":"plan_completeness"'` exceeding the pre-run count, else go back and run it.
+6. **Undeclared-facts advisory (deterministic, warning-level, proceed-always; constants normative in `x-gate-rules.plan_completeness`):** when `external_facts` is absent/empty, scan `overview`, `steps[]`, `recommended_approach` (case-insensitive, word-boundary) for the compound `trigger_patterns`; bare polysemous words are deliberately excluded. A hit never changes the proposal or `gate_decision`: add `undeclared_facts_warning: true` + `trigger_hits` to the telemetry record, and the PR body MUST carry an "External facts" section stating the plan's external claims or their absence (verified at the existing PR-body checkpoints, same mechanism as "Deviation from issue"). The advisory forces declaration only, not verification -- truth of declared facts stays with CHECK's citation gate.
 
 **Present (no gate):** overview (2-3 sentences), files to modify (with line ranges), implementation steps (numbered), implementation constraints (from guard), test strategy (including guard's test gaps), risks, complexity estimate.
 
@@ -290,7 +299,7 @@ Constraint: Implement plan only. No git add, commit, or push.
 
 Goose: delegate parameters per Handoff Protocol.
 
-Invoke the `coder-build` agent via Task tool with the filled-in prompt.
+Invoke the `coder-build` agent via the Agent tool (Claude Code, pi) or Task tool (goose, vibe) with the filled-in prompt.
 
 After BUILD completes:
 1. Verify handoff exists: `jq -c . $HANDOFF/03-build.json`. If missing: re-spawn BUILD per Retry Policy.
@@ -299,7 +308,7 @@ After BUILD completes:
 
 ---
 
-**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review` as the automated gate. Then continue to PR REVIEW & READY.
+**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section, and if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review` as the automated gate. Then continue to PR REVIEW & READY.
 
 ## Phase 4: CHECK [AGENT]
 
@@ -317,16 +326,16 @@ Build handoff: <HANDOFF>/03-build.json
 Plan file: <HANDOFF>/02-plan.json
 Output: write <HANDOFF>/04-validation.json (compact: jq -c .), then run `jq empty <HANDOFF>/04-validation.json`; non-zero exit means fix and rewrite before stopping.
 Validation: per Handoff Validation, check `notes` (jq -r), `issues` (jq -c).
-Schema fields: session_id, verdict, pr_url, issues, security_summary, notes, retry_instructions.
+Schema fields: session_id, timestamp, branch, verdict, pr_url, retry_instructions, plan_requirements, checks, constraints_verified, security_summary, security_findings, line_count, issues, notes.
 Constraint: READ-ONLY for validation. On PASS verdict, run commit+PR sequence and write pr_url to 04-validation.json.
 ```
 
 Goose: delegate parameters per Handoff Protocol.
 
-Invoke the `coder-check` agent via Task tool with the filled-in prompt.
+Invoke the `coder-check` agent via the Agent tool (Claude Code, pi) or Task tool (goose, vibe) with the filled-in prompt.
 
 After CHECK completes:
-1. Read `$HANDOFF/04-validation.json` and present verdict. CHECK's citation gate appends `{stage: "citation", verdict, fallback, disagreements}` to the same jsonl as Constraint #10 (constants: `x-gate-rules.citation_gate` in `agents-shared/premise-gate.schema.json`; fallback: mechanical verdict stands, log line mandatory on fallback too).
+1. Read `$HANDOFF/04-validation.json` and present verdict. CHECK's citation gate appends `{stage: "citation", verdict, fallback, disagreements}` to the same jsonl as Constraint #10 (constants: `x-gate-rules.citation_gate` in `agents-shared/premise-gate.schema.json`; fallback: mechanical verdict stands, log line mandatory on fallback too). CHECK fails any provider/model/env-var claim that does not trace to the issue text or a grounded lookup.
 2. **If PASS:** Proceed immediately to PR REVIEW & READY (no gate).
 3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to PR REVIEW & READY, or address notes first?"
 4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" Per Retry Policy: second BUILD+CHECK failure = STOP.
@@ -337,7 +346,7 @@ After CHECK completes:
 
 Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **ASK** user.
 
-`pr_url` present: CHECK created draft PR (or the medium-tier Ship step did). If the premise gate recorded a `diverges`, the PR body MUST contain a "Deviation from issue" section (restated outcome, chosen approach, why it beats the ask) -- the orchestrator verifies its presence on medium tier (Ship step), CHECK on complex tier. Run `aptu pr review <PR_URL> -o json`, waiting asynchronously per Retry Policy (background waiter subagent or harness notification -- never sequential sleeps).
+`pr_url` present: CHECK created draft PR (or the medium-tier Ship step did). If the premise gate recorded a `diverges`, the PR body MUST contain a "Deviation from issue" section (restated outcome, chosen approach, why it beats the ask); if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section (the plan's external claims or their absence) -- the orchestrator verifies both on medium tier (Ship step), CHECK on complex tier. Run `aptu pr review <PR_URL> -o json`, waiting asynchronously per Retry Policy (background waiter subagent or harness notification -- never sequential sleeps).
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
 - `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD once per Retry Policy, then re-spawn CHECK. If the second `aptu pr review` returns `request_changes` again: STOP and ASK user.
 

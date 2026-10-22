@@ -1,0 +1,11 @@
+# Vibe agent fragment for prose-polish (generates agents/vibe/prose-polish.toml).
+# No active_model: runs on the configured default Mistral model (EDU plan Vibe Code allowance).
+agent_type: subagent
+display_name: Prose Polish
+description: Self-sufficient prose auditor and polisher for markdown files. Audits a target file against an embedded checklist, applies exact-replacement fixes, and returns findings as JSON.
+safety: destructive
+enabled_tools:
+  - read_file
+  - bash
+  - write_file
+  - edit
