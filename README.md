@@ -148,7 +148,7 @@ delegates.*
 flowchart TD
     SKILL["skills/coder/SKILL.md\nversioned pipeline spec"]
     subgraph src[Edit sources]
-        SHARED["agents-shared/coder-&lt;role&gt;.md\nharness-agnostic bodies"]
+        SHARED["agents-shared/&lt;agent&gt;.md\nharness-agnostic bodies"]
         TMPL["tools/agents/{pi,claude,goose,vibe}-&lt;agent&gt;.yaml\nfrontmatter templates"]
         GENSCRIPT["scripts/generate-coder-agents.sh"]
     end
@@ -173,7 +173,8 @@ agent files (bottom); the generation mechanics are detailed in Figure 4.*
 `skills/coder/SKILL.md` is the single pipeline definition. Its frontmatter declares
 compatibility with five harnesses: **pi**, **Claude Code**, **Codex**, **Goose**, and
 **Vibe** (Goose consumes `SKILL.md` directly as a workflow; the dedicated recipe format
-was retired in v3.13.0. Vibe consumes generated TOML subagents under `agents/vibe/` and
+was retired in v3.13.0. Codex consumes `SKILL.md` only, with no rendered subagents.
+Vibe consumes generated TOML subagents under `agents/vibe/` and
 inherits the session model).
 
 The four coder subagents plus the `prose-polish` agent are defined once and rendered
@@ -188,9 +189,9 @@ per harness:
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
 
-*Figure 4: Agent generation — one shared body, four frontmatter templates, one
-generated agent file per role and harness; 5 agents × 4 harnesses = 20 generated
-files, never hand-edited. Flow as in Figure 3.*
+*Figure 4: Agent generation — one shared body and one frontmatter template per
+harness, one generated agent file per agent and harness; 5 agents × 4 harnesses = 20
+generated files, never hand-edited. Flow as in Figure 3.*
 
 ## typesafe-ai integration
 
