@@ -52,7 +52,6 @@
     "never_create_stop": "scout sound proceeds as sound regardless of noul; the judge may confirm or soften a stop but never create one",
     "disagreement_threshold": 0.3,
     "disagreement_rule": "noul <= disagreement_threshold on a scout-sound verdict is surfaced as scout-judge disagreement at presentation (low consistency = judge dissents with scout; the judge still never creates a stop)",
-    "choice_arm": "separates proceed from proceed_with_deviation only; NEVER decides stops",
     "fallback": "never fatal: judge unavailable/API failure/{fallback: true} envelope -> scout's verdict stands, log fallback: true",
     "telemetry": "{stage: 'premise', verdict, proposed_verdict, consistent, fallback, gate_decision} appended to the same jsonl as SKILL.md Constraint #10; never block on logging failures; on fallback omit proposed_verdict/consistent or set them to null",
     "citation_gate": {
@@ -61,8 +60,27 @@
       "never_create_fail": "the judge may confirm or soften a mechanical citation FAIL but never create one; the shell check is the only FAIL producer",
       "disagreement_rule": "a judge verdict that disagrees with the mechanical verdict on an anchor is surfaced as judge-mechanical disagreement at presentation",
       "fallback": "never fatal: judge unavailable/API failure/{fallback: true} envelope -> mechanical check's verdict stands, log fallback: true",
-      "claim_support": "one batched noul question per report: given the anchors and their mechanically verified evidence, is each citation's content supportive of the claim it anchors?; low noul on any anchor = judge-mechanical disagreement surfaced at presentation; batches all anchors into a single call for speed and cost",
+      "claim_support": "one batched noul question per report: is each citation's content supportive of the claim it anchors?; provider/model/env-var claims (SDK string literals, URLs/endpoints, process.env.* keys) are first-class; a lookup grounds only via issue text, an authoritative vendor source, or an accepted artifact (user/maintainer decision, recorded in a pipeline handoff); junk or third-party-only results do not ground; low noul on any anchor = judge-mechanical disagreement surfaced at presentation; batches all anchors into a single call",
       "telemetry": "{stage: 'citation', verdict, fallback, disagreements} appended to the same jsonl as SKILL.md Constraint #10; never block on logging failures"
+    },
+    "plan_completeness": {
+      "question": "Is every externally-observable fact in this plan either verbatim in the issue text or explicitly marked as a grounded decision?",
+      "polarity": "predicate-positive -- a confirmed 'complete' means proceed; the dangerous 'yes' must mean proceed, never stop (issue #1107)",
+      "fact_rule": "a fact passes iff value is non-empty AND (source == 'grounded' OR (source == 'issue' AND value appears verbatim in the issue text)); any failing or malformed fact proposes 'incomplete', else 'complete'; an absent or empty external_facts array proposes 'complete' (vacuous -- presence is a PLAN-phase prose duty, not a runner-enforced one)",
+      "never_create_stop": "the judge may confirm or soften a mechanical 'incomplete' but never creates one; a mechanical 'complete' proceeds regardless of the judge answer",
+      "disagreement_threshold": 0.3,
+      "disagreement_rule": "noul <= disagreement_threshold on a mechanical-complete proposal is surfaced as judge-mechanical disagreement at presentation",
+      "soften_rule": "mechanical 'incomplete' softens to proceed iff the judge choice arm answers 'complete' (facts traceable); the softened run surfaces judge-mechanical disagreement at presentation",
+      "rework_rule": "mechanical 'incomplete' + judge 'incomplete' (or fallback) -> gate_decision rework: rewrite 02-plan.json in place (ground the offending facts first) and re-run the gate; BUILD never spawns while gate_decision is rework",
+      "fallback": "never fatal: judge unavailable/API failure/{fallback: true} envelope -> the mechanical proposal stands, log fallback: true; bouncer has no fallback path (the engine-side scan is local and cannot fail open)",
+      "telemetry": "{stage: 'plan_completeness', proposal, field_list, judge_answer, noul, fallback, gate_decision} appended to the same jsonl as SKILL.md Constraint #10; never block on logging failures; on fallback omit judge_answer/noul or set them to null; field_list is the plan's external_facts values as kind:value pairs (e.g. ['model:sonnet', 'api_surface:maxTurns']) so logged records name the facts the gate evaluated",
+      "trigger_patterns": ["model id", "model name", "pinned model", "api key", "env var", "base url"],
+      "trigger_exclusions": {
+        "bare": ["model", "provider", "endpoint", "sdk", "llm"],
+        "rationale": "deliberately excluded from the advisory scan: highly polysemous in real plans (data model, approval endpoint, identity provider); a hard stop on them would burn rework attempts on phases that cannot fix anything (issue #1125)"
+      },
+      "undeclared_facts_rule": "warning-level advisory, never a stop: trigger-pattern hit in the plan's own text (overview, steps[], recommended_approach; case-insensitive, word-boundary) AND external_facts empty/absent -> gate_decision unchanged, telemetry/event gains undeclared_facts_warning: true + trigger_hits, and the PR body MUST carry an 'External facts' section stating the plan's external claims or their absence (verified at the existing PR-body checkpoints: medium-tier Ship step, CHECK on complex tier); no trigger hit, facts present, or warning acknowledged -> behavior unchanged; recall is partially limited by the fixed list (accepted: a miss leaves behavior identical to today)",
+      "declaration_not_verification": "the advisory forces declaration only; it proves nothing about a declared fact's truth -- correctness of declared values is enforced solely by CHECK's citation gate with live lookups"
     }
   }
 }

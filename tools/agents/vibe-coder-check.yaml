@@ -1,0 +1,19 @@
+# Vibe agent fragment for coder-check (generates agents/vibe/coder-check.toml).
+# No active_model: delegates inherit the session model (Mistral-hosted zai-glm-5-3 on the Mistral Pro subscription, pinned in ~/.vibe/config.toml; thinking high is the ONLY working option on the subscription path -- Vibe's mistral backend maps low->"none" and off->"off", both REJECTED by zai-glm-5-3 per mistralai/mistral-vibe#1115).
+agent_type: subagent
+display_name: Coder Check
+description: Validates implementation matches plan requirements. Security gate and compliance checker.
+safety: neutral
+enabled_tools:
+  # Code analysis: aptu-coder MCP tools (preferred per Constraint #8).
+  - aptu-coder_analyze_directory
+  - aptu-coder_analyze_module
+  - aptu-coder_analyze_file
+  - aptu-coder_analyze_symbol
+  # Web search
+  - brave_brave_web_search
+  # Fallback built-ins (for when MCP groups are dropped by unified harness,
+  # mistralai/mistral-vibe#1159): run with --legacy-harness for full MCP access.
+  - read_file
+  - grep
+  - bash

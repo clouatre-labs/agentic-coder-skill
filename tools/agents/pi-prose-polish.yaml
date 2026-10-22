@@ -1,0 +1,8 @@
+name: prose-polish
+description: Self-sufficient prose auditor and polisher for markdown files. Audits a target file against an embedded checklist, applies exact-replacement fixes, and returns findings as JSON. Task context provides the absolute target path; env vars are not set.
+model: zai/glm-5.3-flash
+thinking: low
+tools: ext:pi-mcp-adapter/brave_web_search, ext:pi-mcp-adapter/aptu-coder_exec_command, ext:pi-mcp-adapter/aptu-coder_edit_overwrite
+extensions: pi-mcp-adapter
+max_turns: 20
+isolation: off
