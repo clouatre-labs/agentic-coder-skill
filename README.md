@@ -166,7 +166,7 @@ flowchart TD
 ```
 
 *Figure 3: Project structure. Edit sources (top) are rendered into the generated
-agent files (bottom); the generation mechanics are detailed in Figure 4.*
+agent files (bottom); the numbered steps below describe the same flow in prose.*
 
 ## One pipeline, five harnesses
 
@@ -188,10 +188,6 @@ per harness:
    (markdown) and `agents/vibe/` (TOML + prompt).
 3. **Validate**: `scripts/generate-coder-agents.sh --check` exits 1 on drift; CI runs
    it on every PR.
-
-*Figure 4: Agent generation — one shared body and one frontmatter template per
-harness, one generated agent file per agent and harness; 5 agents × 4 harnesses = 20
-generated files, never hand-edited. Flow as in Figure 3.*
 
 ## typesafe-ai integration
 
@@ -248,7 +244,7 @@ Retry Policy.
 
 ## Inspecting a session
 
-*Code Snippet 5: Common inspection commands. Handoffs live outside the worktree, so
+*Code Snippet 4: Common inspection commands. Handoffs live outside the worktree, so
 they survive worktree teardown and are visible from any checkout.*
 
 ```bash
@@ -264,28 +260,23 @@ scripts/generate-coder-agents.sh --check
 grep '^version:' skills/coder/SKILL.md
 ```
 
-## Githooks
+## Githooks and local operation
 
-Install with:
+The hooks in `githooks/` are local, opt-in tooling — the same conventions
+`coder-check`'s commit/PR step assumes are in place. They are not exercised by CI.
 
 ```bash
-git config core.hooksPath githooks
+git config core.hooksPath githooks   # or: scripts/bootstrap.sh
 ```
 
 - `commit-msg` — Conventional Commits format, DCO sign-off, no `Co-authored-by:` trailers
-- `pre-commit` — blocks direct commits to `main`/`master`/`release/*`; runs identity/signingkey and secret-scanning checks (details under [Local operation and portability](#local-operation-and-portability))
+- `pre-commit` — blocks direct commits to `main`/`master`/`release/*`; runs secret scanning with `betterleaks` (skipped when the binary is absent) and identity checks that expect a `signingkey` in the committer's `~/.gitconfig*` (without one, bypass with `--no-verify` or adapt the hook locally)
 - `pre-push` — blocks direct pushes to protected branches
 - `post-checkout` — prunes local branches whose remote tracking branch is gone, on
   checkout to `main`/`master`
 
-These are the same conventions `coder-check`'s commit/PR step assumes are in place.
+Portability notes:
 
-## Local operation and portability
-
-The hooks in `githooks/` are local, opt-in tooling: enable them via `git config core.hooksPath githooks` or `scripts/bootstrap.sh`. They are not exercised by CI.
-
-- `pre-commit` runs secret scanning with `betterleaks` if it is installed, and gracefully skips that step when the binary is absent.
-- `pre-commit` identity checks expect the committer's `~/.gitconfig*` identity files to define a `signingkey`. Contributors without that setup will be blocked from committing and should bypass (`--no-verify`) or adapt the hook locally.
 - `agents-shared/premise-gate.schema.json` carries an `$id` pointing at this repo's canonical location; adjust it if you fork.
 - The premise-gate CI battery and coder-log validator used upstream are not bundled here; schema validity can be checked with `jq empty`.
 - aptu integration is optional: the `aptu-*` GitHub workflows under `.github/` and the `aptu-coder` extension referenced by the skill and agents can be removed without affecting the pipeline's runtime dependencies.
