@@ -1,11 +1,11 @@
 {
   "generated_by": "scripts/coder-stats.sh",
   "window": {
-    "first": "2026-09-21",
-    "last": "2026-10-21"
+    "first": "2026-09",
+    "last": "2026-10"
   },
   "log_lines": {
-    "total": 588,
+    "total": 591,
     "malformed": 6
   },
   "tier_agreement": {
@@ -28,10 +28,10 @@
       [
         0,
         5,
-        45
+        46
       ]
     ],
-    "confirmed": 173,
+    "confirmed": 174,
     "promoted": 14,
     "demoted": 10,
     "excluded_off_ladder": 2
@@ -207,7 +207,8 @@
       0.86,
       0.86,
       0.86,
-      0.86
+      0.86,
+      0.48
     ],
     "changed": [
       0.6,
@@ -238,12 +239,12 @@
     "missing": 3
   },
   "premise": {
-    "proceed": 72,
+    "proceed": 73,
     "soften": 3,
     "stop": 2
   },
   "plan_completeness": {
-    "proceed": 19
+    "proceed": 20
   },
   "check_verdicts": {
     "fail": 11,

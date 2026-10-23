@@ -37,7 +37,7 @@ cat "$LOG_DIR"/*.jsonl | jq -R 'fromjson? // "MALFORMED"' | jq -s --argjson verd
   | ($ok | map(.ts | numbers | select(. > 1600000000))) as $ts
   | {
       generated_by: "scripts/coder-stats.sh",
-      window: {first: ($ts | min | todate[:10]), last: ($ts | max | todate[:10])},
+      window: {first: ($ts | min | todate[:7]), last: ($ts | max | todate[:7])},
       log_lines: {total: length, malformed: (length - ($ok | length))},
       tier_agreement: {
         order: tiers,
