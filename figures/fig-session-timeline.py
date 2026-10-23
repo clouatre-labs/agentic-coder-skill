@@ -1,8 +1,8 @@
 """Figure: Gantt timeline of one parallel multi-agent coding session.
 
-Data source: session transcript 01a0ba3a (2026-09-19), repo aptu-coder,
-issues #1578-#1582 across 5 parallel session lanes. Bars span actual subagent
-spawn -> completion timestamps extracted from the transcript.
+Data source: one pi session transcript (September 2026), five refactoring
+issues in a Rust workspace across 5 parallel session lanes. Bars span subagent
+spawn -> completion, in minutes from kickoff, extracted from the transcript.
 Regenerate: python3 figures/fig-session-timeline.py  (requires matplotlib)
 """
 import matplotlib
@@ -12,48 +12,40 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.transforms import blended_transform_factory
 
-def t(hhmmss):
-    """Minutes since session start (15:13:00), the figure's t=0."""
-    h, m, s = map(int, hhmmss.split(":"))
-    return (h * 3600 + m * 60 + s - t.ZERO) / 60.0
-
-t.ZERO = 15 * 3600 + 13 * 60
-
-# (start, end, kind, row) -- rows: 0..4 = lanes for #1578 #1579 #1580 #1581 #1582.
+# (start, end, kind, row) in minutes from kickoff -- rows: 0..4 = issues A..E.
 # Kinds: SCOUT, GUARD, BUILD, CHECK; suffix "_FAIL" draws a hatched red overlay.
 BARS = [
-    # Lane #1578 (PR #1586)
-    ("15:16:20", "15:18:20", "SCOUT", 0),
-    ("15:21:01", "15:31:03", "BUILD", 0),
-    ("15:32:09", "15:37:53", "CHECK", 0),
-    ("15:47:38", "15:48:22", "RETRY", 0),   # amend doc comment
-    # Lane #1579 (PR #1588)
-    ("15:16:20", "15:18:08", "SCOUT", 1),
-    ("15:21:01", "15:32:01", "BUILD", 1),
-    ("15:32:41", "15:36:16", "CHECK_FAIL", 1),  # missing tests
-    ("15:47:38", "15:50:54", "RETRY", 1),   # BUILD retry: add tests
-    ("15:54:29", "16:01:41", "CHECK", 1),
-    ("16:02:08", "16:02:37", "FIX", 1),     # semver bump
-    ("16:45:10", "16:46:41", "RETRY", 1),   # rebase #1588 (after #1587 landed)
-    # Lane #1580 (PR #1587)
-    ("15:16:20", "15:18:11", "SCOUT", 2),
-    ("15:21:01", "15:31:16", "BUILD", 2),
-    ("15:32:09", "15:35:22", "CHECK_FAIL", 2),  # branch mismatch
-    ("15:36:31", "15:39:09", "CHECK", 2),
-    ("15:52:33", "15:53:25", "FIX", 2),     # semver bump
-    # Lane #1581 (PR #1584)
-    ("15:16:20", "15:17:17", "SCOUT", 3),
-    ("15:18:49", "15:23:28", "BUILD", 3),
-    ("15:24:41", "15:27:37", "CHECK", 3),
-    # Lane #1582 (PR #1585)
-    ("15:16:20", "15:18:54", "SCOUT", 4),
-    ("15:21:43", "15:23:11", "GUARD", 4),
-    ("15:24:03", "15:28:54", "BUILD", 4),
-    ("15:29:24", "15:36:20", "CHECK", 4),
+    # Issue A
+    (3.3, 5.3, "SCOUT", 0),
+    (8.0, 18.1, "BUILD", 0),
+    (19.2, 24.9, "CHECK", 0),
+    (34.6, 35.4, "RETRY", 0),   # amend doc comment
+    # Issue B
+    (3.3, 5.1, "SCOUT", 1),
+    (8.0, 19.0, "BUILD", 1),
+    (19.7, 23.3, "CHECK_FAIL", 1),  # missing tests
+    (34.6, 37.9, "RETRY", 1),   # BUILD retry: add tests
+    (41.5, 48.7, "CHECK", 1),
+    (49.1, 49.6, "FIX", 1),     # semver bump
+    (92.2, 93.7, "RETRY", 1),   # rebase (after issue C's PR landed)
+    # Issue C
+    (3.3, 5.2, "SCOUT", 2),
+    (8.0, 18.3, "BUILD", 2),
+    (19.2, 22.4, "CHECK_FAIL", 2),  # branch mismatch
+    (23.5, 26.2, "CHECK", 2),
+    (39.6, 40.4, "FIX", 2),     # semver bump
+    # Issue D
+    (3.3, 4.3, "SCOUT", 3),
+    (5.8, 10.5, "BUILD", 3),
+    (11.7, 14.6, "CHECK", 3),
+    # Issue E
+    (3.3, 5.9, "SCOUT", 4),
+    (8.7, 10.2, "GUARD", 4),
+    (11.1, 15.9, "BUILD", 4),
+    (16.4, 23.3, "CHECK", 4),
 ]
 
-LANES = ["#1578 (PR #1586)", "#1579 (PR #1588)", "#1580 (PR #1587)",
-         "#1581 (PR #1584)", "#1582 (PR #1585)"]
+LANES = ["Issue A", "Issue B", "Issue C", "Issue D", "Issue E"]
 
 COLOR = {
     "SCOUT": "#1f77b4",
@@ -64,24 +56,21 @@ COLOR = {
     "FIX": "#d62728",
 }
 
-# Actual merge times per lane (from GitHub), minutes from kickoff:
-# row order: #1578, #1579, #1580, #1581, #1582
-MERGE_ORDER = {"#1584": 1, "#1586": 2, "#1585": 3, "#1587": 4, "#1588": 5}
-MERGES = {0: ("16:22:08", "#1586"), 1: ("16:51:43", "#1588"),
-          2: ("16:44:27", "#1587"), 3: ("16:15:58", "#1584"), 4: ("16:32:19", "#1585")}
+# Merge time per lane (from GitHub), minutes from kickoff, with merge order.
+MERGES = {0: (69.1, 2), 1: (98.7, 5), 2: (91.5, 4), 3: (63.0, 1), 4: (79.3, 3)}
 
 # Quiet stretch: review-gate retries + CI + waiting on the human go-ahead.
-WAIT0, WAIT1 = t("15:39:09"), t("16:13:48")
+WAIT0, WAIT1 = 26.2, 60.8
 
 # Three human steering interventions (dashed vertical markers).
 INTERVENTIONS = [
-    ("15:14:28", "approve parallel plan"),
-    ("15:46:57", "authorize fallback review provider"),
-    ("16:15:29", "authorize ordered merge"),
+    (1.5, "approve parallel plan"),
+    (34.0, "authorize fallback review provider"),
+    (62.5, "authorize ordered merge"),
 ]
 
-T0, T1 = 0, t("16:56:00")
-MERGE0, MERGE1 = t("16:15:29"), t("16:52:30")  # relative minutes
+T0, T1 = 0, 103.0
+MERGE0, MERGE1 = 62.5, 99.5
 
 fig, ax = plt.subplots(figsize=(12.5, 5.0))
 ax.set_xlim(T0, T1)
@@ -104,22 +93,20 @@ for row, lane in enumerate(LANES):
 
 # Waiting band (review gate + CI + human review)
 ax.axvspan(WAIT0, WAIT1, color="#9e9e9e", alpha=0.10, zorder=0)
-ax.text(t("15:48:00"), -0.05, "review gate + CI",
+ax.text(35.0, -0.05, "review gate + CI",
         ha="left", va="bottom", fontsize=8, color="#616161", style="italic")
 
-# Merge markers per lane
-for row, (ts, pr) in MERGES.items():
-    x = t(ts)
+# Merge markers per lane, labeled with merge order
+for row, (x, order) in MERGES.items():
     ax.plot(x, row + 0.5, marker="D", markersize=7, color="#2e7d32",
             markeredgecolor="#1b5e20", zorder=4)
-    ax.annotate(f"{MERGE_ORDER[pr]}. {pr}", (x, row + 0.5), xytext=(0, 9),
+    ax.annotate(f"merge {order}", (x, row + 0.5), xytext=(0, 9),
                 textcoords="offset points",
                 ha="center", fontsize=7.5, color="#1b5e20", fontweight="bold",
                 zorder=5)
 
 BAR_H = 0.56
-for start, end, kind, row in BARS:
-    x0, x1 = t(start), t(end)
+for x0, x1, kind, row in BARS:
     base = kind[:-5] if kind.endswith("_FAIL") else kind
     ax.add_patch(plt.Rectangle(
         (x0, row + (1 - BAR_H) / 2), x1 - x0, BAR_H,
@@ -131,14 +118,12 @@ for start, end, kind, row in BARS:
     ))
 
 # Label the one rebase bar (its cause is not obvious from the bar alone)
-rx0, rx1 = t("16:45:10"), t("16:46:41")
-ax.annotate("rebase #1588 (#1587 landed)", (rx0, 1.5), xytext=(-7, 0),
+ax.annotate("rebase (issue C merged first)", (92.2, 1.5), xytext=(-7, 0),
             textcoords="offset points", ha="right", va="center",
             fontsize=7, color="#5d4037", zorder=5)
 
 # Human interventions: dashed vlines + numbered markers
-for i, (ts, label) in enumerate(INTERVENTIONS, 1):
-    x = t(ts)
+for i, (x, label) in enumerate(INTERVENTIONS, 1):
     ax.axvline(x, color="#555555", linestyle=":", linewidth=1.0, zorder=1)
     ax.plot(x, -0.2, marker="v", color="#555555", clip_on=False, zorder=4)
     ax.text(x, -0.08, str(i), ha="center", va="center",

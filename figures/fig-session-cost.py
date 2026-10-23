@@ -22,7 +22,7 @@ GROUPS = [
     ("Simple", "simple", "#1f77b4"),
     ("Medium", "medium", "#ff7f0e"),
     ("Complex", "complex", "#d62728"),
-    ("Tier unknown", "unknown", "#7f7f7f"),
+    ("No tier recorded", "none", "#7f7f7f"),
 ]
 
 rng = random.Random(42)

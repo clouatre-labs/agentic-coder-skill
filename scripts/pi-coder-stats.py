@@ -10,7 +10,9 @@ Scope: a coder session is a pi session that invoked the coder skill (read
 coder/SKILL.md, or a user prompt naming the coder skill) and then spawned coder-*
 delegates or wrote coder handoffs. Its cost is the orchestrator's messages from
 the invocation onward plus every coder-* delegate it spawned, using pi's own
-per-message usage.cost.total. Bounds:
+per-message usage.cost.total. Tier per session: the highest tier in its handoff
+files, else the highest tier the orchestrator wrote in the transcript, else
+"none" (no tier recorded, e.g. review or merge follow-ups). Bounds:
   lower = delegates only
   upper = delegates + the whole orchestrator session (includes interactive work
           before the invocation)
@@ -44,6 +46,8 @@ SKILL_PROMPT = re.compile(r"\bcoder skill\b|skill:coder\b", re.IGNORECASE)
 SID = re.compile(r"coder-handoffs/(\d{10})")
 PR_URL = re.compile(r"https://github\.com/([\w.-]+)/([\w.-]+)/pull/(\d+)")
 TIERS = ("simple", "medium", "complex")
+# tier as written by the orchestrator (02-plan.json, 00-progress.json, coder-log line)
+TIER_WRITE = re.compile(r'"(?:tier|complexity)"\s*:\s*"(simple|medium|complex)"')
 
 
 def text_of(message):
@@ -67,6 +71,7 @@ def parse_session(path):
         "cache_read": 0,
         "tokens": 0,
         "models": collections.Counter(),
+        "tiers": set(),
     }
     pr_calls = set()
     with open(path, errors="replace") as f:
@@ -104,6 +109,9 @@ def parse_session(path):
                         s["invoked"] = True
                     if "gh pr create" in call:
                         pr_calls.add(c.get("id"))
+                    for value in (c.get("arguments") or {}).values():
+                        if isinstance(value, str):
+                            s["tiers"].update(TIER_WRITE.findall(value))
                 usage = msg.get("usage") or {}
                 cost = (usage.get("cost") or {}).get("total") or 0.0
                 s["cost_all"] += cost
@@ -231,6 +239,7 @@ def main():
         deleg = sum(k["cost_all"] for k in kids)
         sids = s["sids"] | {i for k in kids for i in k["sids"]}
         tiers = [index[i][0] for i in sids if i in index and index[i][0] != "unknown"]
+        tiers += s["tiers"]  # fallback: handoff gone or written without a tier field
         prs = s["prs"] | {u for k in kids for u in k["prs"]}
         for i in sids:
             pr = index.get(i, (None, None))[1]
@@ -241,7 +250,7 @@ def main():
                 "lower": deleg,
                 "primary": deleg + s["cost_after"],
                 "upper": deleg + s["cost_all"],
-                "tier": max(tiers, key=TIERS.index) if tiers else "unknown",
+                "tier": max(tiers, key=TIERS.index) if tiers else "none",
                 "scoped": [s, *kids],
                 "prs": prs,
                 "delegates": len(kids),
@@ -264,9 +273,7 @@ def main():
         "window": {"first": starts[0][:7], "last": starts[-1][:7]} if starts else None,
         "coder_sessions": {
             "count": len(units),
-            "by_highest_tier": {
-                t: len(by_tier.get(t, [])) for t in (*TIERS, "unknown")
-            },
+            "by_highest_tier": {t: len(by_tier.get(t, [])) for t in (*TIERS, "none")},
             "delegate_sessions": sum(u["delegates"] for u in units),
         },
         "cost_usd": {
