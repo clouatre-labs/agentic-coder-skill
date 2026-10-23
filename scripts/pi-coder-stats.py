@@ -6,13 +6,17 @@ no session ids, paths, repository or owner names, or issue text.
 Usage:
   uv run python scripts/pi-coder-stats.py [--owners OWNER,...] > docs/evidence/pi-coder-aggregate.json
 
-Scope: a coder session is a pi session that invoked the coder skill (read
-coder/SKILL.md, or a user prompt naming the coder skill) and then spawned coder-*
-delegates or wrote coder handoffs. Its cost is the orchestrator's messages from
+Scope: a coder session is a formal coder run: a pi session that invoked the coder
+skill (read coder/SKILL.md, or a user prompt naming the coder skill), spawned
+coder-* delegates or wrote coder handoffs, and ran the skill's mandatory tier
+classification (a tier recorded in handoffs or the transcript, or a judge call
+with a tier question). Invoking sessions that skipped classification (research,
+reviews, follow-ups, single-phase experiments) are reported as informal and
+excluded, with their PRs. Its cost is the orchestrator's messages from
 the invocation onward plus every coder-* delegate it spawned, using pi's own
 per-message usage.cost.total. Tier per session: the highest tier in its handoff
 files, else the highest tier the orchestrator wrote in the transcript, else
-"none" (no tier recorded, e.g. review or merge follow-ups). Bounds:
+"not_saved" (judge called, result not persisted). Bounds:
   lower = delegates only
   upper = delegates + the whole orchestrator session (includes interactive work
           before the invocation)
@@ -72,6 +76,7 @@ def parse_session(path):
         "tokens": 0,
         "models": collections.Counter(),
         "tiers": set(),
+        "tier_judged": False,
     }
     pr_calls = set()
     with open(path, errors="replace") as f:
@@ -109,9 +114,19 @@ def parse_session(path):
                         s["invoked"] = True
                     if "gh pr create" in call:
                         pr_calls.add(c.get("id"))
-                    for value in (c.get("arguments") or {}).values():
+                    args = c.get("arguments") or {}
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except ValueError:
+                            args = {}
+                    for value in args.values():
                         if isinstance(value, str):
                             s["tiers"].update(TIER_WRITE.findall(value))
+                    if "judge" in (c.get("name") or "") and any(
+                        str(q).startswith("tier") for q in (args.get("questions") or {})
+                    ):
+                        s["tier_judged"] = True
                 usage = msg.get("usage") or {}
                 cost = (usage.get("cost") or {}).get("total") or 0.0
                 s["cost_all"] += cost
@@ -213,15 +228,15 @@ def main():
     for s in sessions.values():
         if s["role"]:
             children[s["parent"]].append(s)
-    orch = {
+    candidates = {
         p: s
         for p, s in sessions.items()
         if not s["role"] and s["invoked"] and (children[p] or s["sids"])
     }
-    owner_of_sid = {sid: p for p, s in orch.items() for sid in s["sids"]}
+    owner_of_sid = {sid: p for p, s in candidates.items() for sid in s["sids"]}
     ad_hoc = []
     for p, kids in list(children.items()):
-        if p in orch:
+        if p in candidates:
             continue
         for k in kids:  # delegates of a non-coder session sharing a coder run id
             hit = next(
@@ -233,8 +248,8 @@ def main():
                 ad_hoc.append(k)
 
     index = handoff_index(args.repos_root)
-    units = []
-    for p, s in orch.items():
+    units, informal = [], []
+    for p, s in candidates.items():
         kids = children[p]
         deleg = sum(k["cost_all"] for k in kids)
         sids = s["sids"] | {i for k in kids for i in k["sids"]}
@@ -245,17 +260,17 @@ def main():
             pr = index.get(i, (None, None))[1]
             if pr and PR_URL.search(pr):
                 prs.add(PR_URL.search(pr).groups())
-        units.append(
-            {
-                "lower": deleg,
-                "primary": deleg + s["cost_after"],
-                "upper": deleg + s["cost_all"],
-                "tier": max(tiers, key=TIERS.index) if tiers else "none",
-                "scoped": [s, *kids],
-                "prs": prs,
-                "delegates": len(kids),
-            }
-        )
+        unit = {
+            "lower": deleg,
+            "primary": deleg + s["cost_after"],
+            "upper": deleg + s["cost_all"],
+            "tier": max(tiers, key=TIERS.index) if tiers else "not_saved",
+            "scoped": [s, *kids],
+            "prs": prs,
+            "delegates": len(kids),
+        }
+        # formal run: the skill's mandatory first step (tier classification) ran
+        (units if tiers or s["tier_judged"] else informal).append(unit)
 
     scoped = [x for u in units for x in u["scoped"]]
     models = sum((x["models"] for x in scoped), collections.Counter())
@@ -273,7 +288,9 @@ def main():
         "window": {"first": starts[0][:7], "last": starts[-1][:7]} if starts else None,
         "coder_sessions": {
             "count": len(units),
-            "by_highest_tier": {t: len(by_tier.get(t, [])) for t in (*TIERS, "none")},
+            "by_highest_tier": {
+                t: len(by_tier.get(t, [])) for t in (*TIERS, "not_saved")
+            },
             "delegate_sessions": sum(u["delegates"] for u in units),
         },
         "cost_usd": {
@@ -285,9 +302,17 @@ def main():
                 b: pct([u[b] for u in units]) for b in ("lower", "primary", "upper")
             },
             "per_pr_opened": round(primary_total / len(prs), 4) if prs else None,
-            "ad_hoc_delegates_excluded": {
-                "sessions": len(ad_hoc),
-                "cost": round(sum(k["cost_all"] for k in ad_hoc), 2),
+            "excluded": {
+                "informal_sessions": len(informal),
+                "informal_delegate_sessions": sum(u["delegates"] for u in informal),
+                "informal_cost": round(sum(u["primary"] for u in informal), 2),
+                "informal_prs_opened": len(
+                    set().union(*(u["prs"] for u in informal)) - prs
+                    if informal
+                    else set()
+                ),
+                "ad_hoc_delegate_sessions": len(ad_hoc),
+                "ad_hoc_cost": round(sum(k["cost_all"] for k in ad_hoc), 2),
             },
         },
         "tokens": {

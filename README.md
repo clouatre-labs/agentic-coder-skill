@@ -75,8 +75,8 @@ constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md
 
 Measured over two months of daily use on one maintainer's machine, September to October 2026:
 
-- **95% of PRs merged:** 305 of 321, with a median of 15 minutes from PR open to merge.
-- **$0.13 in model cost per PR opened**, across 247 coder sessions, with 96% of input tokens served from cache.
+- **95% of PRs merged:** 236 of 249, with a median of 16 minutes from PR open to merge.
+- **$0.14 in model cost per PR opened**, across 185 formal coder runs, with 96% of input tokens served from cache.
 - **88% of tier proposals confirmed** by the judge; the rest moved one tier up or down.
 
 Full numbers, figures, caveats, and the scripts that regenerate them: [Pipeline telemetry](docs/evidence/2026-10-pipeline-stats.md). One annotated run, five issues in parallel: [Case study](docs/examples/2026-09-five-parallel-issues.md).

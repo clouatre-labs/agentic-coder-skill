@@ -1,4 +1,4 @@
-"""Figure: cost per coder session by highest tier, log scale.
+"""Figure: cost per formal coder run (session) by highest tier, log scale.
 
 Data source: docs/evidence/pi-coder-aggregate.json (per_session_cost_by_tier),
 produced by scripts/pi-coder-stats.py from pi session logs (orchestrator from
@@ -22,7 +22,6 @@ GROUPS = [
     ("Simple", "simple", "#1f77b4"),
     ("Medium", "medium", "#ff7f0e"),
     ("Complex", "complex", "#d62728"),
-    ("No tier recorded", "none", "#7f7f7f"),
 ]
 
 rng = random.Random(42)
@@ -44,7 +43,7 @@ ax.set_ylim(0.001, 2.5)
 ax.set_yticks([0.001, 0.01, 0.1, 1], ["$0.001", "$0.01", "$0.10", "$1"])
 ax.set_xticks(range(len(GROUPS)), [g[0] for g in GROUPS])
 ax.set_xlim(-0.5, len(GROUPS) - 0.3)
-ax.set_ylabel("Cost per coder session (USD, log scale)", fontsize=10)
+ax.set_ylabel("Cost per coder run (USD, log scale)", fontsize=10)
 ax.spines[["top", "right"]].set_visible(False)
 
 plt.tight_layout()

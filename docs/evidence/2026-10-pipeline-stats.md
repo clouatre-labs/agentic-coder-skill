@@ -11,57 +11,58 @@ number comes from a committed aggregate that a script regenerates from local log
 
 | Measure | Result |
 |---|---|
-| Coder sessions | 247, with 871 delegate sessions |
-| PRs merged | 305 of 321 queried (95.0%) |
-| PR open to merge | median 15 min |
-| Model cost per PR opened | $0.13 |
+| Formal coder runs | 185 sessions, with 768 delegate sessions |
+| PRs merged | 236 of 249 queried (94.8%) |
+| PR open to merge | median 16 min |
+| Model cost per PR opened | $0.14 |
 | Input tokens served from cache | 95.8% |
 | Tier proposals confirmed by the judge | 88% |
 
 ## PR outcomes
 
-PRs are the URLs printed by `gh pr create` in coder sessions plus the `pr_url`
+PRs are the URLs printed by `gh pr create` in formal coder runs plus the `pr_url`
 in each `04-validation.json`, queried read-only from GitHub for the maintainer's
 personal organizations.
 
-*Table 2: Outcomes of PRs opened by coder sessions.*
+*Table 2: Outcomes of PRs opened by formal coder runs.*
 
 | Metric | Value |
 |---|---|
-| PRs opened | 325 (321 queried; 4 in other organizations not queried) |
-| Merged | 305 of 321 (95.0%); 16 closed without merge; 0 open |
-| PR open to merge | median 0.24 h, p90 1.5 h |
-| Merged PR size | median 3 files, +65/-9 lines; p90 11 files, +508/-72 lines |
+| PRs opened | 252 (249 queried; 3 in other organizations not queried) |
+| Merged | 236 of 249 (94.8%); 13 closed without merge; 0 open |
+| PR open to merge | median 0.27 h, p90 1.5 h |
+| Merged PR size | median 3 files, +79/-9.5 lines; p90 11 files, +513/-75 lines |
 
 ## Cost
 
-A coder session is a pi session that invoked the skill (read `SKILL.md`, or a
-prompt naming the coder skill) and then spawned coder delegates or wrote coder
-handoffs. Its cost is the orchestrator from the invocation onward plus every
-delegate it spawned, as recorded by pi per message.
+A formal coder run is a pi session that invoked the skill (read `SKILL.md`, or a
+prompt naming the coder skill), spawned coder delegates or wrote coder handoffs,
+and ran the skill's mandatory first step, tier classification. Its cost is the
+orchestrator from the invocation onward plus every delegate it spawned, as
+recorded by pi per message. Sessions that invoked the skill but skipped
+classification (mostly research with a scout delegate, PR reviews and rebases,
+merge follow-ups, and single-phase experiments) are excluded, with their PRs.
 
-*Table 3: Cost of 247 coder sessions and their 871 delegate sessions.*
+*Table 3: Cost of 185 formal coder runs and their 768 delegate sessions.*
 
 | Metric | Value |
 |---|---|
-| Total cost | $42.82 (bounds: $14.13 delegates only, $43.56 whole sessions) |
-| Per coder session | median $0.13, p90 $0.36 |
-| Per PR opened | $0.13 (325 PRs) |
-| Tokens processed | 1.13 billion; 95.8% of input tokens served from cache |
+| Total cost | $35.28 (bounds: $12.98 delegates only, $35.72 whole sessions) |
+| Per coder run | median $0.15, p90 $0.39 |
+| Per PR opened | $0.14 (252 PRs) |
+| Tokens processed | 0.94 billion; 95.8% of input tokens served from cache |
 | Model | `zai/glm-5.3-flash` on 99.8% of assistant messages |
-| Excluded | 86 ad hoc delegate sessions spawned outside the skill ($1.36) |
+| Excluded | 62 informal sessions without tier classification (103 delegate sessions, $7.53, 73 PRs); 86 ad hoc delegate sessions spawned outside the skill ($1.36) |
 
-![Strip plot of cost per coder session on a log scale: simple median $0.09 (n = 18), medium $0.15 (n = 81), complex $0.17 (n = 84), no tier recorded $0.09 (n = 64)](../../figures/fig-session-cost.png)
+![Strip plot of cost per formal coder run on a log scale: simple median $0.09 (n = 18), medium $0.15 (n = 81), complex $0.17 (n = 84)](../../figures/fig-session-cost.png)
 
-*Figure 1: Cost per coder session by the highest tier among its runs, log
-scale, with median bars; source
+*Figure 1: Cost per formal coder run by the highest tier it recorded, log
+scale, with median bars; 2 runs whose judge result was not saved are omitted;
+source
 [`figures/fig-session-cost.py`](../../figures/fig-session-cost.py).*
 
-Tier comes from the session's handoff files, else from the tier the orchestrator
-wrote in its transcript. The 64 sessions with no tier recorded split into 28 that
-spawned no delegates (follow-ups such as review fixes, merges, and CI waits) and
-36 that ran delegates without persisting a tier: 21 never called the judge, and
-15 called it but wrote the result nowhere the script reads.
+Tier comes from the run's handoff files, else from the tier the orchestrator
+wrote in its transcript.
 
 ## Gate outcomes
 
@@ -110,7 +111,7 @@ resamples, seed 42); source
   Constraint #10), plus the CHECK verdicts in the session handoff directories
   still on disk. Aggregate: [`coder-log-aggregate.json`](coder-log-aggregate.json),
   built by [`scripts/coder-stats.sh`](../../scripts/coder-stats.sh).
-- **pi session logs:** per-message cost and token usage for coder sessions and
+- **pi session logs:** per-message cost and token usage for formal coder runs and
   their delegates, and the PRs those sessions opened. Aggregate:
   [`pi-coder-aggregate.json`](pi-coder-aggregate.json), built by
   [`scripts/pi-coder-stats.py`](../../scripts/pi-coder-stats.py).
@@ -125,11 +126,11 @@ text, or dates finer than the month.
   experimental sessions are not filtered out.
 - Cost is pi's per-message cost from its configured per-token prices, not an
   invoice.
-- A coder session is not a run: a relay successor starts a new session, and
-  one session can run several issues in parallel streams, so cost per PR opened
-  is the steadier unit.
-- Coder sessions are identified heuristically (skill read or prompt naming the
-  skill).
+- The unit is a pi session: a relay successor starts a new session, and one
+  session can run several issues in parallel streams, so cost per PR opened is
+  the steadier unit.
+- Formal runs are identified heuristically: skill invocation plus a recorded
+  tier or a tier judge call.
 - Merging is the maintainer's decision, not an independent quality measure;
   the 16 closed PRs were not reviewed individually (some may be superseded).
 - 6 of 591 log lines are malformed and skipped; 2 tier decisions with a final
