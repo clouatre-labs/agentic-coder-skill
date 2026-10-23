@@ -68,7 +68,7 @@ Let the session triage first, then split the work across sessions rather than on
 Can we fix issues 1639-1651 in a single session, or a subset? Using parallel coder skill streams?
 ```
 
-For a full annotated run — five issues, five parallel sessions, five merged PRs — see [docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md).
+For a full annotated run — five issues, five parallel sessions, five merged PRs — see [docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md). For aggregate gate outcomes across a month of sessions, see [docs/evidence/2026-10-pipeline-stats.md](docs/evidence/2026-10-pipeline-stats.md).
 
 The mechanics behind these invocations — tier classification, handoffs,
 constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
