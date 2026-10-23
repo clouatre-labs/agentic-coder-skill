@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.27.0"
+version: "3.28.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility: claude-code, codex, goose, pi, vibe
@@ -55,6 +55,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 6. Code analysis tools - see Constraint #8. Pass this constraint to every delegate you spawn.
 7. Never write file content via shell - use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
 8. **PR creation is ship work** - the orchestrator never runs `gh pr create` directly except in the Ship step; complex tiers route commit+PR through CHECK.
+9. The orchestrator rewrites `00-progress.json` via `edit_overwrite` (never shell heredocs or `exec_command`) at every phase transition, before spawning any delegate, and at the simple-tier inline checkpoints (BUILD start, after inline implementation, before ship); then validates with `jq empty`. Phase keys come verbatim from the schema below; delegates never read or write the file.
 
 ## Retry Policy
 
@@ -74,6 +75,7 @@ All phases communicate via `$(git rev-parse --path-format=absolute --git-common-
 
 | File | Written By | Read By |
 |------|-----------|---------|
+| `00-progress.json` | orchestrator | successor orchestrator, user |
 | `01a-research-scout.json` | SCOUT agent | GUARD agent, orchestrator |
 | `01b-research-guard.json` | GUARD agent | orchestrator (PLAN phase) |
 | `02-plan.json` | orchestrator | BUILD agent |
@@ -92,11 +94,38 @@ Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent con
 
 Handoff files are checked for structural validity with `jq empty` before use. A malformed or missing handoff is fatal: follow the Retry Policy (surface only the offending file).
 
+## Relay
+
+The orchestrator is stateless: all pipeline state lives in `00-progress.json`, never in context.
+
+### Mandatory relay triggers (medium and complex tiers)
+
+Relay immediately upon marking a phase `done` and setting `next_step` for the subsequent phase -- for every phase the current tier runs (simple tier: no mandatory relays). A relay is also mandatory when the platform emits an explicit context-limit warning. Retry exhaustion is NOT a relay trigger: the Retry Policy's STOP-and-report stands, because a relay at failure time destroys the interactive context the user needs to decide. Terminal completion is NOT a relay: when `PR_REVIEW` finishes, mark `phases.PR_REVIEW: "done"` and set `next_step: "COMPLETE"` -- no successor spawns for a pipeline with no subsequent phase.
+
+### Relay procedure
+
+1. Ensure `00-progress.json` is current (`jq empty` passes; `next_step` names the exact next action).
+2. Increment `relay_count`.
+3. Spawn the successor DETACHED (never synchronously: a shell tool call has a ~300s timeout a full-phase successor would exceed):
+   `nohup <client-cmd> "<bootstrap>" >"$HANDOFF/relay-$RELAY_COUNT.log" 2>&1 &`
+4. Announce: `Relay complete: successor generation N has taken control; log: relay-N.log` in the visible transcript.
+5. Exit immediately.
+
+Interpolate LITERAL values (actual session id, absolute handoff dir, actual relay count) -- nohup subshells inherit nothing. Per-client commands: pi `pi -p "<bootstrap>"` (tools enabled by default; verified); Claude Code `claude -p --dangerously-skip-permissions "<bootstrap>"` (plain `-p` blocks on tool permissions; verified via `claude --help`); goose `goose run -t "<bootstrap>"`. Bootstrap prompt (explicitly authorizes the read -- a headless model given a path without tool authorization declines): `You are the coder orchestrator for session $SESSION_ID. Handoff dir: $HANDOFF. Read 00-progress.json and continue at next_step.`
+
+Never resume the predecessor's session (no `--session`/`--fork`): the successor is always a brand-new process. Circuit breakers use discrete state only -- never string-compare or match on `next_step` (free-form LLM prose is not byte-stable): (a) boot sanity -- a successor pointed at a phase already `done` in `phases` halts and reports; (b) `relay_count` > 7 trips and asks the user; per-generation `relay-*.log` files make a stuck loop diagnosable. Compaction is demoted to a safety net; no custom compaction extension is built.
+
+Canonical schema (handoff conventions: JSON via `edit_overwrite` never shell heredocs, `jq empty` validation after write, compact `jq -c .`, single author = orchestrator; phase status vocabulary `pending|in_progress|done`):
+
+```json
+{"session_id": "<id>", "tier": "simple|medium|complex", "phases": {"SETUP": "pending", "RESEARCH": "pending", "PLAN": "pending", "BUILD": "pending", "CHECK": "pending", "PR_REVIEW": "pending"}, "decisions": [], "open_questions": [], "next_step": "<exact next action>", "relay_count": 0, "worktree": "<WORKTREE>"}
+```
+
 ---
 
 ## Phase 0: SETUP
 
-If user asks to list or resume sessions, run `find $(git rev-parse --path-format=absolute --git-common-dir)/coder-handoffs -mindepth 1 -maxdepth 1 -type d` and for each dir show its `02-plan.json` overview field via `jq -r .overview`, regardless of whether a matching `.worktrees/<sid>` still exists.
+If user asks to list or resume sessions, run `find $(git rev-parse --path-format=absolute --git-common-dir)/coder-handoffs -mindepth 1 -maxdepth 1 -type d` and for each dir show its `02-plan.json` overview field and, when present, the `00-progress.json` `next_step` next to the overview via `jq -r '.overview // empty' 02-plan.json 2>/dev/null` plus `jq -r '.next_step // empty' 00-progress.json`, regardless of whether a matching `.worktrees/<sid>` still exists.
 
 **Issue gate:** when the request cites an issue, resolve it in the CWD repo first (`gh issue view <N>`, no `--repo`) and confirm the URL's owner/repo matches this repo's `origin`; mismatch or missing issue: STOP and ask. Never work in a different repo unless the user explicitly names it.
 

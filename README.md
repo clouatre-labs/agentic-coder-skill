@@ -223,13 +223,16 @@ Handoff Validation).
 ## Handoff protocol
 
 Every phase boundary is a JSON file on disk — no context is passed through chat
-memory. The orchestrator writes, each delegate reads its predecessor's file and
+memory, and the orchestrator itself is stateless: `00-progress.json` is the single
+source of pipeline truth, so a fresh successor process can take over at any relay.
+The orchestrator writes, each delegate reads its predecessor's file and
 writes its own:
 
-*Table 5: The five handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
+*Table 5: The six handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
 
 | Handoff | Written by | Read by |
 |---|---|---|
+| `00-progress.json` | orchestrator | successor orchestrator, user |
 | `01a-research-scout.json` | SCOUT | GUARD, orchestrator |
 | `01b-research-guard.json` | GUARD | orchestrator |
 | `02-plan.json` | orchestrator (PLAN) | BUILD |
