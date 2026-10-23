@@ -17,11 +17,9 @@ history, not a point-in-time snapshot.
 Background: [Orchestrating AI Agents: A Subagent
 Architecture](https://clouatre.ca/posts/orchestrating-ai-agents-subagent-architecture)
 and [The AI SDLC Governance
-Stack](https://clouatre.ca/posts/ai-sdlc-governance-stack) on clouatre.ca.
-Model-selection methodology behind SCOUT/GUARD's swaps over time is documented in
-[llm-agent-experiments](https://github.com/clouatre-labs/llm-agent-experiments) (its own
-README predates the model pins in `tools/agents/*.yaml`); the predecessor study of
-this Scout/Guard architecture is
+Stack](https://clouatre.ca/posts/ai-sdlc-governance-stack). Model-selection
+methodology: [llm-agent-experiments](https://github.com/clouatre-labs/llm-agent-experiments);
+predecessor study of the Scout/Guard architecture:
 [prompt-repetition-experiments](https://github.com/clouatre-labs/prompt-repetition-experiments).
 
 ## Quick start
@@ -144,38 +142,12 @@ delegates.*
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
-```mermaid
-flowchart TD
-    SKILL["skills/coder/SKILL.md\nversioned pipeline spec"]
-    subgraph src[Edit sources]
-        SHARED["agents-shared/&lt;agent&gt;.md\nharness-agnostic bodies"]
-        TMPL["tools/agents/{pi,claude,goose,vibe}-&lt;agent&gt;.yaml\nfrontmatter templates"]
-        GENSCRIPT["scripts/generate-coder-agents.sh"]
-    end
-    subgraph out[Generated — never hand-edit]
-        API["agents/{pi,claude,goose}/&lt;agent&gt;.md"]
-        AVIBE["agents/vibe/&lt;agent&gt;.toml + prompt"]
-    end
-    HOOKS["githooks/\ncommit-msg · pre-commit · pre-push · post-checkout"]
-    DOCS["docs/ · figures/\nsetup, standards, figure sources"]
-    SHARED -->|rendered by| GENSCRIPT
-    TMPL -->|rendered by| GENSCRIPT
-    GENSCRIPT --> API
-    GENSCRIPT --> AVIBE
-    SKILL --- src
-```
-
-*Figure 3: Project structure. Edit sources (top) are rendered into the generated
-agent files (bottom); the numbered steps below describe the same flow in prose.*
-
 ## One pipeline, five harnesses
 
-`skills/coder/SKILL.md` is the single pipeline definition. Its frontmatter declares
-compatibility with five harnesses: **pi**, **Claude Code**, **Codex**, **Goose**, and
-**Vibe** (Goose consumes `SKILL.md` directly as a workflow; the dedicated recipe format
-was retired in v3.13.0. Codex consumes `SKILL.md` only, with no rendered subagents.
-Vibe consumes generated TOML subagents under `agents/vibe/` and
-inherits the session model).
+`skills/coder/SKILL.md` is the single pipeline definition, compatible with five
+harnesses: **pi**, **Claude Code**, **Codex**, **Goose**, and **Vibe**. Goose and
+Codex consume `SKILL.md` directly (Codex renders no subagents); Vibe consumes
+generated TOML subagents under `agents/vibe/` and inherits the session model.
 
 The four coder subagents plus the `prose-polish` agent are defined once and rendered
 per harness:
@@ -191,15 +163,12 @@ per harness:
 
 ## typesafe-ai integration
 
-Tier classification uses the `judge` tool of the `decisions-judge` MCP server.
-Since skill v3.21.0 the judge **validates** an inline
-proposal instead of classifying blind: the orchestrator proposes a tier from
-observable repo facts (file count, diff size, docs-vs-code; see Table 2), and
-one `choice` question validates it with `confirm` / `promote` / `demote`
-criteria. The answer is final, clamped to the tier ladder. On judge
-unavailability or a `{fallback: true}` envelope, the proposal stands and the
-classify log line is flagged as fallback. Every classification attempts one
-JSONL log line per session at
+Tier classification uses the `judge` tool of the `decisions-judge` MCP server: the
+orchestrator proposes a tier from observable repo facts (file count, diff size,
+docs-vs-code; see Table 2), and one `choice` question validates it; the answer is
+final, clamped to the tier ladder. On judge unavailability or a `{fallback: true}`
+envelope, the proposal stands and the log line is flagged as fallback. One JSONL
+log line is attempted per session at
 `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/<host>.jsonl`; logging
 failures never block the pipeline.
 
@@ -223,13 +192,16 @@ Handoff Validation).
 ## Handoff protocol
 
 Every phase boundary is a JSON file on disk — no context is passed through chat
-memory. The orchestrator writes, each delegate reads its predecessor's file and
+memory, and the orchestrator itself is stateless: `00-progress.json` is the single
+source of pipeline truth, so a fresh successor process can take over at any relay.
+The orchestrator writes, each delegate reads its predecessor's file and
 writes its own:
 
-*Table 5: The five handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
+*Table 5: The six handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
 
 | Handoff | Written by | Read by |
 |---|---|---|
+| `00-progress.json` | orchestrator | successor orchestrator, user |
 | `01a-research-scout.json` | SCOUT | GUARD, orchestrator |
 | `01b-research-guard.json` | GUARD | orchestrator |
 | `02-plan.json` | orchestrator (PLAN) | BUILD |
@@ -242,15 +214,25 @@ worktree teardown cannot destroy them. Handoffs are checked for structural valid
 with `jq empty` before use; a malformed or missing handoff is fatal and follows the
 Retry Policy.
 
+**Relay.** On medium and complex tiers the orchestrator never carries state across a
+phase boundary in its own context: when a phase finishes, it finalizes
+`00-progress.json` (`next_step` names the exact next action), spawns a detached
+successor process with a one-line bootstrap prompt, announces the relay, and exits.
+Discrete-state circuit breakers (boot sanity against already-done phases, a relay
+count cap) guard against stuck loops; per-generation `relay-N.log` files live beside
+the handoffs. The full procedure, schema, and circuit breakers are specified in the
+Relay section of [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+
 ## Inspecting a session
 
 *Code Snippet 4: Common inspection commands. Handoffs live outside the worktree, so
 they survive worktree teardown and are visible from any checkout.*
 
 ```bash
-# List sessions and peek at each plan's overview
+# List sessions with each plan's overview and the pipeline's current step
 for d in "$(git rev-parse --path-format=absolute --git-common-dir)"/coder-handoffs/*/; do
-  printf '%s: ' "$(basename "$d")"; jq -r .overview "$d/02-plan.json"
+  printf '%s: ' "$(basename "$d")"; jq -r '.overview // empty' "$d/02-plan.json"
+  jq -r '.next_step // empty' "$d/00-progress.json"
 done
 
 # Verify generated agents match their sources (what CI runs)
