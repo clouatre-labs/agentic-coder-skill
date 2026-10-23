@@ -27,7 +27,7 @@ predecessor study of the Scout/Guard architecture:
 Feed the skill a GitHub issue reference; name `coder skill` explicitly to make the invocation deterministic.
 
 *Table 1: Choosing an invocation pattern (merge rates are observed from real
-runs; see the case study linked below).*
+runs; see [Evidence](#evidence)).*
 
 | Situation | Pattern | Observed merge rate |
 |---|---|---|
@@ -50,10 +50,10 @@ The prompt needs two things: the issue reference and, if merge is wanted, an exp
 
 Ask for one coder stream per issue. Each stream gets its own worktree and handoff directory and produces one independently reviewable PR.
 
-*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in about 1h42m with three human interventions (see the case study below).*
+*Code Snippet 2: Batch invocation. Five streams produced five merged PRs in about 1h42m with three human interventions (see [Evidence](#evidence)).*
 
 ```text
-Fix issues 1578-1582 with coder skill parallel streams. Merge and rebase.
+Fix issues 101-105 with coder skill parallel streams. Merge and rebase.
 ```
 
 Once a merge is requested, the pipeline enforces a **CI gate**: after a PR is marked ready, the orchestrator watches `gh pr checks` asynchronously, re-runs BUILD+CHECK on red checks, and fetches and resolves inline review comments before merging. It also applies deterministic **merge ordering** across multiple PRs (dependency order inferred from issue cross-references and PR bases, with dependents rebased after each merge).
@@ -65,13 +65,21 @@ Let the session triage first, then split the work across sessions rather than on
 *Code Snippet 3: Triage-first invocation for a wide range.*
 
 ```text
-Can we fix issues 1639-1651 in a single session, or a subset? Using parallel coder skill streams?
+Can we fix issues 120-132 in a single session, or a subset? Using parallel coder skill streams?
 ```
-
-For a full annotated run — five issues, five parallel sessions, five merged PRs — see [docs/examples/2026-09-aptu-coder-5-issues.md](docs/examples/2026-09-aptu-coder-5-issues.md). For aggregate gate outcomes across a month of sessions, see [docs/evidence/2026-10-pipeline-stats.md](docs/evidence/2026-10-pipeline-stats.md).
 
 The mechanics behind these invocations — tier classification, handoffs,
 constraints — are specified in [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+
+## Evidence
+
+Measured over two months of daily use on one maintainer's machine, September to October 2026:
+
+- **95% of PRs merged:** 236 of 249, with a median of 16 minutes from PR open to merge.
+- **$0.14 in model cost per PR opened**, across 185 formal coder runs, with 96% of input tokens served from cache.
+- **88% of tier proposals confirmed** by the judge; the rest moved one tier up or down.
+
+Full numbers, figures, caveats, and the scripts that regenerate them: [Pipeline telemetry](docs/evidence/2026-10-pipeline-stats.md). One annotated run, five issues in parallel: [Case study](docs/examples/2026-09-five-parallel-issues.md).
 
 ## Pipeline
 
