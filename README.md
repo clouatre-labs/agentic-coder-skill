@@ -232,8 +232,11 @@ clients (and headless pi), the successor is spawned detached with the same boots
 prompt. An interrupted pipeline still carrying the flag is surfaced at the next
 session start with the exact resume command. Every takeover scan appends a decision
 line to `.relay-log.jsonl`; circuit breakers (boot sanity, relay-count cap) are
-unchanged. The full procedure, takeover modes, and circuit breakers are specified in
-the Relay section of [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+unchanged. The extension is an optional enhancement, not a dependency: without it the
+orchestrator falls back to detached takeover in the same skill flow (the availability
+check and fallback are specified in SKILL.md). The full procedure, takeover modes,
+and circuit breakers are specified in the Relay section of
+[`skills/coder/SKILL.md`](skills/coder/SKILL.md).
 
 ```mermaid
 sequenceDiagram
