@@ -243,16 +243,18 @@ and circuit breakers are specified in the Relay section of
 
 ```mermaid
 sequenceDiagram
+    autonumber
     participant O as Orchestrator (gen N)
     participant F as 00-progress.json
     participant E as coder-relay extension
     participant S as Successor (gen N+1)
-    O->>F: write relay_ready: true, next_step
-    O->>O: end turn
-    E->>F: scan at turn end — flag set?
+    O->>F: write relay_ready: true + next_step
+    note over O: ends its turn
+    E->>F: scan at turn end
+    F-->>E: relay_ready = true
     E->>F: consume flag (relay_ready: false)
-    E->>S: replace session in place + bootstrap prompt
-    S->>F: read, continue at next_step
+    E->>S: replace session in place, send bootstrap prompt
+    S->>F: read 00-progress.json, continue at next_step
 ```
 
 *Figure 3: Flag-based seamless relay. The extension consumes the flag before takeover, so a cancelled or failed replacement never re-triggers; in detached mode the scan-and-consume steps are performed by the harness (`nohup` spawn with the same bootstrap prompt).*
