@@ -222,14 +222,34 @@ worktree teardown cannot destroy them. Handoffs are checked for structural valid
 with `jq empty` before use; a malformed or missing handoff is fatal and follows the
 Retry Policy.
 
-**Relay.** On medium and complex tiers the orchestrator never carries state across a
-phase boundary in its own context: when a phase finishes, it finalizes
-`00-progress.json` (`next_step` names the exact next action), spawns a detached
-successor process with a one-line bootstrap prompt, announces the relay, and exits.
-Discrete-state circuit breakers (boot sanity against already-done phases, a relay
-count cap) guard against stuck loops; per-generation `relay-N.log` files live beside
-the handoffs. The full procedure, schema, and circuit breakers are specified in the
-Relay section of [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+**Relay.** The orchestrator never carries pipeline state across a phase boundary in
+its own context; `00-progress.json` is the sole source of truth. Takeover is
+triggered by one discrete flag: the orchestrator writes `relay_ready: true` and ends
+its turn. On pi, the `coder-relay` extension checks the flag at turn end, consumes
+it, and replaces the session in place with a fresh successor that receives a
+one-line bootstrap prompt — same window, fresh context, no orphan process. On other
+clients (and headless pi), the successor is spawned detached with the same bootstrap
+prompt. An interrupted pipeline still carrying the flag is surfaced at the next
+session start with the exact resume command. Every takeover scan appends a decision
+line to `.relay-log.jsonl`; circuit breakers (boot sanity, relay-count cap) are
+unchanged. The full procedure, takeover modes, and circuit breakers are specified in
+the Relay section of [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
+
+```mermaid
+sequenceDiagram
+    participant O as Orchestrator (gen N)
+    participant F as 00-progress.json
+    participant E as coder-relay extension
+    participant S as Successor (gen N+1)
+    O->>F: write relay_ready: true, next_step
+    O->>O: end turn
+    E->>F: scan at turn end — flag set?
+    E->>F: consume flag (relay_ready: false)
+    E->>S: replace session in place + bootstrap prompt
+    S->>F: read, continue at next_step
+```
+
+*Figure 3: Flag-based seamless relay. The extension consumes the flag before takeover, so a cancelled or failed replacement never re-triggers; in detached mode the scan-and-consume steps are performed by the harness (`nohup` spawn with the same bootstrap prompt).*
 
 ## Inspecting a session
 
