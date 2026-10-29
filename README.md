@@ -148,6 +148,7 @@ delegates.*
 | `tools/agents/{pi,claude,goose,vibe}-*.yaml` | Per-harness frontmatter templates: model, tools, effort |
 | `agents/{pi,claude,goose,vibe}/*.md` (+ `agents/vibe/*.toml`, prompts) | Generated agent files (frontmatter + body) — do not hand-edit |
 | `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
+| `extensions/coder-relay/index.ts` | Verbatim copy of the pi seamless-relay extension (optional; install to `~/.pi/agent/extensions/coder-relay/`)
 | `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
 
 ## One pipeline, five harnesses
@@ -233,8 +234,10 @@ prompt. An interrupted pipeline still carrying the flag is surfaced at the next
 session start with the exact resume command. Every takeover scan appends a decision
 line to `.relay-log.jsonl`; circuit breakers (boot sanity, relay-count cap) are
 unchanged. The extension is an optional enhancement, not a dependency: without it the
-orchestrator falls back to detached takeover in the same skill flow (the availability
-check and fallback are specified in SKILL.md). The full procedure, takeover modes,
+orchestrator falls back to detached takeover in the same skill flow. To install it,
+copy [`extensions/coder-relay/`](extensions/coder-relay/) to
+`~/.pi/agent/extensions/coder-relay/`; the availability check and fallback are
+specified in SKILL.md. The full procedure, takeover modes,
 and circuit breakers are specified in the Relay section of
 [`skills/coder/SKILL.md`](skills/coder/SKILL.md).
 

@@ -28,6 +28,8 @@ done
 # Allowed rewrites (documented in agentic-coder-skill README):
 #   1. Path prefix: config/agents-shared/ -> agents-shared/
 #   2. Schema $id: any raw.githubusercontent URL is replaced by the mirror's own URL
+# The coder-relay pi extension is copied verbatim (node stdlib + pi SDK types only;
+# no path rewrites apply).
 # Generated agents (agents/{claude,pi}/) map from config/{claude}/agents/ fragments;
 # pi has no canonical equivalent and is skipped.
 mirror_remote=$(git config --get remote.origin.url 2>/dev/null || true)
@@ -68,6 +70,7 @@ if [[ "$mirror_remote" == *"clouatre-labs/agentic-coder-skill"* ]]; then
         check_pair "config/claude/agents/coder-${role}.md" "agents/claude/coder-${role}.md" || gate_failed=1
     done
     check_pair config/agents-shared/premise-gate.schema.json agents-shared/premise-gate.schema.json || gate_failed=1
+    check_pair config/pi/agent/extensions/coder-relay/index.ts extensions/coder-relay/index.ts || gate_failed=1
     check_pair githooks/commit-msg githooks/commit-msg || gate_failed=1
     check_pair githooks/pre-push githooks/pre-push || gate_failed=1
 
