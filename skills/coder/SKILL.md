@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.28.0"
+version: "3.29.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility: claude-code, codex, goose, pi, vibe
@@ -98,27 +98,23 @@ Handoff files are checked for structural validity with `jq empty` before use. A 
 
 The orchestrator is stateless: all pipeline state lives in `00-progress.json`, never in context.
 
-### Mandatory relay triggers (medium and complex tiers)
+**Triggers:** relay at every phase boundary -- on marking a phase `done`, set `next_step` for the subsequent phase and relay (medium and complex tiers) -- and at any tier when the platform emits a context-limit warning or context usage reaches 10% of the model's context window (~100k used of 1M); relay mid-phase when the threshold lands between boundaries; the successor resumes from `next_step`. The 10% threshold matches empirically observed degradation onset on glm-5.3-flash and Claude models. Retry exhaustion stays with the Retry Policy: STOP and report. Terminal completion: mark `phases.PR_REVIEW: "done"`, set `next_step: "COMPLETE"`; a complete pipeline spawns its final generation only when a context trigger demands it.
 
-Relay immediately upon marking a phase `done` and setting `next_step` for the subsequent phase -- for every phase the current tier runs (simple tier: no mandatory relays). A relay is also mandatory when the platform emits an explicit context-limit warning. Retry exhaustion is NOT a relay trigger: the Retry Policy's STOP-and-report stands, because a relay at failure time destroys the interactive context the user needs to decide. Terminal completion is NOT a relay: when `PR_REVIEW` finishes, mark `phases.PR_REVIEW: "done"` and set `next_step: "COMPLETE"` -- no successor spawns for a pipeline with no subsequent phase.
+**Procedure:** 1) ensure `00-progress.json` is current (`jq empty` passes; `next_step` names the exact next action), increment `relay_count`, and set `"relay_ready": true`; 2) end the turn (pi) or hand off per takeover mode below; 3) announce `Relay complete: successor generation N has taken control` (append `relay-N.log` in detached mode).
 
-### Relay procedure
+**Seamless (pi, default):** the `coder-relay` extension (`~/.pi/agent/extensions/coder-relay/`) checks the discrete `relay_ready: true` flag in `00-progress.json` at turn end and replaces the session in place (same window, fresh context, bootstrap auto-sent; the command consumes the flag before takeover). The orchestrator sets the flag and just ends the turn -- no increment inference, no baselines. Availability check: `test -d "$HOME/.pi/agent/extensions/coder-relay"`. If takeover does not fire, re-validate `00-progress.json` (`jq empty`) and invoke `/coder-relay <handoff-dir>`; never edit `relay_ready` to force a relay. At session start the extension surfaces any interrupted pipeline still carrying the flag and names the resume command, so resuming after a closed session needs no remembered incantation. Every turn-end scan appends a decision line to `<handoff-root>/.relay-log.jsonl`.
 
-1. Ensure `00-progress.json` is current (`jq empty` passes; `next_step` names the exact next action).
-2. Increment `relay_count`.
-3. Spawn the successor DETACHED (never synchronously: a shell tool call has a ~300s timeout a full-phase successor would exceed):
+**Detached (Claude Code, goose, pi fallback/headless):** spawn the successor DETACHED (never synchronously: a shell tool call has a ~300s timeout a full-phase successor would exceed), then exit immediately:
    `nohup <client-cmd> "<bootstrap>" >"$HANDOFF/relay-$RELAY_COUNT.log" 2>&1 &`
-4. Announce: `Relay complete: successor generation N has taken control; log: relay-N.log` in the visible transcript.
-5. Exit immediately.
 
-Interpolate LITERAL values (actual session id, absolute handoff dir, actual relay count) -- nohup subshells inherit nothing. Per-client commands: pi `pi -p "<bootstrap>"` (tools enabled by default; verified); Claude Code `claude -p --dangerously-skip-permissions "<bootstrap>"` (plain `-p` blocks on tool permissions; verified via `claude --help`); goose `goose run -t "<bootstrap>"`. Bootstrap prompt (explicitly authorizes the read -- a headless model given a path without tool authorization declines): `You are the coder orchestrator for session $SESSION_ID. Handoff dir: $HANDOFF. Read 00-progress.json and continue at next_step.`
+Interpolate LITERAL values (actual session id, absolute handoff dir, actual relay count) -- nohup subshells inherit nothing. Per-client commands: pi `pi -p "<bootstrap>"`; Claude Code `claude -p --dangerously-skip-permissions "<bootstrap>"`; goose `goose run -t "<bootstrap>"`. Bootstrap prompt, identical in both modes: `You are the coder orchestrator for session $SESSION_ID. Handoff dir: $HANDOFF. Read 00-progress.json and continue at next_step.`
 
-Never resume the predecessor's session (no `--session`/`--fork`): the successor is always a brand-new process. Circuit breakers use discrete state only -- never string-compare or match on `next_step` (free-form LLM prose is not byte-stable): (a) boot sanity -- a successor pointed at a phase already `done` in `phases` halts and reports; (b) `relay_count` > 7 trips and asks the user; per-generation `relay-*.log` files make a stuck loop diagnosable. Compaction is demoted to a safety net; no custom compaction extension is built.
+Never resume the predecessor's session (no `--session`/`--fork`): the successor is always brand-new with fresh context -- a new process in detached mode, an in-place session replacement in seamless mode. Circuit breakers use discrete state only -- never string-compare or match on `next_step` (free-form LLM prose is not byte-stable): (a) boot sanity -- a successor pointed at a phase already `done` in `phases` halts and reports; (b) `relay_count` > 30 trips and asks the user (the 10% threshold yields several relays per phase on complex tiers); per-generation `relay-*.log` files make a stuck loop diagnosable. Compaction is demoted to a safety net; no custom compaction extension is built.
 
 Canonical schema (handoff conventions: JSON via `edit_overwrite` never shell heredocs, `jq empty` validation after write, compact `jq -c .`, single author = orchestrator; phase status vocabulary `pending|in_progress|done`):
 
 ```json
-{"session_id": "<id>", "tier": "simple|medium|complex", "phases": {"SETUP": "pending", "RESEARCH": "pending", "PLAN": "pending", "BUILD": "pending", "CHECK": "pending", "PR_REVIEW": "pending"}, "decisions": [], "open_questions": [], "next_step": "<exact next action>", "relay_count": 0, "worktree": "<WORKTREE>"}
+{"session_id": "<id>", "tier": "simple|medium|complex", "phases": {"SETUP": "pending", "RESEARCH": "pending", "PLAN": "pending", "BUILD": "pending", "CHECK": "pending", "PR_REVIEW": "pending"}, "decisions": [], "open_questions": [], "next_step": "<exact next action>", "relay_count": 0, "relay_ready": false, "worktree": "<WORKTREE>"}
 ```
 
 ---
