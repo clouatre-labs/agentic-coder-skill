@@ -11,10 +11,7 @@ isolation: off
 
 # CHECK Delegate
 
-Task instructions contain absolute paths in labeled fields (`Worktree:`, `Handoff dir:`, etc.). `02-plan.json`'s `files[].path` is `<WORKTREE>`-relative -- never pass it directly to a tool expecting an absolute path. Set `working_dir` to the worktree path on every `exec_command`; use relative paths in `command`, except the handoff dir path (`<HANDOFF>`), which stays absolute because it lives outside the worktree. Do not use `$WORKTREE`, `$HANDOFF`, or `$SESSION_ID` -- they are not set in this shell.
-
-Correct:   working_dir="/abs/path/to/worktree", command="jq -c . <HANDOFF>/02-plan.json"
-Incorrect: command="cd /abs/path/to/worktree && jq -c . /abs/path/to/handoff/02-plan.json"
+Set `working_dir` to the worktree path (from `Worktree:`) on every `exec_command`; use relative paths in `command`, except the handoff dir (`<HANDOFF>`), which stays absolute (outside the worktree). `$WORKTREE`/`$HANDOFF`/`$SESSION_ID` are not set in this shell. Full examples: coder-build.md.
 
 Validate implementation matches plan requirements. On PASS verdict, run commit and PR creation sequence.
 
@@ -79,7 +76,7 @@ Checklist:
 - Intra-PR duplicate test behaviors: each entry in `test_strategy.test_behaviors[]` is a structured object `{function, predicate, tag}`. Build a set of `(function, predicate, tag)` triples; if any two entries share an identical triple = FAIL. Entries with different `tag` values (`happy_path` vs `edge_case`) are never duplicates. On FAIL: populate `retry_instructions` naming both conflicting entries by index and their triple (e.g., `test_behaviors[0] and test_behaviors[3] share {function: \"parse_config\", predicate: \"returns error on missing key\", tag: \"edge_case\"}; remove one`).
 - Security: Critical/High = FAIL
 - Duplicated code: if `.jscpd.json` exists at the worktree root, run `bunx jscpd` with `working_dir` set to the worktree root (it reads `.jscpd.json`); tool failure = FAIL. Clones whose `firstFile.name` is in the changed-file set (`git diff --name-only`, plus `--cached`, falling back to `origin/main..HEAD` when both are empty) = PASS WITH NOTES; list each as `firstFile:startLine <-> secondFile:startLine (N lines)` in `retry_instructions` so BUILD can refactor or justify. Otherwise skip.
-- Line budget: count `^+` lines; FAIL if over `line_budget.total_max` or `test_ratio_max`
+- Line budget: count `^+` lines; within +25% of `line_budget.total_max` = PASS WITH NOTES with the overrun in `notes`; above +25% or over `test_ratio_max` = FAIL
 - Markdown: for each `.md` file in the diff, run `bunx markdownlint-cli2 <file>`; any issue = PASS WITH NOTES, file + rule in `retry_instructions`
 
 ## Phase 3: Commit and PR (PASS verdict only)
@@ -102,7 +99,7 @@ git log --show-signature -1  # Verify GPG + DCO
 git push origin <branch>
 ```
 
-Write `<HANDOFF>/pr-body.md` via `edit_overwrite` (literal handoff path) from the target repo's PR template if one exists (`.github/PULL_REQUEST_TEMPLATE*`), filling every section (Related Issues: `Closes #N`; Checklist: tick applicable boxes); otherwise use `## Summary` / `## Changes` / `## Test plan`. No hard line breaks inside sentences. If the scout handoff (`01a-research-scout.json`) records `premise.need.verdict: "diverges"`, the PR body MUST contain a `## Deviation from issue` section (restated outcome, chosen approach, why it beats the ask); missing section = FAIL.
+Write `<HANDOFF>/pr-body.md` via `edit_overwrite` (literal handoff path) from the target repo's PR template if one exists (`.github/PULL_REQUEST_TEMPLATE*`), filling every section (Related Issues: `Closes #N`; Checklist: tick applicable boxes); otherwise use `## Summary` / `## Changes` / `## Test plan`. No hard line breaks inside sentences. If the scout handoff (`01a-research-scout.json`) records `premise.need.verdict: "diverges"`, the PR body MUST contain a `## Deviation from issue` section (restated outcome, chosen approach, why it beats the ask); missing section = FAIL. On pass_with_notes, append the validation notes to the PR body as a `## Notes` section.
 
 Verify the file was written before proceeding:
 
