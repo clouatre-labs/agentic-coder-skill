@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.29.0"
+version: "3.30.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility: claude-code, codex, goose, pi, vibe
@@ -43,7 +43,17 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
     The judge-tool call is `{state, questions}` exactly as shown (no extra keys). `"stage": "tier"` appears only in the classify log lines below -- with an `issue` field.
 
-    The answer is **final**: `confirm`/`promote`/`demote` maps directly to the tier (clamp to the ladder: `promote` from complex stays complex, `demote` from simple stays simple) -- no escalation rules, no confidence thresholds, no post-processing. **Fallback (never fatal):** on judge-tool unavailability, API failure, or a `{fallback: true}` envelope, take the orchestrator's proposal as-is and log with `fallback: true`; Constraint #2's "choose the higher one" tie-break applies only here. Research-genre issues: propose at PLAN time (post-research) from researched facts instead of issue text. **Mandatory:** after classification, append one classify JSON line `{stage: "tier", tier, proposed_tier, confidence, fallback}` to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl`; legacy lines lacking `stage`/`proposed_tier` remain valid for log consumers; never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted.
+    **Mapping with confidence-gated escalation** (constants and rules normative in `x-gate-rules.tier_escalation`):
+
+    - **Default -- direct mapping.** `confirm` keeps the proposed tier; `promote`/`demote` move one tier, clamped to the ladder.
+    - **Override at `confidence < 0.3`** -- uncertainty only moves up, never down (calibration: 35% of answers this low mismatched vs 2.3% at `>= 0.9`):
+      - `demote` **holds** the proposed tier (`gate_decision: hold`)
+      - `confirm` **escalates** one tier (`gate_decision: escalate`)
+      - `promote` maps directly
+      - Example: proposed `simple`, answer `confirm`, confidence `0.26` -> tier `medium`; run the escalated tier without re-litigating.
+    - **Fallback (never fatal)** -- on judge-tool unavailability, API failure, or a `{fallback: true}` envelope, take the orchestrator's proposal as-is and log with `fallback: true`; Constraint #2's "choose the higher one" tie-break applies only here. Missing fields degrade deterministically: no `probabilities` -> scalar rule, no `confidence` -> direct mapping.
+    - **Research-genre issues** -- propose at PLAN time (post-research) from researched facts instead of issue text.
+    - **Logging (mandatory)** -- after classification, append one classify JSON line `{stage: "tier", tier, proposed_tier, confidence, margin, probabilities, gate_decision, fallback}` to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl` (`mkdir -p` before the first append). `margin` = top option probability minus runner-up; `probabilities` = per-option map; `gate_decision` one of confirm|promote|demote|escalate|hold. Margin/probabilities feed calibration only, never behavior. Legacy lines lacking `stage`/`proposed_tier` remain valid for log consumers. Never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted.
 
 ## Rules (All Phases)
 
@@ -59,15 +69,14 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
 
 ## Retry Policy
 
-One policy for all retries in this skill:
+Failure-classified retries in this skill; STOP is reserved for genuine dead ends; an identical failure twice in a row (same operation, same error, any class) is an immediate STOP. Phases and agent task-prompt templates reference this section instead of restating retry semantics.
 
-- Retry the failed operation exactly once; on second failure STOP and report.
-- Surface only the single offending field or component, never the whole handoff or pipeline.
+- **Mechanical failures** (malformed JSON/schema rejection, stale content hash, delegate spawn error, transient tool or API failure): retry up to 3 times, each attempt with a distinct remediation (stale hash -> re-read the file; schema rejection -> fix the named field; spawn error -> re-spawn). Three distinct-remediation failures = STOP and report.
+- **Semantic failures** (CHECK FAIL, guard reject, `request_changes` review): re-spawn BUILD once automatically with `retry_instructions` -- no user ask. Second consecutive failure = STOP and ASK.
+- **Identical failure twice in a row** (same operation, same error, any class): STOP immediately. Surface only the single offending field or component, never the whole handoff or pipeline.
 - Agent-authored files are fixed by full re-invocation of the authoring role with a note naming the offending field (never inline patches); orchestrator-authored `02-plan.json` is rewritten in place.
 - **Provider fallback:** after 2 consecutive rate-limit errors, retry once on the environment's designated fallback provider, if one is configured; log the switch to the handoff dir. Never swap the model. Never hardcode provider names.
 - **Wait asynchronously:** wait on CI checks and review gates via a background waiter subagent or harness background-agent notification -- never sequential sleeps.
-
-Phases and agent task-prompt templates reference this section instead of restating retry semantics.
 
 ## Handoff Protocol
 
@@ -88,7 +97,7 @@ Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent con
 
 **Goose delegate parameters** (ignore when running under Claude Code, pi, or vibe): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["brave", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai`, model `glm-5.3-flash`.
 
-**Vibe notes** (running under Mistral Vibe): delegates are declared subagent TOMLs in `~/.vibe/agents/coder-*.toml` (generated from `tools/agents/vibe-coder-*.yaml`), spawned via the Task tool; they inherit the session model (Mistral-hosted `zai-glm-5-3`, pinned in `~/.vibe/config.toml` -- Mistral Pro subscription only, no Z.ai key; thinking high is the ONLY working option because Vibe's mistral backend maps low->"none" and off->"off", both REJECTED by zai-glm-5-3 per mistralai/mistral-vibe#1115). Aptu-coder tool references in the shared bodies resolve to the built-ins (`bash`, `read_file`, `grep`, `edit`); on the unified harness declared subagents get no MCP groups (mistralai/mistral-vibe#1159), so run with `--legacy-harness` when SCOUT needs brave search, and the `judge` tool (decisions-judge MCP) is orchestrator-level, not delegate-level.
+**Vibe notes** (running under Mistral Vibe): delegates are declared subagent TOMLs in `~/.vibe/agents/coder-*.toml` (generated from `tools/agents/vibe-coder-*.yaml`), spawned via the Task tool; they inherit the session model (session default Mistral-hosted `zai-glm-5-3-flash` @ thinking low, pinned in `~/.vibe/config.toml` -- Mistral Pro subscription only, no Z.ai key; flash hosting landed after mistralai/mistral-vibe#1249, thinking low/high/max accepted since vibe 3.0.4 per #1115). Aptu-coder tool references in the shared bodies resolve to the built-ins (`bash`, `read_file`, `grep`, `edit`); subagent hooks and per-agent tool permissions/skills are honored on the unified harness since vibe 3.0.2 (mistralai/mistral-vibe#1159 fixed), and the `judge` tool (decisions-judge MCP) is orchestrator-level, not delegate-level.
 
 ## Handoff Validation
 
@@ -104,10 +113,12 @@ The orchestrator is stateless: all pipeline state lives in `00-progress.json`, n
 
 **Seamless (pi, default):** the `coder-relay` extension (`~/.pi/agent/extensions/coder-relay/`) checks the discrete `relay_ready: true` flag in `00-progress.json` at turn end and replaces the session in place (same window, fresh context, bootstrap auto-sent; the command consumes the flag before takeover). The orchestrator sets the flag and just ends the turn -- no increment inference, no baselines. Availability check: `test -d "$HOME/.pi/agent/extensions/coder-relay"`. If takeover does not fire, re-validate `00-progress.json` (`jq empty`) and invoke `/coder-relay <handoff-dir>`; never edit `relay_ready` to force a relay. At session start the extension surfaces any interrupted pipeline still carrying the flag and names the resume command, so resuming after a closed session needs no remembered incantation. Every turn-end scan appends a decision line to `<handoff-root>/.relay-log.jsonl`.
 
-**Detached (Claude Code, goose, pi fallback/headless):** spawn the successor DETACHED (never synchronously: a shell tool call has a ~300s timeout a full-phase successor would exceed), then exit immediately:
+**Detached (vibe, and Claude Code / goose / pi fallback / headless):** spawn the successor DETACHED (never synchronously: a shell tool call has a ~300s timeout a full-phase successor would exceed), then exit immediately:
    `nohup <client-cmd> "<bootstrap>" >"$HANDOFF/relay-$RELAY_COUNT.log" 2>&1 &`
 
-Interpolate LITERAL values (actual session id, absolute handoff dir, actual relay count) -- nohup subshells inherit nothing. Per-client commands: pi `pi -p "<bootstrap>"`; Claude Code `claude -p --dangerously-skip-permissions "<bootstrap>"`; goose `goose run -t "<bootstrap>"`. Bootstrap prompt, identical in both modes: `You are the coder orchestrator for session $SESSION_ID. Handoff dir: $HANDOFF. Read 00-progress.json and continue at next_step.`
+Interpolate LITERAL values (actual session id, absolute handoff dir, actual relay count) -- nohup subshells inherit nothing. Per-client commands: pi `pi -p "<bootstrap>"`; Claude Code `claude -p --dangerously-skip-permissions "<bootstrap>"`; goose `goose run -t "<bootstrap>"`; vibe `vibe -p "<bootstrap>"`. Bootstrap prompt, identical in both modes: `You are the coder orchestrator for session $SESSION_ID. Handoff dir: $HANDOFF. Read 00-progress.json and continue at next_step.`
+
+**Vibe notes:** vibe has no seamless mode (its hook API cannot replace or end the interactive session, so in-place takeover is architecturally unavailable). The `coder-relay` post_agent hook (`~/.vibe/hooks.toml` -> `config/vibe/hooks/coder-relay.sh`, availability check: `test -L "$HOME/.vibe/hooks.toml"`) automates detached takeover: after each assistant turn it consumes `relay_ready: true` and spawns the detached successor itself. With the hook installed the orchestrator sets the flag and just ends the turn (same procedure as pi); the old vibe window stays open -- close it once the successor's `relay-N.log` shows progress. Without the hook, run the detached command above manually.
 
 Never resume the predecessor's session (no `--session`/`--fork`): the successor is always brand-new with fresh context -- a new process in detached mode, an in-place session replacement in seamless mode. Circuit breakers use discrete state only -- never string-compare or match on `next_step` (free-form LLM prose is not byte-stable): (a) boot sanity -- a successor pointed at a phase already `done` in `phases` halts and reports; (b) `relay_count` > 30 trips and asks the user (the 10% threshold yields several relays per phase on complex tiers); per-generation `relay-*.log` files make a stuck loop diagnosable. Compaction is demoted to a safety net; no custom compaction extension is built.
 
@@ -254,7 +265,7 @@ After both agents complete:
 
 Produce structured plan. No gate - auto-proceed to BUILD.
 
-**Quality standards:** plan ONLY what solves the problem; reuse existing patterns; minimal scope; incorporate guard's `implementation_constraints` and `warnings`; sum estimated lines changed -- if >500: STOP and ASK. Every externally-observable fact (provider, model, env var, API surface) must trace to issue text or be flagged as an open grounded decision; unspecified fields are a plan defect (SCOUT grounds open decisions; otherwise the orchestrator resolves them before BUILD).
+**Quality standards:** plan ONLY what solves the problem; reuse existing patterns; minimal scope; incorporate guard's `implementation_constraints` and `warnings`; sum estimated lines changed and set `line_budget.total_max` from it -- the budget bounds the diff, not the design: if the estimate exceeds 500, raise `total_max` to the estimate and record `budget_note` (why the problem needs it); STOP and ASK only above 625. Every externally-observable fact (provider, model, env var, API surface) must trace to issue text or be flagged as an open grounded decision; unspecified fields are a plan defect (SCOUT grounds open decisions; otherwise the orchestrator resolves them before BUILD).
 
 **Actions:**
 - Read both research handoffs; identify specific files and line ranges (use handoff ranges; if absent, write `"line_range": "see-scout"`). Write `files[].path` relative to `<WORKTREE>` (never absolute or worktree-prefixed) -- BUILD passes it as-is to `edit_overwrite`/`edit_replace` with `working_dir` set to the literal `Worktree:` value. Map out implementation steps (5-10) and risks/edge cases.
@@ -362,8 +373,8 @@ Invoke the `coder-check` agent via the Agent tool (Claude Code, pi) or Task tool
 After CHECK completes:
 1. Read `$HANDOFF/04-validation.json` and present verdict. CHECK's citation gate appends `{stage: "citation", verdict, fallback, disagreements}` to the same jsonl as Constraint #10 (constants: `x-gate-rules.citation_gate` in `agents-shared/premise-gate.schema.json`; fallback: mechanical verdict stands, log line mandatory on fallback too). CHECK fails any provider/model/env-var claim that does not trace to the issue text or a grounded lookup.
 2. **If PASS:** Proceed immediately to PR REVIEW & READY (no gate).
-3. **If PASS WITH NOTES:** Present notes. **ASK:** "Proceed to PR REVIEW & READY, or address notes first?"
-4. **If FAIL:** Present issues. **ASK:** "Re-spawn BUILD with fixes?" Per Retry Policy: second BUILD+CHECK failure = STOP.
+3. **If PASS WITH NOTES:** Present notes, then proceed immediately to PR REVIEW & READY (no ask; notes ride into `04-validation.json` and the PR body).
+4. **If FAIL:** Present issues, then re-spawn BUILD once with `retry_instructions` automatically (no ask; Retry Policy, semantic class). Second BUILD+CHECK failure = STOP and ASK.
 
 ---
 

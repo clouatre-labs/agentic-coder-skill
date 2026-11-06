@@ -1,5 +1,5 @@
-# Vibe agent fragment for coder-check (generates agents/vibe/coder-check.toml).
-# No active_model: delegates inherit the session model (Mistral-hosted zai-glm-5-3 on the Mistral Pro subscription, pinned in ~/.vibe/config.toml; thinking high is the ONLY working option on the subscription path -- Vibe's mistral backend maps low->"none" and off->"off", both REJECTED by zai-glm-5-3 per mistralai/mistral-vibe#1115).
+# Vibe agent fragment for coder-check (generates config/vibe/agents/coder-check.toml).
+# No active_model: delegates inherit the session model (session default Mistral-hosted zai-glm-5-3-flash @ thinking low, pinned in ~/.vibe/config.toml -- mirrors the pi delegate model; flash hosting landed after mistralai/mistral-vibe#1249, thinking low/high/max accepted since vibe 3.0.4 per #1115).
 agent_type: subagent
 display_name: Coder Check
 description: Validates implementation matches plan requirements. Security gate and compliance checker.

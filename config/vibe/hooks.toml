@@ -1,0 +1,14 @@
+# User-level hooks for Mistral Vibe (symlinked to ~/.vibe/hooks.toml by install.sh).
+# Docs: https://docs.mistral.ai/vibe/code/cli/hooks/
+#
+# coder-relay automates the coder skill's detached relay mode under vibe:
+# after each assistant turn it consumes relay_ready in the handoff dir's
+# 00-progress.json and spawns the detached successor. See
+# config/vibe/hooks/coder-relay.sh for the design notes.
+
+[[hooks]]
+name = "coder-relay"
+type = "post_agent"
+command = "sh \"$HOME/git/clouatre-labs/dotfiles/config/vibe/hooks/coder-relay.sh\""
+timeout = 15.0
+description = "coder skill relay: consume relay_ready flag and spawn detached successor."
