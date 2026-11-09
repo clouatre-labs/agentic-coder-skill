@@ -25,37 +25,10 @@ jobs:
 
   lint-commits:
     name: Lint Commits
-    runs-on: ubuntu-26.04-arm
-    timeout-minutes: 5
     permissions:
       contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26"
-      - name: Cache npm
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.npm
-          key: commitlint-${{ hashFiles('.commitlintrc.yml') }}
-          restore-keys: commitlint-
-      - name: Install commitlint
-        run: |
-          npm install --no-save \
-            @commitlint/cli@21.2.1 \
-            @commitlint/config-conventional@21.2.0
-      - name: Validate commit messages
-        run: |
-          result=0
-          for sha in $(git rev-list --first-parent \
-              ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}); do
-            echo "::group::$sha"
-            git log -1 --format=%B "$sha" | npx commitlint --verbose || result=1
-            echo "::endgroup::"
-          done
-          exit $result
+    uses: clouatre-labs/.github/.github/workflows/lint-commits.yml@c546e09adb87caef81ae109cb3c27d016bea0fae # reusable lint-commits
+    with:
+      base-sha: ${{ github.event.pull_request.base.sha }}
+      head-sha: ${{ github.event.pull_request.head.sha }}
+
