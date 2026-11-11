@@ -57,6 +57,25 @@ if [[ "$AUTHOR_KEY" != "$EXPECTED_KEY" ]]; then
     exit 1
 fi
 
+# Layer 2b: 3Pillar repos must use the work identity. Layers 1-2 cannot tell
+# the identities apart (both share one signing key), and includeIf
+# hasconfig:remote rules cannot match before a remote exists. A repo is a
+# 3Pillar repo when a remote points at a 3Pillar* GitHub org or the repo
+# lives under ~/git/3Pillar*/ (both case-insensitive).
+WORK_CFG="$HOME/.gitconfig-3pillar-user"
+if [[ -f "$WORK_CFG" ]]; then
+    WORK_EMAIL=$(grep -E '^\s*email\s*=' "$WORK_CFG" | head -1 | sed 's/^[^=]*=\s*//' | tr -d ' \t') || true
+    REPO_HINTS="$(git rev-parse --show-toplevel 2>/dev/null || true) $(git remote -v 2>/dev/null | awk '{print $2}' || true)"
+    if [[ -n "$WORK_EMAIL" && "$AUTHOR_EMAIL" != "$WORK_EMAIL" ]] \
+        && grep -qiE "github\.com[:/]3pillar|^${HOME}/git/3pillar[^/]*/" <<<"$(tr ' ' '\n' <<<"$REPO_HINTS")"; then
+        echo "BLOCKED: 3Pillar repo must use the work identity"
+        echo "  Expected: $WORK_EMAIL"
+        echo "  Got:      $AUTHOR_EMAIL"
+        echo "  Check: git config --show-origin user.email"
+        exit 1
+    fi
+fi
+
 # Layer 3: a local/-c override must not shadow a valid global (includeIf)
 # identity. user.useConfigOnly blocks the case where nothing resolves at all;
 # it does nothing when a value resolves but came from the wrong place -- a
@@ -126,13 +145,51 @@ if command -v bun &>/dev/null; then
     # markdownlint-cli2 discovers any .markdownlint* config in the repo root;
     # if one exists, its CI is authoritative and the fallback would duplicate it.
     if [[ -z "$(compgen -G "$REPO_ROOT/.markdownlint*")" && -n "$STAGED_MD" ]]; then
-        ARGS=()
-        while IFS= read -r f; do
-            ARGS+=(":$f")
-        done <<< "$STAGED_MD"
         MDLINT_FALLBACK="$(dirname "$0")/markdownlint.default.jsonc"
-        if ! bunx markdownlint-cli2@0.23.2 --config "$MDLINT_FALLBACK" "${ARGS[@]}"; then
-            echo "BLOCKED: markdownlint-cli2 found issues in staged markdown files"
+        # Scope failures to lines added by the staged diff so pre-existing
+        # debt on untouched lines does not block small edits (issue 780).
+        BLOCKED_MD=()
+        while IFS= read -r f; do
+            # Collect new-file line numbers added by this staged change.
+            # -M keeps renamed files tracked; hunks cover +start,count where
+            # ",count" is omitted for single-line hunks. New files (git diff
+            # against the empty tree) are all added lines.
+            if git diff --cached --name-status --diff-filter=A -- "$f" | grep -q .; then
+                # New file: every line is an added line.
+                TOTAL=$(wc -l < "$f" | tr -d ' ')
+                ADDED=$(seq 1 "${TOTAL:-0}" | paste -sd, -)
+            else
+                ADDED=$(git diff --cached -U0 -M -- "$f" | awk '
+                    /^@@ / {
+                        h = $3
+                        sub(/^\+/, "", h)
+                        split(h, p, ",")
+                        start = p[1] + 0
+                        count = (2 in p) ? p[2] + 0 : 1
+                        for (i = 0; i < count; i++) print start + i
+                    }' | paste -sd, -)
+            fi
+            # Issue lines ("file:line:col error MDxxx ..."; format is
+            # version-pinned to markdownlint-cli2@0.23.2) are written to
+            # stderr, so capture both streams and keep only issues whose
+            # line is in the added-line set.
+            OUT=$(bunx markdownlint-cli2@0.23.2 --config "$MDLINT_FALLBACK" ":$f" 2>&1 || true)
+            HITS=$(printf '%s\n' "$OUT" | awk -v added="$ADDED" '
+                BEGIN {
+                    n = split(added, lines, ",")
+                    for (i = 1; i <= n; i++) added_set[lines[i] + 0] = 1
+                }
+                match($0, /^[^ ]+:[0-9]+:[0-9]+ error /) {
+                    split($0, parts, ":")
+                    if ((parts[2] + 0) in added_set) print
+                }')
+            if [[ -n "$HITS" ]]; then
+                BLOCKED_MD+=("$HITS")
+            fi
+        done <<< "$STAGED_MD"
+        if [[ ${#BLOCKED_MD[@]} -gt 0 ]]; then
+            printf '%s\n' "${BLOCKED_MD[@]}"
+            echo "BLOCKED: markdownlint-cli2 found issues on lines added by this commit"
             echo "Bypass with caution: git commit --no-verify"
             exit 1
         fi

@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.30.0"
+version: "3.31.1"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility: claude-code, codex, goose, pi, vibe
@@ -13,7 +13,7 @@ compatibility: claude-code, codex, goose, pi, vibe
 Orchestrates the full contribution flow using sub-agents.
 
 ```
-SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, draft PR on PASS] -> PR REVIEW & READY [aptu pr review + gh pr ready]
+SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [delegate] -> CHECK [delegate, draft PR on PASS] -> PR REVIEW & READY [aptu pr review --dry-run + gh pr ready]
                                                                               |                    |
                                                                          FAIL -> Retry Policy  FAIL -> Stop & Ask
 ```
@@ -95,7 +95,7 @@ Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent con
 
 **No concurrent worktree edits:** while a delegate is running, the orchestrator does not edit the worktree; it waits for the delegate's completion (and its handoff file) before any further worktree operation.
 
-**Goose delegate parameters** (ignore when running under Claude Code, pi, or vibe): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["brave", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai`, model `glm-5.3-flash`.
+**Goose delegate parameters** (ignore when running under Claude Code, pi, or vibe): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["brave", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai-coding`, model `glm-5.3-flash`.
 
 **Vibe notes** (running under Mistral Vibe): delegates are declared subagent TOMLs in `~/.vibe/agents/coder-*.toml` (generated from `tools/agents/vibe-coder-*.yaml`), spawned via the Task tool; they inherit the session model (session default Mistral-hosted `zai-glm-5-3-flash` @ thinking low, pinned in `~/.vibe/config.toml` -- Mistral Pro subscription only, no Z.ai key; flash hosting landed after mistralai/mistral-vibe#1249, thinking low/high/max accepted since vibe 3.0.4 per #1115). Aptu-coder tool references in the shared bodies resolve to the built-ins (`bash`, `read_file`, `grep`, `edit`); subagent hooks and per-agent tool permissions/skills are honored on the unified harness since vibe 3.0.2 (mistralai/mistral-vibe#1159 fixed), and the `judge` tool (decisions-judge MCP) is orchestrator-level, not delegate-level.
 
@@ -141,7 +141,7 @@ Generate session ID, create isolated worktree. Setup never deletes or resets ano
 ```bash
 SESSION_ID=$(date +%s)
 WORKTREE=.worktrees/$SESSION_ID
-GIT_COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir)
+GIT_COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir); case "$GIT_COMMON_DIR" in /*) : ;; *) echo "ERROR: non-absolute git-common-dir: $GIT_COMMON_DIR" >&2; exit 1 ;; esac
 HANDOFF=$GIT_COMMON_DIR/coder-handoffs/$SESSION_ID
 
 # Metadata-only maintenance: reclaims admin entries for deleted directories, never working files
@@ -287,7 +287,7 @@ Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `ex
   "implementation_constraints": ["must do X", "must not do Y"],
   "test_strategy": {"test_behaviors": [{"function": "<function_or_component>", "predicate": "<what it does or returns>", "tag": "happy_path|edge_case"}], "existing_coverage": ["test_name: behavior"]},
   "risks": ["Risk 1 (from guard analysis)", "Risk 2"],
-  "external_facts": [{"kind": "provider", "value": "zai", "source": "grounded"}],
+  "external_facts": [{"kind": "provider", "value": "zai-coding", "source": "grounded"}],
   "tooling": {"language": "Rust|Python|TypeScript|etc", "test_command": "cargo test|pytest|bun test", "linter": "cargo clippy|ruff check|biome check", "formatter": "cargo fmt|ruff format|biome format"},
   "complexity": "simple|medium|complex",
   "line_budget": {"total_max": 500, "test_ratio_max": 1.5},
@@ -344,7 +344,7 @@ After BUILD completes:
 
 ---
 
-**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section, and if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review` as the automated gate. Then continue to PR REVIEW & READY.
+**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section, and if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review --dry-run` as the automated gate. Then continue to PR REVIEW & READY.
 
 ## Phase 4: CHECK [AGENT]
 
@@ -358,7 +358,7 @@ Set the task prompt:
 Worktree: <WORKTREE>
 Branch: verify current branch matches <branch from 02-plan.json>; mismatch = FAIL regardless of any orchestrator prompt wording.
 Handoff dir: <HANDOFF>
-Build handoff: <HANDOFF>/03-build.json
+Build handoff: <HANDOFF>/03-build.json; guard handoff: <HANDOFF>/01b-research-guard.json
 Plan file: <HANDOFF>/02-plan.json
 Output: write <HANDOFF>/04-validation.json (compact: jq -c .), then run `jq empty <HANDOFF>/04-validation.json`; non-zero exit means fix and rewrite before stopping.
 Validation: per Handoff Validation, check `notes` (jq -r), `issues` (jq -c).
@@ -382,9 +382,9 @@ After CHECK completes:
 
 Read `pr_url` from `$HANDOFF/04-validation.json`. No `pr_url`: CHECK failed, **ASK** user.
 
-`pr_url` present: CHECK created draft PR (or the medium-tier Ship step did). If the premise gate recorded a `diverges`, the PR body MUST contain a "Deviation from issue" section (restated outcome, chosen approach, why it beats the ask); if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section (the plan's external claims or their absence) -- the orchestrator verifies both on medium tier (Ship step), CHECK on complex tier. Run `aptu pr review <PR_URL> -o json`, waiting asynchronously per Retry Policy (background waiter subagent or harness notification -- never sequential sleeps).
+`pr_url` present: CHECK created draft PR (or the medium-tier Ship step did). If the premise gate recorded a `diverges`, the PR body MUST contain a "Deviation from issue" section (restated outcome, chosen approach, why it beats the ask); if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section (the plan's external claims or their absence) -- the orchestrator verifies both on medium tier (Ship step), CHECK on complex tier. Run `aptu pr review <PR_URL> --dry-run -o json`, waiting asynchronously per Retry Policy (background waiter subagent or harness notification -- never sequential sleeps). The gate consumes the verdict locally only; never post the review to GitHub (posting is gated behind explicit `--approve`/`--comment`/`--request-changes` and is not used here).
 - `approve`: `gh pr ready <PR_URL>`. Present branch, PR URL, files changed, review summary.
-- `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD once per Retry Policy, then re-spawn CHECK. If the second `aptu pr review` returns `request_changes` again: STOP and ASK user.
+- `request_changes`: write `.review.concerns[]` from the review JSON into `04-validation.json` as `retry_instructions`, re-spawn BUILD once per Retry Policy, then re-spawn CHECK. If the second `aptu pr review --dry-run` returns `request_changes` again: STOP and ASK user.
 
 **CI gate:** after `gh pr ready`, wait on `gh pr checks <PR_URL> --watch` asynchronously per Retry Policy. Green: report done. Red: write failing check names into `04-validation.json` as `retry_instructions` and re-run BUILD+CHECK per Retry Policy.
 
