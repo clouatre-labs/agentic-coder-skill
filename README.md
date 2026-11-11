@@ -14,7 +14,7 @@ purpose-built subagent instead of doing the work inline. It has been in daily pr
 use since v1.0.0; this repo is the skill at its current version, with real commit
 history, not a point-in-time snapshot.
 
-Background: [Orchestrating AI Agents: A Subagent
+Further reading on the design philosophy lives on the author's [blog](https://clouatre.ca/blog/): [Orchestrating AI Agents: A Subagent
 Architecture](https://clouatre.ca/posts/orchestrating-ai-agents-subagent-architecture)
 and [The AI SDLC Governance
 Stack](https://clouatre.ca/posts/ai-sdlc-governance-stack). Model-selection
@@ -139,18 +139,16 @@ delegates.*
 
 ## What's here
 
-*Table 4: Repository layout — edit the sources, never the generated files.*
+Edit the sources, never the generated files:
 
-| Path | Description |
-|---|---|
-| `skills/coder/SKILL.md` | The skill itself — entry point, phase spec, and version history |
-| `agents-shared/{coder-*,prose-polish}.md` | Shared agent bodies (harness-agnostic), the edit source |
-| `tools/agents/{pi,claude,goose,vibe}-*.yaml` | Per-harness frontmatter templates: model, tools, effort |
-| `agents/{pi,claude,goose,vibe}/*.md` (+ `agents/vibe/*.toml`, prompts) | Generated agent files (frontmatter + body) — do not hand-edit |
-| `scripts/generate-coder-agents.sh` | Regenerates/validates the agent files (`--write` / `--check`) |
-| `extensions/coder-relay/index.ts` | Verbatim copy of the pi seamless-relay extension (optional; install to `~/.pi/agent/extensions/coder-relay/`)
-| `config/vibe/hooks.toml` + `config/vibe/hooks/coder-relay.sh` | Vibe `post_agent` hook that automates detached relay under vibe (optional; deployed via dotfiles `install.sh` to `~/.vibe/hooks.toml`)
-| `githooks/` | Local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene |
+- `skills/coder/SKILL.md` — the skill itself: entry point, phase spec, version history
+- `agents-shared/{coder-*,prose-polish}.md` — shared agent bodies (harness-agnostic), the edit source
+- `tools/agents/{pi,claude,goose,vibe}-*.yaml` — per-harness frontmatter templates: model, tools, effort
+- `agents/{pi,claude,goose,vibe}/*.md` (+ `agents/vibe/*.toml`, prompts) — generated agent files (frontmatter + body); do not hand-edit
+- `scripts/generate-coder-agents.sh` — regenerates/validates the agent files (`--write` / `--check`)
+- `extensions/coder-relay/index.ts` — verbatim copy of the pi seamless-relay extension (optional; install to `~/.pi/agent/extensions/coder-relay/`)
+- `config/vibe/hooks.toml` + `config/vibe/hooks/coder-relay.sh` — Vibe `post_agent` hook automating detached relay under vibe (optional; deployed via dotfiles `install.sh` to `~/.vibe/hooks.toml`)
+- `githooks/` — local governance hooks: conventional commits, DCO sign-off, protected-branch enforcement, branch hygiene
 
 ## One pipeline, five harnesses
 
@@ -207,7 +205,7 @@ source of pipeline truth, so a fresh successor process can take over at any rela
 The orchestrator writes, each delegate reads its predecessor's file and
 writes its own:
 
-*Table 5: The six handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
+*Table 4: The six handoff files. A missing handoff is re-spawned per the Retry Policy; the orchestrator never works inline as a fallback.*
 
 | Handoff | Written by | Read by |
 |---|---|---|
@@ -305,23 +303,7 @@ Portability notes:
 
 ## Tooling
 
-*Table 6: Tooling requirements. Pipeline rows are runtime dependencies of a
-coder session; BUILD rows run only when the change touches that language; repo
-CI rows run on pull requests to `main`. Figures are regenerated with matplotlib
-via `figures/fig-tier-pipeline.py`.*
-
-| Tool | Scope | Used for |
-|---|---|---|
-| git 2.40+ | pipeline | worktrees, githooks, handoff storage under the common git dir |
-| jq | pipeline | all handoff read/write (`jq -c .` compact form) and handoff validation (`jq empty`) |
-| `gh` CLI | pipeline | issue/PR operations (Rule 3; PR creation is ship work — Rule 8) |
-| `decisions-judge` MCP server (`decisions-judge-mcp`) | pipeline | tier classification via the `judge` tool (Choice question); npm package, source at clouatre-labs/decisions-judge-mcp |
-| uv, ruff, pyright | BUILD (Python) | test/lint/typecheck per SKILL.md Tooling Reference |
-| bun or pnpm, biome, vitest | BUILD (JS/TS) | test/lint/format per SKILL.md Tooling Reference |
-| cargo, clippy, cargo-deny | BUILD (Rust) | build/test/lint/deny per SKILL.md Tooling Reference |
-| markdownlint-cli2 | repo CI + local | CI via the markdownlint-cli2 GitHub Action on PRs; locally via `bunx markdownlint-cli2 "**/*.md"` |
-| shellcheck | local | githooks lint (recommended, not enforced in CI) |
-
-## License
-
-[Apache 2.0](LICENSE)
+- **Pipeline runtime**: git 2.40+ (worktrees, githooks, handoff storage under the common git dir), jq (handoff read/write in `jq -c .` compact form, validation with `jq empty`), the `gh` CLI (issue/PR operations; PR creation is ship work — Rule 8), and the `decisions-judge` MCP server (tier classification via the `judge` tool; see [typesafe-ai integration](#typesafe-ai-integration))
+- **BUILD, per language touched** (per the SKILL.md Tooling Reference): uv, ruff, pyright (Python); bun or pnpm, biome, vitest (JS/TS); cargo, clippy, cargo-deny (Rust)
+- **Repo CI**: markdownlint-cli2 GitHub Action on PRs to `main`; locally, `bunx markdownlint-cli2 "**/*.md"`. shellcheck for githooks lint is recommended locally, not enforced in CI
+- Figures are regenerated with matplotlib via [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py)
