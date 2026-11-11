@@ -53,7 +53,7 @@ If 04-validation.json has FAIL verdict, address those issues first.
 - Follow plan checklist exactly; match project style and patterns
 - Write tests using AAA pattern; keep it simple (KISS)
 - Honor all `implementation_constraints`
-- Stay within `line_budget.total_max` and `line_budget.test_ratio_max`
+- Stay within `line_budget` (`total_max` is a planning estimate, not a hard cap; a modest overrun to keep tests meaningful is fine -- note it in `03-build.json`); never trim tests or assertions to fit a budget
 - Read order: `analyze_module` -> `analyze_file` -> `analyze_symbol`; for JSON/TOML use `exec_command + jq`
 - Prefer machine-readable output flags to reduce token volume (e.g. `--message-format=json-diagnostic-short`)
 
@@ -76,10 +76,6 @@ uv run ruff format --check . && uv run ruff check . && uv run pyright && uv run 
 ```bash
 bun run biome format . && bun run biome check . && bun test
 ```
-
-### Per-shard gate
-
-When invoked for a shard of a larger plan, run the plan's `tooling.test_command` and linter scoped to the shard's own files only and report shard-scoped results in `03-build.json`. Do not run tests or lint for files outside the shard.
 
 ## Output
 

@@ -5,6 +5,11 @@
 # after each assistant turn it consumes relay_ready in the handoff dir's
 # 00-progress.json and spawns the detached successor. See
 # config/vibe/hooks/coder-relay.sh for the design notes.
+#
+# coder-notify gives PI-style subagent completion feedback: Vibe subagent
+# results reach the parent model, not the transcript, so after each matched
+# agent turn it fires a native macOS notification. See
+# config/vibe/hooks/coder-notify.sh for the design notes.
 
 [[hooks]]
 name = "coder-relay"
@@ -12,3 +17,11 @@ type = "post_agent"
 command = "sh \"$HOME/git/clouatre-labs/dotfiles/config/vibe/hooks/coder-relay.sh\""
 timeout = 15.0
 description = "coder skill relay: consume relay_ready flag and spawn detached successor."
+
+[[hooks]]
+name = "coder-notify"
+type = "post_agent"
+match = "main|coder-scout|coder-check|coder-build|coder-guard"
+command = "sh \"$HOME/git/clouatre-labs/dotfiles/config/vibe/hooks/coder-notify.sh\""
+timeout = 15.0
+description = "coder subagent completion: native macOS notification per finished turn."
