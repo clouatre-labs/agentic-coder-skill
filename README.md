@@ -303,12 +303,7 @@ Portability notes:
 
 ## Tooling
 
-Pipeline runtime dependencies: git 2.40+ (worktrees, githooks, handoff storage under the common git dir), jq (all handoff read/write in `jq -c .` compact form and validation with `jq empty`), the `gh` CLI (issue/PR operations, Rule 3; PR creation is ship work — Rule 8), and the `decisions-judge` MCP server (`decisions-judge-mcp`, npm package; tier classification via the `judge` tool, Choice question; source at clouatre-labs/decisions-judge-mcp).
-
-BUILD rows run only when the change touches that language, per SKILL.md Tooling Reference: uv, ruff, pyright (Python test/lint/typecheck); bun or pnpm, biome, vitest (JS/TS test/lint/format); cargo, clippy, cargo-deny (Rust build/test/lint/deny).
-
-Repo CI runs on PRs to `main` via the markdownlint-cli2 GitHub Action; locally run `bunx markdownlint-cli2 "**/*.md"`. shellcheck is recommended locally for githooks lint but not enforced in CI. Figures are regenerated with matplotlib via `figures/fig-tier-pipeline.py`.
-
-## License
-
-[Apache 2.0](LICENSE)
+- **Pipeline runtime**: git 2.40+ (worktrees, githooks, handoff storage under the common git dir), jq (handoff read/write in `jq -c .` compact form, validation with `jq empty`), the `gh` CLI (issue/PR operations; PR creation is ship work — Rule 8), and the `decisions-judge` MCP server (tier classification via the `judge` tool; see [typesafe-ai integration](#typesafe-ai-integration))
+- **BUILD, per language touched** (per the SKILL.md Tooling Reference): uv, ruff, pyright (Python); bun or pnpm, biome, vitest (JS/TS); cargo, clippy, cargo-deny (Rust)
+- **Repo CI**: markdownlint-cli2 GitHub Action on PRs to `main`; locally, `bunx markdownlint-cli2 "**/*.md"`. shellcheck for githooks lint is recommended locally, not enforced in CI
+- Figures are regenerated with matplotlib via [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py)
