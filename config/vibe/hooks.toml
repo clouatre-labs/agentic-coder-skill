@@ -14,7 +14,7 @@
 [[hooks]]
 name = "coder-relay"
 type = "post_agent"
-command = "sh \"$HOME/git/clouatre-labs/dotfiles/config/vibe/hooks/coder-relay.sh\""
+command = "sh \"$HOME/.vibe/hooks/coder-relay.sh\""
 timeout = 15.0
 description = "coder skill relay: consume relay_ready flag and spawn detached successor."
 
@@ -22,6 +22,6 @@ description = "coder skill relay: consume relay_ready flag and spawn detached su
 name = "coder-notify"
 type = "post_agent"
 match = "main|coder-scout|coder-check|coder-build|coder-guard"
-command = "sh \"$HOME/git/clouatre-labs/dotfiles/config/vibe/hooks/coder-notify.sh\""
+command = "sh \"$HOME/.vibe/hooks/coder-notify.sh\""
 timeout = 15.0
 description = "coder subagent completion: native macOS notification per finished turn."
