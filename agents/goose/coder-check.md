@@ -1,7 +1,7 @@
 ---
 name: coder-check
 description: Validates implementation matches plan requirements. Security gate and compliance checker. Task instructions carry absolute worktree and handoff paths; env vars are not set.
-provider: zai
+provider: zai-coding
 model: glm-5.3-flash
 thinking: low
 extensions:
