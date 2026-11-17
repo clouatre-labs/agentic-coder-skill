@@ -4,7 +4,9 @@
   "labels": ["dependencies"],
   "minimumReleaseAge": "3 days",
   "platformAutomerge": true,
-  "dependencyDashboard": false,
+  "dependencyDashboard": {
+    "enabled": false
+  },
   "schedule": ["before 6am on monday"],
   "timezone": "UTC",
   "packageRules": [
