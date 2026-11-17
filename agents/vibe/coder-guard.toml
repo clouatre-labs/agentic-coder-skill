@@ -3,5 +3,5 @@ agent_type = "subagent"
 display_name = "Coder Guard"
 description = "Adversarial reviewer focusing on risk, safety, and minimalism. Stress-tests Scout's proposals and re-ranks by safety."
 safety = "neutral"
-enabled_tools = ["aptu-coder_analyze_directory", "aptu-coder_analyze_module", "aptu-coder_analyze_file", "aptu-coder_analyze_symbol", "read_file", "grep", "bash"]
+enabled_tools = ["aptu-coder_analyze_directory", "aptu-coder_analyze_module", "aptu-coder_analyze_file", "aptu-coder_analyze_symbol", "brave_brave_web_search", "brave_brave_llm_context", "read_file", "grep", "bash"]
 system_prompt_id = "coder-guard"

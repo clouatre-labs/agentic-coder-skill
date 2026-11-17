@@ -1,7 +1,7 @@
 ---
 name: coder-build
 description: Implements approved plans and verifies with tests. Writes code, tests, and verification. Task instructions carry absolute worktree and handoff paths; env vars are not set.
-provider: zai
+provider: zai-coding
 model: glm-5.3-flash
 thinking: low
 extensions:
