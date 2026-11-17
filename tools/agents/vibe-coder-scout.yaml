@@ -1,5 +1,5 @@
 # Vibe agent fragment for coder-scout (generates config/vibe/agents/coder-scout.toml).
-# No active_model: delegates inherit the session model (session default Mistral-hosted zai-glm-5-3-flash @ thinking low, pinned in ~/.vibe/config.toml -- mirrors the pi delegate model; flash hosting landed after mistralai/mistral-vibe#1249, thinking low/high/max accepted since vibe 3.0.4 per #1115).
+# active_model + [models] thinking override emitted by the generator: effort policy is self-contained per agent, parity with pi/goose frontmatter (maintainer workaround, mistralai/mistral-vibe#1501). When #1501 ships first-class per-agent thinking, switch to the native key. Pinned level wins over /thinking.
 agent_type: subagent
 display_name: Coder Scout
 description: Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches.
@@ -10,8 +10,9 @@ enabled_tools:
   - aptu-coder_analyze_module
   - aptu-coder_analyze_file
   - aptu-coder_analyze_symbol
-  # Web search
+  # Web search and grounded content (llm_context validated 11/12 vs 7/12 web_search on fact freshness, 2026-11 eval)
   - brave_brave_web_search
+  - brave_brave_llm_context
   # Fallback built-ins (for when MCP groups are dropped by unified harness,
   # mistralai/mistral-vibe#1159): run with --legacy-harness for full MCP access.
   - read_file

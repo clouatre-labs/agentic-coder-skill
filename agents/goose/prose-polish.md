@@ -1,7 +1,7 @@
 ---
 name: prose-polish
 description: Self-sufficient prose auditor and polisher for markdown files. Audits a target file against an embedded checklist, applies exact-replacement fixes, and returns findings as JSON. Task context provides the absolute target path.
-provider: zai
+provider: zai-coding
 model: glm-5.3-flash
 thinking: low
 extensions:
