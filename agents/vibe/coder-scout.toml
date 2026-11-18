@@ -4,4 +4,8 @@ display_name = "Coder Scout"
 description = "Creative exploration agent for codebase research. Deeply analyzes code structure, conventions, ecosystem, and proposes 2-3 solution approaches."
 safety = "neutral"
 enabled_tools = ["aptu-coder_analyze_directory", "aptu-coder_analyze_module", "aptu-coder_analyze_file", "aptu-coder_analyze_symbol", "brave_brave_web_search", "brave_brave_llm_context", "read_file", "grep", "bash"]
+active_model = "zai-glm-5-3-flash"
 system_prompt_id = "coder-scout"
+
+[models."zai-glm-5-3-flash"]
+thinking = "low"
