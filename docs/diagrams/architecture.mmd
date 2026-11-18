@@ -1,13 +1,12 @@
+---
+config:
+  theme: neutral
+---
 graph TD
-    subgraph FLOW["coder skill pipeline"]
-        direction LR
-        ISSUE[GitHub issue] --> ORCH[orchestrator]
-        ORCH -->|"classify tier"| SC[Scout research]
-        SC --> GU[Guard review]
-        GU -->|"approaches"| ORCH
-        ORCH --> BU[Build agent]
-        BU --> CH[Check agent]
-        CH -->|"FAIL: retry"| BU
-        CH -->|"PASS"| PRD[draft PR + CI gate]
-        PRD -->|"merge on request"| MG[squash merge]
-    end
+    ISSUE[GitHub issue] --> ORCH[Orchestrator]
+    ORCH --> SC[Scout research]
+    SC --> GU[Guard review]
+    GU --> ORCH
+    ORCH --> BU[Build agent]
+    BU --> CH[Check agent]
+    CH --> PR[Draft PR + CI gate]
