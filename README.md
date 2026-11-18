@@ -16,7 +16,7 @@ use since v1.0.0; this repo is the skill at its current version, with real commi
 history, not a point-in-time snapshot.
 
 <p align="center">
-  <img alt="Architecture diagram: a GitHub issue enters the coder skill pipeline, the orchestrator classifies the tier and delegates Scout research, Guard review, Build, and Check subagents, and a passing check opens a draft PR through the CI gate for squash merge on request" src="docs/diagrams/architecture.svg" width="560">
+  <img alt="Architecture diagram: a GitHub issue feeds the orchestrator, which loops through Scout research and Guard review, then delegates to the Build and Check agents before opening a draft PR behind the CI gate" src="docs/diagrams/architecture.svg" width="320">
 </p>
 
 *Figure 1: The Scout/Guard pipeline: research feeds the adversarial review gate, then delegated build and check phases ship a PR.*
