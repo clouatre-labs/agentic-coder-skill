@@ -14,6 +14,12 @@ purpose-built subagent instead of doing the work inline. It has been in daily pr
 use since v1.0.0; this repo is the skill at its current version, with real commit
 history, not a point-in-time snapshot.
 
+<p align="center">
+  <img alt="Architecture diagram: a GitHub issue enters the coder skill pipeline, the orchestrator classifies the tier and delegates Scout research, Guard review, Build, and Check subagents, and a passing check opens a draft PR through the CI gate for squash merge on request" src="docs/diagrams/architecture.svg" width="560">
+</p>
+
+*Figure 1: The Scout/Guard pipeline: research feeds the adversarial review gate, then delegated build and check phases ship a PR.*
+
 Further reading on the design philosophy lives on the author's [blog](https://clouatre.ca/blog/): [Orchestrating AI Agents: A Subagent
 Architecture](https://clouatre.ca/posts/orchestrating-ai-agents-subagent-architecture)
 and [The AI SDLC Governance
