@@ -125,12 +125,6 @@ is a propose/validate pair (see [typesafe-ai integration](#typesafe-ai-integrati
 | Medium | Multi-file docs, cross-repo reference, well-understood patterns, no new abstractions, code > 50 lines single- or multi-file | SCOUT → PLAN → BUILD → Ship step (draft PR + review, no GUARD/CHECK delegates) |
 | Complex | Architectural decisions, new abstractions, security-sensitive | SCOUT → GUARD → PLAN → BUILD → CHECK |
 
-![Pipeline phases executed per change tier](figures/fig-tier-pipeline.png)
-
-*Figure 2: Phase execution per tier (data: SKILL.md Constraint #2). For the Simple
-tier, implementation and PR are inline — no delegate runs; the regenerate script
-is [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py).*
-
 *Table 3: Pipeline phases, the four subagents, and their model pins (sources:
 `tools/agents/{pi,claude,goose,vibe}-*.yaml`). PLAN is authored by the orchestrator,
 whose model is whatever the host session runs — this repo pins only the four
@@ -266,7 +260,7 @@ sequenceDiagram
     S->>F: read 00-progress.json, continue at next_step
 ```
 
-*Figure 3: Flag-based seamless relay. The extension consumes the flag before takeover, so a cancelled or failed replacement never re-triggers; in detached mode the scan-and-consume steps are performed by the harness (`nohup` spawn with the same bootstrap prompt).*
+*Figure 2: Flag-based seamless relay. The extension consumes the flag before takeover, so a cancelled or failed replacement never re-triggers; in detached mode the scan-and-consume steps are performed by the harness (`nohup` spawn with the same bootstrap prompt).*
 
 ## Inspecting a session
 
@@ -313,4 +307,3 @@ Portability notes:
 - **Pipeline runtime**: git 2.40+ (worktrees, githooks, handoff storage under the common git dir), jq (handoff read/write in `jq -c .` compact form, validation with `jq empty`), the `gh` CLI (issue/PR operations; PR creation is ship work — Rule 8), and the `decisions-judge` MCP server (tier classification via the `judge` tool; see [typesafe-ai integration](#typesafe-ai-integration))
 - **BUILD, per language touched** (per the SKILL.md Tooling Reference): uv, ruff, pyright (Python); bun or pnpm, biome, vitest (JS/TS); cargo, clippy, cargo-deny (Rust)
 - **Repo CI**: markdownlint-cli2 GitHub Action on PRs to `main`; locally, `bunx markdownlint-cli2 "**/*.md"`. shellcheck for githooks lint is recommended locally, not enforced in CI
-- Figures are regenerated with matplotlib via [`figures/fig-tier-pipeline.py`](figures/fig-tier-pipeline.py)
