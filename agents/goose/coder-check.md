@@ -79,6 +79,7 @@ Checklist:
 - Duplicated code: if `.jscpd.json` exists at the worktree root, run `bunx jscpd` with `working_dir` set to the worktree root (it reads `.jscpd.json`); tool failure = FAIL. Clones whose `firstFile.name` is in the changed-file set (`git diff --name-only`, plus `--cached`, falling back to `origin/main..HEAD` when both are empty) = PASS WITH NOTES; list each as `firstFile:startLine <-> secondFile:startLine (N lines)` in `retry_instructions` so BUILD can refactor or justify. Otherwise skip.
 - Line budget: count `^+` lines; within +25% of `line_budget.total_max` = PASS WITH NOTES with the overrun in `notes`; above +25% or over `test_ratio_max` = FAIL
 - Markdown: for each `.md` file in the diff, run `bunx markdownlint-cli2 <file>`; any issue = PASS WITH NOTES, file + rule in `retry_instructions`
+- Concision: comments restating code, functions over repo limits, repeated prose = PASS WITH NOTES with offenders; added comments/docstrings count toward `line_count`, so bloat trips the FAIL-grade line budget
 
 ## Phase 3: Commit and PR (PASS verdict only)
 

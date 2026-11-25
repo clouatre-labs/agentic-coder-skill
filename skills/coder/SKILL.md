@@ -1,6 +1,6 @@
 ---
 name: coder
-version: "3.31.1"
+version: "3.33.0"
 description: Orchestrates coding tasks using Scout/Guard research architecture. Feed a GitHub issue reference to start.
 type: orchestration
 compatibility: claude-code, codex, goose, pi, vibe
@@ -41,7 +41,7 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
     {"state": {"issue_text": "...", "proposed_tier": "simple|medium|complex", "evidence": {"files_changed": 0, "lines_changed": 0}}, "questions": {"tier": {"type": "choice", "instructions": "<Constraint #2 tier definitions, verbatim>", "criteria": {"confirm": "<proposed tier matches the definitions>", "promote": "<change warrants one tier higher>", "demote": "<one tier lower suffices>"}}}}
     ```
 
-    The judge-tool call is `{state, questions}` exactly as shown (no extra keys). `"stage": "tier"` appears only in the classify log lines below -- with an `issue` field.
+    The judge-tool call is `{state, questions}` exactly as shown (no extra keys). `questions` must be a map of question-name to spec objects, never an array; a validation failure on the envelope is a mechanical retry with the shape fixed. `"stage": "tier"` appears only in the classify log lines below -- with an `issue` field.
 
     **Mapping with confidence-gated escalation** (constants and rules normative in `x-gate-rules.tier_escalation`):
 
@@ -50,22 +50,20 @@ SETUP -> RESEARCH [scout then guard, sequential] -> [GATE] -> PLAN -> BUILD [del
       - `demote` **holds** the proposed tier (`gate_decision: hold`)
       - `confirm` **escalates** one tier (`gate_decision: escalate`)
       - `promote` maps directly
-      - Example: proposed `simple`, answer `confirm`, confidence `0.26` -> tier `medium`; run the escalated tier without re-litigating.
-    - **Fallback (never fatal)** -- on judge-tool unavailability, API failure, or a `{fallback: true}` envelope, take the orchestrator's proposal as-is and log with `fallback: true`; Constraint #2's "choose the higher one" tie-break applies only here. Missing fields degrade deterministically: no `probabilities` -> scalar rule, no `confidence` -> direct mapping.
+    - **Fallback (never fatal)** -- on judge-tool unavailability, API failure, or a `{fallback: true}` envelope, take the orchestrator's proposal as-is and log with `fallback: true`; Constraint #2's "choose the higher one" tie-break applies only here. Missing fields degrade deterministically: no `probabilities` -> scalar rule, no `confidence` -> direct mapping. Judge skip: when the last 20 tier lines in the classify log are all `confirm|false` (check: `tail -n 200 <log> | jq -r 'select(.stage=="tier") | "\(.gate_decision)|\(.fallback // false)"' 2>/dev/null | tail -n 20`; require `sort -u` = `confirm|false` and `wc -l` = 20, so truncation fails safe toward running the judge) and the proposed tier is `simple`/`medium`, skip the judge, log `gate_decision: "confirm"` + `judge_skipped: true`; never skip `complex`.
     - **Research-genre issues** -- propose at PLAN time (post-research) from researched facts instead of issue text.
-    - **Logging (mandatory)** -- after classification, append one classify JSON line `{stage: "tier", tier, proposed_tier, confidence, margin, probabilities, gate_decision, fallback}` to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl` (`mkdir -p` before the first append). `margin` = top option probability minus runner-up; `probabilities` = per-option map; `gate_decision` one of confirm|promote|demote|escalate|hold. Margin/probabilities feed calibration only, never behavior. Legacy lines lacking `stage`/`proposed_tier` remain valid for log consumers. Never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted. **Outcome telemetry (best-effort):** after each delegate run completes, append one JSON line `{timestamp,harness,role,attempts,turns,edits,gate_pass,rework_needed,task_ref}` to `$HOME/.local/share/coder-metrics.jsonl` (`mkdir -p` first) via a single `sh`+`jq` one-liner; counts are integers (null when unknown), `gate_pass`/`rework_needed` booleans, `task_ref` the issue ID. Never block on telemetry failures.
+    - **Logging (mandatory)** -- after classification, append one classify JSON line `{stage: "tier", tier, proposed_tier, confidence, margin, probabilities, gate_decision, fallback}` to `${CODER_LOG_DIR:-$HOME/.local/state/var/coder-log}/$(hostname -s).jsonl` (`mkdir -p` before the first append). `margin` = top option probability minus runner-up; `probabilities` = per-option map; `gate_decision` one of confirm|promote|demote|escalate|hold. Margin/probabilities feed calibration only, never behavior. Legacy lines lacking `stage`/`proposed_tier` remain valid for log consumers. Never block the pipeline on logging failures, but do not spawn delegates until the append has been attempted. **Outcome telemetry (best-effort):** after each delegate run completes, append one JSON line `{timestamp,harness,role,attempts,turns,edits,gate_pass,rework_needed,task_ref}` to `$HOME/.local/share/coder-metrics.jsonl` (`mkdir -p` first) via a single `sh`+`jq` one-liner; `role` is one of the fixed values `scout|guard|build|check|orchestrator|session` (never free text); counts are integers (null when unknown), `gate_pass`/`rework_needed` booleans, `task_ref` the issue ID. Never block on telemetry failures.
 
 ## Rules (All Phases)
 
-1. Skip emojis in code, commits, PRs, docs, and responses
-2. Concise - lead with summary, use bullets, facts only
-3. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave for live web data not reachable via a structured interface. Pass this rule to every delegate.
-4. Minimal gates - stop for decisions, auto-proceed for execution. After classifying issues, start the appropriate path immediately without presenting a summary and asking to proceed.
-5. Do not use aptu for issue reading - use `gh issue view`
-6. Code analysis tools - see Constraint #8. Pass this constraint to every delegate you spawn.
-7. Never write file content via shell - use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
-8. **PR creation is ship work** - the orchestrator never runs `gh pr create` directly except in the Ship step; complex tiers route commit+PR through CHECK.
-9. The orchestrator rewrites `00-progress.json` via `edit_overwrite` (never shell heredocs or `exec_command`) at every phase transition, before spawning any delegate, and at the simple-tier inline checkpoints (BUILD start, after inline implementation, before ship); then validates with `jq empty`. Phase keys come verbatim from the schema below; delegates never read or write the file.
+1. Skip emojis in code, commits, PRs, docs, and responses; lead with summary, use bullets, facts only
+2. Use `gh` CLI for GitHub operations -- `gh issue view` / `gh pr list` / `gh api`; `exec_command` has full authenticated shell. Never brave for github.com. For external content, prefer direct URL fetch, REST API, or WebMCP when the site exposes one; use brave for live web data not reachable via a structured interface. Pass this rule to every delegate.
+3. Minimal gates - stop for decisions, auto-proceed for execution. After classifying issues, start the appropriate path immediately without presenting a summary and asking to proceed.
+4. Do not use aptu for issue reading - use `gh issue view`
+5. Code analysis tools - see Constraint #8. Pass this constraint to every delegate you spawn.
+6. Never write file content via shell - use `edit_overwrite` or `edit_replace`; never heredocs or `exec_command` for file writes.
+7. **PR creation is ship work** - the orchestrator never runs `gh pr create` directly except in the Ship step; complex tiers route commit+PR through CHECK.
+8. The orchestrator rewrites `00-progress.json` via `edit_overwrite` (never shell heredocs or `exec_command`) at every phase transition, before spawning any delegate, and at the simple-tier inline checkpoints (BUILD start, after inline implementation, before ship); then validates with `jq empty`. Phase keys come verbatim from the schema below; delegates never read or write the file.
 
 ## Retry Policy
 
@@ -95,7 +93,7 @@ Write JSON compact (`jq -c .`) to save tokens. Read with `jq -c .` for agent con
 
 **No concurrent worktree edits:** while a delegate is running, the orchestrator does not edit the worktree; it waits for the delegate's completion (and its handoff file) before any further worktree operation.
 
-**Goose delegate parameters** (ignore when running under Claude Code, pi, or vibe): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["brave", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 80; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai-coding`, model `glm-5.3-flash`.
+**Goose delegate parameters** (ignore when running under Claude Code, pi, or vibe): spawn each agent via the goose `delegate` tool instead of the Task tool -- SCOUT: source `coder-scout`, extensions `["brave", "aptu-coder"]`, temperature 0.5; GUARD: `coder-guard`, `["brave", "aptu-coder"]`, 0.1; BUILD: `coder-build`, `["aptu-coder"]`, 0.2, max_turns 120; CHECK: `coder-check`, `["aptu-coder"]`, 0.1. All use provider `zai-coding`; BUILD runs on `glm-5.4`, the others on `glm-5.3-flash`.
 
 **Vibe notes** (running under Mistral Vibe): delegates are declared subagent TOMLs in `~/.vibe/agents/coder-*.toml` (generated from `tools/agents/vibe-coder-*.yaml`), spawned via the Task tool; they inherit the session model (session default Mistral-hosted `zai-glm-5-3-flash` @ thinking low, pinned in `~/.vibe/config.toml` -- Mistral Pro subscription only, no Z.ai key; flash hosting landed after mistralai/mistral-vibe#1249, thinking low/high/max accepted since vibe 3.0.4 per #1115). Aptu-coder tool references in the shared bodies resolve to the built-ins (`bash`, `read_file`, `grep`, `edit`); subagent hooks and per-agent tool permissions/skills are honored on the unified harness since vibe 3.0.2 (mistralai/mistral-vibe#1159 fixed), and the `judge` tool (decisions-judge MCP) is orchestrator-level, not delegate-level.
 
@@ -179,8 +177,6 @@ Classify per Constraint #2. Simple: write a minimal `02-plan.json` (`session_id`
 
 Spawn SCOUT first, then GUARD (reads scout's output). Skip GUARD for medium-tier changes (see Constraint #2).
 
-**Say:** "Spawning SCOUT research agent (session: $SESSION_ID)..."
-
 ### SCOUT
 
 Set the task prompt using this template -- fill in the bracketed values:
@@ -207,8 +203,6 @@ jq -c . $HANDOFF/01a-research-scout.json || echo "ERROR: scout handoff missing"
 ```
 
 If missing: re-spawn SCOUT per Retry Policy.
-
-**Say:** "Scout complete. Spawning GUARD research agent (session: $SESSION_ID)..."
 
 ### GUARD
 
@@ -283,6 +277,7 @@ Write `$HANDOFF/02-plan.json` via `edit_overwrite` (literal path). Never use `ex
   "branch": "<from Phase 0 branch derivation>",
   "overview": "2-3 sentence summary",
   "files": [{"path": "relative/to/worktree/path/to/file", "line_range": "45-67"}],
+  "visual": ["<page/route to screenshot, empty for non-UI changes>"],
   "steps": ["Step 1", "Step 2"],
   "implementation_constraints": ["must do X", "must not do Y"],
   "test_strategy": {"test_behaviors": [{"function": "<function_or_component>", "predicate": "<what it does or returns>", "tag": "happy_path|edge_case"}], "existing_coverage": ["test_name: behavior"]},
@@ -318,8 +313,6 @@ Per Handoff Validation, check `overview` (jq -r), `test_strategy` (jq -c), `reco
 
 ## Phase 3: BUILD & VERIFY [AGENT]
 
-**Say:** "Spawning BUILD agent (session: $SESSION_ID)..."
-
 Set the task prompt:
 
 ```
@@ -330,6 +323,7 @@ Plan file: <HANDOFF>/02-plan.json
 Output: write <HANDOFF>/03-build.json (compact: jq -c .), then run `jq empty <HANDOFF>/03-build.json`; non-zero exit means fix and rewrite before stopping.
 Validation: per Handoff Validation, check `summary` (jq -r).
 Schema fields: session_id, files_changed, summary, test_results, lint_status.
+Visual capture (when 02-plan.json `visual[]` is non-empty): after implementing, start the repo dev server and screenshot each listed page (command in Tooling Reference, Visual) into <HANDOFF>/ as `shot-<name>.png`; verify each PNG with `file` (non-empty, expected dimensions). Blank or missing PNG: retry once with `--virtual-time-budget=10000`, then record the failure in 03-build.json notes; never skip silently. Do not interpret the screenshots -- visual judgment is the judge's (see the BUILD-completion visual gate).
 Constraint: Implement plan only. No git add, commit, or push.
 ```
 
@@ -339,18 +333,17 @@ Invoke the `coder-build` agent via the Agent tool (Claude Code, pi) or Task tool
 
 After BUILD completes:
 1. Verify handoff exists: `jq -c . $HANDOFF/03-build.json`. If missing: re-spawn BUILD per Retry Policy.
-2. Read `$HANDOFF/03-build.json` and present summary and test results.
-3. Proceed immediately to CHECK (no gate).
+2. Visual gate (when `visual[]` is non-empty, requires decisions-judge-mcp >= 1.8.0): one batched judge call with the `images` map (`{"<name>": "<HANDOFF>/shot-<name>.png"}` per listed page) and one `noul` question per image (`"Does the rendering in `<name>` show a layout defect: misalignment, overlap, missing styles, or broken rendering?"`). `noul` >= 0.5 on any image = defect: write the flagged page into `retry_instructions`, re-spawn BUILD once per Retry Policy, re-run the gate. All < 0.5: proceed. Fallback envelope or judge unavailable: record `visual_gate: skipped-fallback` in `00-progress.json` decisions, note the skip in the PR body, and proceed (never block). Log `{stage: "visual", verdict, noul_max, fallback, gate_decision}` to the classify jsonl.
+3. Read `$HANDOFF/03-build.json` and present summary and test results.
+4. Proceed immediately to CHECK (no gate).
 
 ---
 
-**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section, and if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review --dry-run` as the automated gate. Then continue to PR REVIEW & READY.
+**Ship step (medium tier):** skip CHECK; after BUILD the orchestrator runs `bunx markdownlint-cli2` on diffed `.md` files; when `visual[]` is non-empty, runs the visual gate above (judge call over the PNGs, BUILD re-spawn on defects) before the draft PR, writes the PR body from `.github/PULL_REQUEST_TEMPLATE.md` when present (fill every section) -- if the premise gate recorded a `diverges` (verify via `jq -r '.premise.need.verdict'` on the scout handoff), the PR body MUST contain a "Deviation from issue" section, and if the plan-completeness telemetry recorded `undeclared_facts_warning: true`, it MUST also contain an "External facts" section -- opens a draft PR (`gh pr create --draft`) on the branch from `02-plan.json`, and runs `aptu pr review --dry-run` as the automated gate. Then continue to PR REVIEW & READY.
 
 ## Phase 4: CHECK [AGENT]
 
 Skip for medium tier -- use the Ship step above.
-
-**Say:** "Spawning CHECK agent (session: $SESSION_ID)..."
 
 Set the task prompt:
 
@@ -402,6 +395,7 @@ git worktree remove "$WORKTREE" && git branch -D "$BRANCH"
 
 ## Tooling Reference
 
+**Visual (web UI):** headless Chrome screenshot, zero dependencies (validated: renders JS-heavy pages, localhost, static): `CHROME="$(command -v google-chrome || echo "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")"; "$CHROME" --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=5000 --screenshot=<out>.png --window-size=1280,1600 <url>`; verify with `file <out>.png`. `--virtual-time-budget` is required so JS-rendered pages settle; blank PNG = retry with 10000. Pages needing interaction (clicks) are out of scope for this command.
 **Python:** uv, ruff, pyright
 **JavaScript/TypeScript:** bun/pnpm, biome, vitest
 **Rust:** cargo build/test/clippy/fmt/deny

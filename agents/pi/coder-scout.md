@@ -70,7 +70,9 @@ Read issue thread, linked PRs; note maintainer preferences.
 
 ## Phase6: Propose Approaches
 
-Generate approaches against the outcome from Phase0, not against the issue's ask. If the best approach to the outcome differs from the ask, set `need.verdict` to `diverges` and say how. Identify 2-3 approaches. For each: describe changes, pros/cons, complexity estimate. Include elegant option even if it touches more files.
+Prior art first: search merged PRs (`gh pr list --state merged --search "<keyword>"`) and `git log` for prior implementations of the same pattern in this repo; prefer adapting a proven in-repo pattern over a novel one, and cite the PR or commit.
+
+Generate approaches against the outcome from Phase0, not against the issue's ask. If the best approach to the outcome differs from the ask, set `need.verdict` to `diverges` and say how. Identify 2-3 approaches. For each: describe changes, pros/cons, complexity estimate. Prefer the smallest approach that fully solves the outcome; do not pad the list with options that touch more files.
 
 ## Output
 
