@@ -20,9 +20,6 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.github/workflows/security.yml` | Sequential trufflehog and zizmor steps in a single required `Security Result` job | repo |
 | `.github/workflows/scheduled-security-audit.yml` | Weekly scheduled zizmor security audit | repo |
 | `.commitlintrc.yml` | Conventional Commits ruleset for commitlint | repo |
-| `.github/workflows/scorecard.yml` | Weekly OpenSSF Scorecard analysis; installs the Scorecard CLI v5.5.0 tarball (SHA256-pinned) rather than using `ossf/scorecard-action`, evaluates `.github/scorecard-policy.yml`, and publishes SARIF to code scanning | repo |
-| `.github/workflows/scorecard-publish.yml` | Monthly scorecard.dev publishing via amd64 exception | repo |
-| `.github/scorecard-policy.yml` | Scorecard result thresholds consumed by `scorecard.yml` | repo |
 | `.github/aptu.yml` | Configuration for the Aptu GitHub App | repo |
 | `.github/workflows/aptu-review.yml` | Reusable-workflow wrapper delegating PR review to `clouatre-labs/aptu-github-app@d341c5f20e31b570db8a10136d56ca63af6ded7b # v0.1.8` | repo |
 | `.github/workflows/aptu-scan-security.yml` | Reusable-workflow wrapper delegating security scanning to `clouatre-labs/aptu-github-app@d341c5f20e31b570db8a10136d56ca63af6ded7b # v0.1.8` | repo |
@@ -157,7 +154,7 @@ jobs:
 
 These steps replicate all controls to any new engagement repo under `github.com/clouatre-labs`. Complete them in order; later steps depend on earlier ones being in effect.
 
-1. Copy `.github/CODEOWNERS`, `.github/renovate.json`, `.github/workflows/security.yml`, `.github/workflows/scheduled-security-audit.yml`, `.github/workflows/scorecard.yml`, and `.github/workflows/scorecard-publish.yml` into the new repo. Add any additional third-party action patterns the new repo uses to the allowlist in step 4.
+1. Copy `.github/CODEOWNERS`, `.github/renovate.json`, `.github/workflows/security.yml`, `.github/workflows/scheduled-security-audit.yml` into the new repo. Add any additional third-party action patterns the new repo uses to the allowlist in step 4.
 
 2. Update the owner in `CODEOWNERS`. Replace `@clouatre` with your own GitHub account or team. **Critical:** Ensure that account or team has at least `Write` access to the derived repo. GitHub silently ignores code owners that lack write access, which would leave `.github/` unprotected. Update the absolute contact URLs in `.github/ISSUE_TEMPLATE/config.yml` to point to the derived repo. See `.github/CODEOWNERS` for the full comment block.
 
